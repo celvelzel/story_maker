@@ -1,0 +1,66 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+*.manifest
+*.spec
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Environment variables
+.env
+.env.*
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Model artifacts
+*.pt
+*.bin
+*.onnx
+*.safetensors
+models/
+
+# Data (keep scripts, ignore large datasets)
+data/*.csv
+data/*.tsv
+data/*.json
+!data/intent_labels.json
+data/*.parquet
+data/*.pkl
+
+# Logs
+*.log
+logs/
+
+# Testing / Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Distribution
+*.whl
+*.tar.gz
