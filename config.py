@@ -19,6 +19,7 @@ class Settings(BaseSettings):
 
     # ── OpenAI / LLM API ──────────────────────────────────
     OPENAI_API_KEY: str = Field(default="", description="OpenAI API key")
+    OPENAI_BASE_URL: str = Field(default="", description="OpenAI-compatible API base URL (e.g. https://your-server.com/v1)")
     OPENAI_MODEL: str = "gpt-4o-mini"
     OPENAI_MAX_TOKENS: int = 1024
     OPENAI_TEMPERATURE: float = 0.85

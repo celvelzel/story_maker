@@ -48,7 +48,10 @@ class LLMClient:
         if self._client is None:
             try:
                 from openai import OpenAI
-                self._client = OpenAI(api_key=self._settings.OPENAI_API_KEY)
+                kwargs: Dict[str, Any] = {"api_key": self._settings.OPENAI_API_KEY}
+                if self._settings.OPENAI_BASE_URL:
+                    kwargs["base_url"] = self._settings.OPENAI_BASE_URL
+                self._client = OpenAI(**kwargs)
             except Exception as exc:
                 logger.error("Failed to create OpenAI client: %s", exc)
                 raise
