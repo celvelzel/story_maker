@@ -17,7 +17,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import INTENT_MODEL_NAME, INTENT_LABELS
+from config import settings
 
 
 class IntentDataset(Dataset):
@@ -146,7 +146,7 @@ def create_synthetic_training_data():
     
     texts = []
     labels = []
-    label2id = {label: i for i, label in enumerate(INTENT_LABELS)}
+    label2id = {label: i for i, label in enumerate(settings.INTENT_LABELS)}
     
     for intent, examples in data.items():
         for text in examples:
@@ -158,10 +158,10 @@ def create_synthetic_training_data():
 
 def train(args):
     """Main training function."""
-    print(f"Training intent classifier with {INTENT_MODEL_NAME}")
+    print(f"Training intent classifier with {settings.INTENT_MODEL_NAME}")
     
     # Load tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(INTENT_MODEL_NAME)
+    tokenizer = AutoTokenizer.from_pretrained(settings.INTENT_MODEL_NAME)
     
     # Prepare data
     texts, labels = create_synthetic_training_data()
@@ -176,10 +176,10 @@ def train(args):
     
     # Load model
     model = AutoModelForSequenceClassification.from_pretrained(
-        INTENT_MODEL_NAME,
-        num_labels=len(INTENT_LABELS),
-        id2label={i: l for i, l in enumerate(INTENT_LABELS)},
-        label2id={l: i for i, l in enumerate(INTENT_LABELS)},
+        settings.INTENT_MODEL_NAME,
+        num_labels=len(settings.INTENT_LABELS),
+        id2label={i: l for i, l in enumerate(settings.INTENT_LABELS)},
+        label2id={l: i for i, l in enumerate(settings.INTENT_LABELS)},
     )
     
     # Training arguments

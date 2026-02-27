@@ -58,7 +58,8 @@ class TestGameState:
         s = GameState()
         for i in range(10):
             s.add_narration(f"Event {i}")
-        assert len(s.recent_history(3)) == 3
+        # recent_history() returns a formatted string, not a list
+        assert len(s.recent_history(3).split("\n")) == 3
 
 
 # ── Engine: start_game ──────────────────────────────────────────────

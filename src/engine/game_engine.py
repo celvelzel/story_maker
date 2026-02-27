@@ -89,10 +89,9 @@ class GameEngine:
         """Run the full pipeline for one player turn."""
 
         # 1. Coreference resolution
-        recent_text = " ".join(
-            t["text"] for t in self.state.recent_history(4)
-        )
-        resolved = self.coref.resolve(player_input, recent_text)
+        recent_entries = self.state.story_history[-4:]
+        recent_texts = [t["text"] for t in recent_entries]
+        resolved = self.coref.resolve(player_input, recent_texts)
 
         # 2. Intent classification
         intent_result = self.intent_clf.predict(resolved)
@@ -106,9 +105,7 @@ class GameEngine:
 
         # 4. Story generation
         kg_summary = self.kg.to_summary()
-        history = "\n".join(
-            f"[{t['role']}] {t['text']}" for t in self.state.recent_history(6)
-        )
+        history = self.state.recent_history(6)
         story_text = self.story_gen.continue_story(
             player_input=resolved,
             intent=intent,

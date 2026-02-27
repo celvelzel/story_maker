@@ -21,7 +21,7 @@ class TestKnowledgeGraph:
     def test_add_entity(self, kg):
         kg.add_entity("Hero", "person")
         assert "hero" in kg.graph.nodes
-        assert kg.graph.nodes["hero"]["type"] == "person"
+        assert kg.graph.nodes["hero"]["entity_type"] == "person"
 
     def test_add_entity_case_insensitive(self, kg):
         kg.add_entity("HERO", "person")
