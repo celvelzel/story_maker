@@ -1,10 +1,6 @@
 """Tests for KnowledgeGraph, ConflictDetector and relation_extractor."""
 import pytest
-import sys
-from pathlib import Path
 from unittest.mock import patch, MagicMock
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.knowledge_graph.graph import KnowledgeGraph
 from src.knowledge_graph.conflict_detector import ConflictDetector
@@ -89,7 +85,7 @@ class TestConflictDetector:
 # ── Relation extractor (mocked LLM) ────────────────────────────────
 
 class TestRelationExtractor:
-    @patch("src.knowledge_graph.relation_extractor.llm_client")
+    @patch("src.utils.api_client.llm_client")
     def test_extract_returns_dict(self, mock_client):
         mock_client.chat_json.return_value = {
             "entities": [{"name": "Hero", "type": "person"}],
@@ -100,7 +96,7 @@ class TestRelationExtractor:
         assert "relations" in result
         assert len(result["entities"]) == 1
 
-    @patch("src.knowledge_graph.relation_extractor.llm_client")
+    @patch("src.utils.api_client.llm_client")
     def test_extract_handles_error(self, mock_client):
         mock_client.chat_json.side_effect = RuntimeError("API down")
         result = relation_extractor.extract("broken")

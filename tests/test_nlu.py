@@ -1,9 +1,5 @@
 """Tests for NLU modules: intent classifier, entity extractor, coreference."""
 import pytest
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.nlu.intent_classifier import IntentClassifier
 from src.nlu.entity_extractor import EntityExtractor
@@ -72,12 +68,12 @@ class TestCoreferenceResolver:
         return CoreferenceResolver()
 
     def test_resolve_returns_string(self, resolver):
-        out = resolver.resolve("He went there.", "The knight saw a cave.")
+        out = resolver.resolve("He went there.", ["The knight saw a cave."])
         assert isinstance(out, str)
 
     def test_no_context_passthrough(self, resolver):
         text = "Open the door."
-        assert resolver.resolve(text, "") == text
+        assert resolver.resolve(text, []) == text
 
 
 if __name__ == "__main__":

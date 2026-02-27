@@ -16,7 +16,11 @@ from transformers import (
 from peft import LoraConfig, get_peft_model, TaskType
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import GENERATOR_MODEL_NAME
+from config import settings
+
+# This script is for optional GPT-2 LoRA fine-tuning (legacy).
+# The main project uses API-based NLG (gpt-4o-mini) — this is NOT required.
+GENERATOR_MODEL_NAME = "gpt2"
 
 
 def prepare_dataset(data_path: str, tokenizer, max_length: int = 512):

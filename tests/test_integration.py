@@ -1,10 +1,6 @@
 """Integration tests: full engine pipeline with mocked LLM calls."""
 import pytest
-import sys
-from pathlib import Path
 from unittest.mock import patch, MagicMock
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.engine.game_engine import GameEngine, TurnResult
 from src.engine.state import GameState
@@ -65,17 +61,10 @@ class TestGameState:
 # ── Engine: start_game ──────────────────────────────────────────────
 
 class TestEngineStartGame:
-    @patch("src.nlg.story_generator.llm_client")
-    @patch("src.nlg.option_generator.llm_client")
-    @patch("src.knowledge_graph.relation_extractor.llm_client")
-    def test_start_game_returns_turn_result(self, mock_re, mock_opt, mock_sg):
-        mock_sg.chat.return_value = "You stand at the edge of a dark forest."
-        mock_opt.chat_json.return_value = {
-            "options": [
-                {"text": "Enter the forest", "intent_hint": "explore", "risk_level": "medium"},
-            ]
-        }
-        mock_re.chat_json.return_value = {"entities": [], "relations": []}
+    @patch("src.utils.api_client.llm_client")
+    def test_start_game_returns_turn_result(self, mock_llm):
+        mock_llm.chat.return_value = "You stand at the edge of a dark forest."
+        mock_llm.chat_json.side_effect = _chat_json_router
 
         engine = GameEngine(genre="fantasy")
         result = engine.start_game()
@@ -88,21 +77,10 @@ class TestEngineStartGame:
 # ── Engine: process_turn ────────────────────────────────────────────
 
 class TestEngineProcessTurn:
-    @patch("src.nlg.story_generator.llm_client")
-    @patch("src.nlg.option_generator.llm_client")
-    @patch("src.knowledge_graph.relation_extractor.llm_client")
-    @patch("src.knowledge_graph.conflict_detector.llm_client")
-    def test_process_turn_returns_turn_result(
-        self, mock_cd, mock_re, mock_opt, mock_sg
-    ):
-        mock_sg.chat.return_value = "The moonlit path unfolds before you."
-        mock_opt.chat_json.return_value = {
-            "options": [
-                {"text": "Follow the path", "intent_hint": "explore", "risk_level": "low"},
-            ]
-        }
-        mock_re.chat_json.return_value = {"entities": [], "relations": []}
-        mock_cd.chat_json.return_value = {"conflicts": []}
+    @patch("src.utils.api_client.llm_client")
+    def test_process_turn_returns_turn_result(self, mock_llm):
+        mock_llm.chat.return_value = "The moonlit path unfolds before you."
+        mock_llm.chat_json.side_effect = _chat_json_router
 
         engine = GameEngine(genre="fantasy")
         # Seed state so process_turn has history
@@ -112,17 +90,10 @@ class TestEngineProcessTurn:
         assert isinstance(result, TurnResult)
         assert "intent" in result.nlu_debug
 
-    @patch("src.nlg.story_generator.llm_client")
-    @patch("src.nlg.option_generator.llm_client")
-    @patch("src.knowledge_graph.relation_extractor.llm_client")
-    @patch("src.knowledge_graph.conflict_detector.llm_client")
-    def test_two_turns_accumulate_state(
-        self, mock_cd, mock_re, mock_opt, mock_sg
-    ):
-        mock_sg.chat.return_value = "Story text."
-        mock_opt.chat_json.return_value = {"options": [{"text": "Continue"}]}
-        mock_re.chat_json.return_value = {"entities": [], "relations": []}
-        mock_cd.chat_json.return_value = {"conflicts": []}
+    @patch("src.utils.api_client.llm_client")
+    def test_two_turns_accumulate_state(self, mock_llm):
+        mock_llm.chat.return_value = "Story text."
+        mock_llm.chat_json.side_effect = _chat_json_router
 
         engine = GameEngine()
         engine.state.add_narration("Opening.")

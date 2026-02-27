@@ -61,6 +61,12 @@ logs/
 htmlcov/
 coverage.xml
 
+# Generated visualization
+kg_vis.html
+
+# PyTorch checkpoints
+*.pth
+
 # Distribution
 *.whl
 *.tar.gz

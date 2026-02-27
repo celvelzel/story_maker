@@ -77,7 +77,7 @@ class GameEngine:
 
         kg_summary = self.kg.to_summary()
         options = self.option_gen.generate(story_text, kg_summary)
-        kg_html = render_kg_html(self.kg)
+        kg_html = render_kg_html(self.kg.graph)
 
         return TurnResult(
             story_text=story_text,
@@ -120,12 +120,13 @@ class GameEngine:
         self._apply_extraction(story_text)
 
         # 6. Conflict detection
-        conflicts = self.conflict_det.check_all(story_text)
+        raw_conflicts = self.conflict_det.check_all(story_text)
+        conflicts = [c.get("description", str(c)) for c in raw_conflicts]
 
         # 7. Option generation
         kg_summary = self.kg.to_summary()  # refresh after KG update
         options = self.option_gen.generate(story_text, kg_summary)
-        kg_html = render_kg_html(self.kg)
+        kg_html = render_kg_html(self.kg.graph)
 
         nlu_debug = {
             "resolved_input": resolved,

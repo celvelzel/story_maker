@@ -1,10 +1,6 @@
 """Tests for NLG modules: prompt_templates, story_generator, option_generator."""
 import pytest
-import sys
-from pathlib import Path
 from unittest.mock import patch
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.nlg.prompt_templates import (
     SYSTEM_PROMPT,
@@ -50,14 +46,14 @@ class TestStoryGenerator:
     def gen(self):
         return StoryGenerator()
 
-    @patch("src.nlg.story_generator.llm_client")
+    @patch("src.utils.api_client.llm_client")
     def test_generate_opening(self, mock_client, gen):
         mock_client.chat.return_value = "Once upon a time…"
         text = gen.generate_opening("fantasy")
         assert text == "Once upon a time…"
         mock_client.chat.assert_called_once()
 
-    @patch("src.nlg.story_generator.llm_client")
+    @patch("src.utils.api_client.llm_client")
     def test_continue_story(self, mock_client, gen):
         mock_client.chat.return_value = "The hero pressed on."
         text = gen.continue_story(
@@ -76,7 +72,7 @@ class TestOptionGenerator:
     def gen(self):
         return OptionGenerator()
 
-    @patch("src.nlg.option_generator.llm_client")
+    @patch("src.utils.api_client.llm_client")
     def test_generate_returns_story_options(self, mock_client, gen):
         mock_client.chat_json.return_value = {
             "options": [
@@ -90,7 +86,7 @@ class TestOptionGenerator:
         assert all(isinstance(o, StoryOption) for o in opts)
         assert opts[0].text == "Go north"
 
-    @patch("src.nlg.option_generator.llm_client")
+    @patch("src.utils.api_client.llm_client")
     def test_fallback_on_error(self, mock_client, gen):
         mock_client.chat_json.side_effect = RuntimeError("fail")
         opts = gen.generate("story", "kg")
