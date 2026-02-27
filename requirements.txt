@@ -1,0 +1,23 @@
+# Core / API
+openai>=1.14.0
+pydantic-settings>=2.2.0
+
+# NLU
+spacy>=3.7.0
+fastcoref>=2.1.0
+
+# Knowledge Graph
+networkx>=3.2
+pyvis>=0.3.2
+
+# Evaluation
+nltk>=3.8.0
+
+# Frontend
+gradio>=4.0.0
+
+# Utilities
+tqdm>=4.66.0
+
+# Testing
+pytest>=7.4.0
