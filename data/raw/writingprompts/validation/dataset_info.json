@@ -1,0 +1,70 @@
+{
+  "builder_name": "parquet",
+  "citation": "",
+  "config_name": "default",
+  "dataset_name": "writingprompts",
+  "dataset_size": 955402485,
+  "description": "",
+  "download_checksums": {
+    "hf://datasets/euclaise/writingprompts@35f0aa359452ba8147b34d925684fccee26679cc/data/train-00000-of-00002-105e07cb0d199464.parquet": {
+      "num_bytes": 272013284,
+      "checksum": null
+    },
+    "hf://datasets/euclaise/writingprompts@35f0aa359452ba8147b34d925684fccee26679cc/data/train-00001-of-00002-4fdb982c11056472.parquet": {
+      "num_bytes": 272351531,
+      "checksum": null
+    },
+    "hf://datasets/euclaise/writingprompts@35f0aa359452ba8147b34d925684fccee26679cc/data/test-00000-of-00001-16503b0c26ed00c6.parquet": {
+      "num_bytes": 29977982,
+      "checksum": null
+    },
+    "hf://datasets/euclaise/writingprompts@35f0aa359452ba8147b34d925684fccee26679cc/data/validation-00000-of-00001-137b93e1e979d138.parquet": {
+      "num_bytes": 30707033,
+      "checksum": null
+    }
+  },
+  "download_size": 605049830,
+  "features": {
+    "prompt": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "story": {
+      "dtype": "string",
+      "_type": "Value"
+    }
+  },
+  "homepage": "",
+  "license": "",
+  "size_in_bytes": 1560452315,
+  "splits": {
+    "train": {
+      "name": "train",
+      "num_bytes": 858816216,
+      "num_examples": 272600,
+      "shard_lengths": [
+        159300,
+        113300
+      ],
+      "dataset_name": "writingprompts"
+    },
+    "test": {
+      "name": "test",
+      "num_bytes": 47681276,
+      "num_examples": 15138,
+      "dataset_name": "writingprompts"
+    },
+    "validation": {
+      "name": "validation",
+      "num_bytes": 48904993,
+      "num_examples": 15620,
+      "dataset_name": "writingprompts"
+    }
+  },
+  "version": {
+    "version_str": "0.0.0",
+    "major": 0,
+    "minor": 0,
+    "patch": 0
+  }
+}

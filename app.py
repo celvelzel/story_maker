@@ -18,6 +18,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src.engine.game_engine import GameEngine, TurnResult
 from src.nlg.option_generator import StoryOption
+from src.evaluation.metrics import full_evaluation
+from src.evaluation.llm_judge import judge as llm_judge
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +47,51 @@ def _format_nlu(nlu: dict) -> str:
         f"**Resolved input:** {nlu.get('resolved_input', '')}",
         f"**Intent:** {nlu.get('intent', '?')}  (conf {nlu.get('confidence', 0):.2f})",
         f"**Entities:** {nlu.get('entities', [])}",
+    ]
+    return "\n".join(lines)
+
+
+def _run_evaluation() -> str:
+    """Collect session data from the engine and run all evaluations."""
+    engine = _get_engine()
+    texts = engine.all_story_texts
+    if not texts:
+        return "*No story content to evaluate yet. Start a game first!*"
+
+    # Automatic metrics
+    auto = full_evaluation(
+        texts=texts,
+        entity_names=engine.kg_entity_names,
+        turn_conflict_counts=engine.turn_conflict_counts,
+    )
+
+    # LLM judge
+    transcript = "\n".join(texts)
+    llm_scores = llm_judge(transcript)
+
+    # Format as Markdown
+    lines = [
+        "## Automatic Metrics",
+        "",
+        "| Metric | Value |",
+        "|--------|------|",
+        f"| Distinct-1 | {auto.get('distinct_1', 0):.4f} |",
+        f"| Distinct-2 | {auto.get('distinct_2', 0):.4f} |",
+        f"| Distinct-3 | {auto.get('distinct_3', 0):.4f} |",
+        f"| Self-BLEU | {auto.get('self_bleu', 0):.4f} |",
+        f"| Entity Coverage | {auto.get('entity_coverage', 0):.2%} |",
+        f"| Consistency Rate | {auto.get('consistency_rate', 0):.2%} |",
+        "",
+        "## LLM Judge (1-10)",
+        "",
+        "| Dimension | Score |",
+        "|-----------|------|",
+        f"| Narrative Quality | {llm_scores.get('narrative_quality', 0)} |",
+        f"| Consistency | {llm_scores.get('consistency', 0)} |",
+        f"| Player Agency | {llm_scores.get('player_agency', 0)} |",
+        f"| Creativity | {llm_scores.get('creativity', 0)} |",
+        f"| Pacing | {llm_scores.get('pacing', 0)} |",
+        f"| **Average** | **{llm_scores.get('average', 0)}** |",
     ]
     return "\n".join(lines)
 
@@ -131,6 +178,9 @@ def build_ui() -> gr.Blocks:
                 kg_html = gr.HTML(label="Knowledge Graph", elem_classes="kg-panel")
                 with gr.Accordion("NLU Debug", open=False):
                     nlu_md = gr.Markdown("")
+                gr.Markdown("---")
+                eval_btn = gr.Button("Evaluate Session", variant="secondary")
+                eval_md = gr.Markdown("", label="Evaluation Results")
 
         # ── Wiring ──
         new_game_btn.click(
@@ -156,6 +206,12 @@ def build_ui() -> gr.Blocks:
             inputs=[user_input, option_radio, chatbot],
             outputs=[chatbot, option_radio, kg_html, nlu_md],
         ).then(fn=lambda: "", outputs=user_input)
+
+        eval_btn.click(
+            fn=_run_evaluation,
+            inputs=[],
+            outputs=[eval_md],
+        )
 
     return demo
 

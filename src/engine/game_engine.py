@@ -47,6 +47,9 @@ class GameEngine:
         self.state = GameState()
         self.kg = KnowledgeGraph()
 
+        # Evaluation tracking
+        self.turn_conflict_counts: List[int] = []
+
         # NLU
         self.coref = CoreferenceResolver()
         self.intent_clf = IntentClassifier()
@@ -68,6 +71,7 @@ class GameEngine:
         self.state = GameState()
         self.kg = KnowledgeGraph()
         self.conflict_det = ConflictDetector(self.kg)
+        self.turn_conflict_counts = []
 
         story_text = self.story_gen.generate_opening(self.genre)
         self.state.add_narration(story_text)
@@ -122,6 +126,7 @@ class GameEngine:
         # 6. Conflict detection
         raw_conflicts = self.conflict_det.check_all(story_text)
         conflicts = [c.get("description", str(c)) for c in raw_conflicts]
+        self.turn_conflict_counts.append(len(conflicts))
 
         # 7. Option generation
         kg_summary = self.kg.to_summary()  # refresh after KG update
@@ -142,6 +147,25 @@ class GameEngine:
             kg_html=kg_html,
             conflicts=conflicts,
         )
+
+    # ------------------------------------------------------------------
+    # Evaluation helpers
+    # ------------------------------------------------------------------
+
+    @property
+    def all_story_texts(self) -> List[str]:
+        """Return all narrator texts from the session (for evaluation)."""
+        return [
+            e["text"] for e in self.state.story_history if e["role"] == "narrator"
+        ]
+
+    @property
+    def kg_entity_names(self) -> List[str]:
+        """Return the display names of all KG entities."""
+        return [
+            data.get("name", key)
+            for key, data in self.kg.graph.nodes(data=True)
+        ]
 
     # ------------------------------------------------------------------
     # Internal helpers
