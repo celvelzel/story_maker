@@ -85,29 +85,71 @@ story_maker/
 └── info/                          # Project documentation
 ```
 
-### Quick Start
+### Deployment & Startup (Windows / macOS)
 
-1. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   python -m spacy download en_core_web_sm
-   ```
+Use the one-click script that matches your OS:
 
-2. **Configure API key:** Copy `.env.example` to `.env` and set your OpenAI API key:
-   ```
-   OPENAI_API_KEY=sk-...
-   OPENAI_BASE_URL=https://api.openai.com/v1   # or compatible endpoint
-   ```
+- Windows: `start_project.bat`
+- macOS/Linux: `start_project.sh`
 
-3. **Run the app:**
-   ```bash
-   python app.py
-   ```
+Both scripts perform the same bootstrap and launch sequence:
 
-4. **Run tests:**
-   ```bash
-   python -m pytest tests/ -v
-   ```
+1. Creates `.venv` automatically (if missing)
+2. Upgrades `pip`
+3. Installs `requirements.txt`
+4. Applies runtime compatibility fix: `gradio<6` (required by current UI code)
+5. Tries downloading `en_core_web_sm` (if timeout occurs, app still starts with fallback extraction)
+6. Creates `.env` from `.env.example` when missing
+7. Checks running instances on `7860/7861` and avoids duplicate launches
+8. Starts app via `python app.py` (default URL: `http://127.0.0.1:7860` or fallback `7861`)
+
+#### Script usage record
+
+- **First run (fresh machine/project clone):**
+  - Windows: open PowerShell in project root, run `./start_project.bat`
+  - macOS/Linux: run `chmod +x ./start_project.sh` once, then `./start_project.sh`
+  - Wait until you see the Gradio startup URL in console
+
+- **Subsequent runs:**
+  - Run the same command for your OS
+  - Existing `.venv` is reused and dependencies are checked/updated
+  - If an instance is already running on `7860` or `7861`, the script will print the URL and exit (no duplicate process)
+
+- **Force restart mode (stop old instance, then launch new one):**
+  - Windows: `./start_project.bat --force-restart` (or `-f`)
+  - macOS/Linux: `./start_project.sh --force-restart` (or `-f`)
+
+- **API configuration (recommended):**
+  - Edit `.env`
+  - Set at least:
+    - `OPENAI_API_KEY=sk-...`
+    - `OPENAI_BASE_URL=https://api.openai.com/v1` (or your compatible endpoint)
+
+#### Optional: run tests
+
+After script bootstrap, you can run:
+
+```bash
+.venv\Scripts\python.exe -m pytest tests/ -v
+```
+
+#### Troubleshooting
+
+- **Port still occupied after script runs?**
+  - The script first checks if StoryWeaver is already running on `7860/7861`; if yes, it reuses that instance.
+  - If both ports are occupied by other programs, startup stops with an error.
+  - Manual check (Windows): `netstat -ano | findstr :7860` or `:7861`, then `taskkill /PID <PID> /F`.
+  - Manual check (macOS/Linux): `lsof -i :7860` or `:7861`, then `kill -9 <PID>`.
+  
+- **spaCy model download times out?**
+  - This is expected on slower networks. The script will warn but continue — entity extraction falls back to regex patterns.
+  - You can download manually later:
+    - Windows: `.venv\Scripts\python.exe -m spacy download en_core_web_sm`
+    - macOS/Linux: `.venv/bin/python -m spacy download en_core_web_sm`
+
+- **`.env` is missing and API calls fail?**
+  - Copy `.env.example` to `.env` and set `OPENAI_API_KEY`.
+  - The script does this automatically if both are missing.
 
 ### Tech Stack
 

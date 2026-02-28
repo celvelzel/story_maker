@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import sys
 import logging
+import socket
 
 import gradio as gr
 
@@ -161,4 +162,16 @@ def build_ui() -> gr.Blocks:
 
 if __name__ == "__main__":
     demo = build_ui()
-    demo.launch(server_name="0.0.0.0", server_port=7860, share=False)
+    requested_port = int(os.getenv("GRADIO_SERVER_PORT", "7860"))
+    port = requested_port
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            sock.bind(("0.0.0.0", requested_port))
+        except OSError:
+            fallback_port = requested_port + 1
+            logger.warning("Port %s is occupied, fallback to %s", requested_port, fallback_port)
+            port = fallback_port
+
+    demo.launch(server_name="0.0.0.0", server_port=port, share=False)
