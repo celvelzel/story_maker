@@ -48,8 +48,8 @@ class Settings(BaseSettings):
     NARRATIVE_HISTORY_WINDOW: int = 6
     MAX_CONTEXT_TOKENS: int = 512
 
-    # ── Gradio ────────────────────────────────────────────
-    GRADIO_PORT: int = 7860
+    # ── Streamlit ─────────────────────────────────────────
+    STREAMLIT_PORT: int = 7860
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 

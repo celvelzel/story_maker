@@ -50,6 +50,7 @@ data/*.json
 !data/intent_labels.json
 data/*.parquet
 data/*.pkl
+*.arrow
 
 # Logs
 *.log

@@ -99,8 +99,8 @@ echo "[2/6] Upgrading pip..."
 echo "[3/6] Installing requirements.txt..."
 "$PYTHON_CMD" -m pip install -r requirements.txt
 
-echo "[4/6] Applying runtime compatibility fixes (gradio<6)..."
-"$PYTHON_CMD" -m pip install "gradio<6"
+echo "[4/6] Installing streamlit..."
+"$PYTHON_CMD" -m pip install "streamlit>=1.30.0"
 
 echo "[5/6] Downloading spaCy model en_core_web_sm (will continue if network times out)..."
 if ! "$PYTHON_CMD" -m spacy download en_core_web_sm; then
@@ -118,4 +118,4 @@ if [[ ! -f ".env" ]]; then
 fi
 
 echo "[6/6] Launching app on http://127.0.0.1:$PORT ..."
-GRADIO_SERVER_PORT="$PORT" "$PYTHON_CMD" app.py
+"$PYTHON_CMD" -m streamlit run app.py --server.port="$PORT" --server.headless=true
