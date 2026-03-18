@@ -36,12 +36,12 @@ Desktop.ini
 # Jupyter
 .ipynb_checkpoints/
 
-# Model artifacts
+# Model artifacts (ignore large model files, keep configs)
 *.pt
 *.bin
 *.onnx
 *.safetensors
-models/
+models/checkpoint-*/
 
 # Data (keep scripts, ignore large datasets)
 data/*.csv

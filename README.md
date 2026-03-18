@@ -34,7 +34,7 @@ An interactive text adventure game engine that combines **local NLU models** wit
 1. **Coreference Resolution** — fastcoref resolves pronouns using recent history
 2. **Intent Classification** — DistilBERT fine-tuned classifier (with keyword fallback)
 3. **Entity Extraction** — spaCy NER + noun-phrase heuristics
-4. **Story Generation** — OpenAI gpt-4o-mini continues the narrative
+4. **Story Generation** — LLM API continues the narrative
 5. **KG Update** — LLM extracts entities & relations into a NetworkX graph
 6. **Conflict Detection** — Rule-based + LLM consistency checking
 7. **Option Generation** — LLM generates 3 player choices with risk levels

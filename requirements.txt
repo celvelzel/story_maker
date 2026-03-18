@@ -7,7 +7,7 @@ spacy>=3.7.0
 fastcoref>=2.1.0
 transformers>=4.40.0
 torch>=2.2.0
-accelerate>=0.29.0
+accelerate>=1.1.0
 scikit-learn>=1.4.0
 
 # Knowledge Graph
