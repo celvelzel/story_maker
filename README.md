@@ -1,5 +1,7 @@
 # StoryWeaver: AI-Powered Text Adventure Game with Dynamic Plot Generation
 
+**[English](README.md) | [中文](README_zh.md)**
+
 ## COMP5423 NLP Group Project
 
 An interactive text adventure game engine that combines **local NLU models** with **LLM-powered story generation** and a **dynamic knowledge graph** for narrative consistency.
