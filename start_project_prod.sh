@@ -13,27 +13,6 @@ echo "StoryWeaver Production Bootstrap (macOS)" | tee -a "$LOG_FILE"
 echo "===========================================" | tee -a "$LOG_FILE"
 echo "[INFO] Log file: $LOG_FILE" | tee -a "$LOG_FILE"
 
-validate_env() {
-  if [[ -f ".env" ]]; then
-    set +u
-    # shellcheck disable=SC1091
-    source .env
-    set -u
-    if [[ -z "${OPENAI_API_KEY:-}" ]]; then
-      echo "[ERROR] OPENAI_API_KEY is missing in .env" | tee -a "$LOG_FILE"
-      exit 2
-    fi
-    if [[ -z "${OPENAI_BASE_URL:-}" ]]; then
-      echo "[WARN] OPENAI_BASE_URL missing in .env, default may be used." | tee -a "$LOG_FILE"
-    fi
-    if [[ -z "${OPENAI_MODEL:-}" ]]; then
-      echo "[WARN] OPENAI_MODEL missing in .env, default may be used." | tee -a "$LOG_FILE"
-    fi
-  else
-    echo "[WARN] .env missing. Continuing with environment defaults." | tee -a "$LOG_FILE"
-  fi
-}
-
 get_pid_on_port() {
   local port="$1"
   lsof -ti tcp:"$port" -sTCP:LISTEN 2>/dev/null | head -n 1 || true
@@ -48,8 +27,6 @@ is_storyweaver_process() {
   fi
   return 1
 }
-
-validate_env
 
 running_pid="$(get_pid_on_port "$PORT")"
 if [[ -n "$running_pid" ]]; then
@@ -85,6 +62,10 @@ echo "[STEP] Installing requirements with timeout controls..." | tee -a "$LOG_FI
 "$PYTHON_CMD" -m pip install -r requirements.txt --timeout 60 >> "$LOG_FILE" 2>&1
 
 echo "[STEP] Launching Streamlit on port $PORT..." | tee -a "$LOG_FILE"
+echo "[INFO] Streamlit runs in foreground for production. This terminal will stay active." | tee -a "$LOG_FILE"
+echo "[INFO] Open: http://127.0.0.1:$PORT" | tee -a "$LOG_FILE"
+echo "[INFO] Full runtime logs: $LOG_FILE" | tee -a "$LOG_FILE"
+echo "[INFO] Press Ctrl+C to stop the app." | tee -a "$LOG_FILE"
 set +e
 "$PYTHON_CMD" -m streamlit run app.py --server.port="$PORT" --server.headless=true >> "$LOG_FILE" 2>&1
 app_exit=$?

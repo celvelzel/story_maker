@@ -89,53 +89,48 @@ story_maker/
 
 ### Deployment & Startup (Windows / macOS)
 
-Use the one-click script that matches your OS:
+Use the startup script that matches your OS for production deployment:
 
-- Windows: `start_project.bat`
-- macOS/Linux: `start_project.sh`
+- Windows: `start_project_prod.bat`
+- macOS/Linux: `start_project_prod.sh`
 
-Both scripts perform the same bootstrap and launch sequence:
+Production startup scripts are optimized and provide:
 
-1. Creates `.venv` automatically (if missing)
-2. Upgrades `pip`
-3. Installs `requirements.txt`
-4. Installs Streamlit runtime dependencies
-5. Tries downloading `en_core_web_sm` (if timeout occurs, app still starts with fallback extraction)
-6. Creates `.env` from `.env.example` when missing
-7. Checks running instances on `7860/7861` and avoids duplicate launches
-8. Starts app via `python app.py` (default URL: `http://127.0.0.1:7860` or fallback `7861`)
+1. **Port occupancy detection and process identification** — Automatically detects existing Streamlit processes
+2. **Safe restart policy** — Intelligently handles existing Streamlit app processes
+3. **Dependency installation** — Installation with explicit network timeout controls
+4. **Startup failure handling** — Structured exit codes for easy diagnostics
+5. **Logging** — Complete log files with timestamps under `logs/` directory
 
-#### Script usage record
+#### Bootstrap and Launch Sequence
+
+The scripts perform the following steps:
+
+1. Detect existing StoryWeaver process on port `7860` (safely restart if found)
+2. Create `.venv` virtual environment automatically (if missing)
+3. Upgrade `pip` to latest version
+4. Install all dependencies from `requirements.txt`
+5. Start Streamlit app (default URL: `http://127.0.0.1:7860`)
+6. Output complete logs to `logs/storyweaver_prod_<timestamp>.log`
+
+#### Script Usage Guide
 
 - **First run (fresh machine/project clone):**
-  - Windows: open PowerShell in project root, run `./start_project.bat`
-  - macOS/Linux: run `chmod +x ./start_project.sh` once, then `./start_project.sh`
+  - Windows: open PowerShell in project root, run `./start_project_prod.bat`
+  - macOS/Linux: run `chmod +x ./start_project_prod.sh` once, then `./start_project_prod.sh`
   - Wait until you see the Streamlit startup URL in console
 
 - **Subsequent runs:**
   - Run the same command for your OS
   - Existing `.venv` is reused and dependencies are checked/updated
-  - If an instance is already running on `7860` or `7861`, the script will print the URL and exit (no duplicate process)
+  - If a StoryWeaver instance is already running on `7860`, the script will automatically restart the process
+  - Complete execution logs are saved to `logs/` directory for later inspection
 
-- **Force restart mode (stop old instance, then launch new one):**
-  - Windows: `./start_project.bat --force-restart` (or `-f`)
-  - macOS/Linux: `./start_project.sh --force-restart` (or `-f`)
+#### Logging and Diagnostics
 
-### Production Startup Scripts
-
-The original scripts are preserved. Production scripts are added for higher-availability operations:
-
-- Windows: `start_project_prod.bat`
-- macOS/Linux: `start_project_prod.sh`
-
-Production scripts provide:
-
-1. Port occupancy detection and process identification
-2. Safe restart policy for existing Streamlit app processes
-3. Dependency installation with explicit network timeout controls
-4. Environment variable validation (`OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`)
-5. Structured exit codes for startup failures
-6. Log file output under `logs/` with timestamped filenames
+- Each startup generates a timestamped log file in `logs/` directory (format: `storyweaver_prod_YYYYMMDD_HHMMSS.log`)
+- Logs record each step of the bootstrap process for easy troubleshooting
+- If startup fails, check the log file for detailed error information
 
 ### Intent Model (CPU-Friendly Default)
 
@@ -151,6 +146,20 @@ Recommended CPU settings:
 2. `max_length=128`
 3. Typical intent inference latency: around 20-80ms/turn (depends on CPU and model size)
 4. Expected memory for intent model: roughly 300-700MB including runtime overhead
+
+### NLU Module Status
+
+All 3 NLU components are **fully initialized**:
+
+| Module | Backend | Status |
+|--------|---------|--------|
+| Intent | DistilBERT (distilbert-base-uncased) | ✅ Active |
+| Entity | spaCy (en_core_web_sm) | ✅ Active |
+| Coref | fastcoref FCoref | ✅ Active* |
+
+\* **Fastcoref compatibility:** A transformers 5.2.0 compatibility patch is applied in `src/nlu/coreference.py` to enable fastcoref 2.x. See [FASTCOREF_PATCH.md](FASTCOREF_PATCH.md) for technical details.
+
+**Verification:** Run `python verify_nlu_load.py` to confirm all modules load successfully.
 
 - **API configuration (recommended):**
   - Edit `.env`

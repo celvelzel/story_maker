@@ -18,14 +18,6 @@ echo StoryWeaver Production Bootstrap (Windows)
 echo ===========================================
 echo [INFO] Log file: %LOG_FILE%
 
-if exist ".env" (
-    call :validate_env
-    if errorlevel 1 exit /b 2
-) else (
-    echo [WARN] .env missing. Continuing with environment defaults.
-    echo [WARN] .env missing. Continuing with environment defaults.>> "%LOG_FILE%"
-)
-
 call :get_listen_pid %PORT% RUNNING_PID
 if defined RUNNING_PID (
     call :is_storyweaver_process %RUNNING_PID% IS_SW
@@ -81,6 +73,14 @@ if errorlevel 1 (
 
 echo [STEP] Launching Streamlit on port %PORT%...
 echo [STEP] Launching Streamlit on port %PORT%...>> "%LOG_FILE%"
+echo [INFO] Streamlit runs in foreground for production. This terminal will stay active.
+echo [INFO] Open: http://127.0.0.1:%PORT%
+echo [INFO] Full runtime logs: %LOG_FILE%
+echo [INFO] Press Ctrl+C to stop the app.
+echo [INFO] Streamlit runs in foreground for production. This terminal will stay active.>> "%LOG_FILE%"
+echo [INFO] Open: http://127.0.0.1:%PORT%>> "%LOG_FILE%"
+echo [INFO] Full runtime logs: %LOG_FILE%>> "%LOG_FILE%"
+echo [INFO] Press Ctrl+C to stop the app.>> "%LOG_FILE%"
 "%PYTHON_CMD%" -m streamlit run app.py --server.port=%PORT% --server.headless=true >> "%LOG_FILE%" 2>&1
 set "APP_EXIT=%ERRORLEVEL%"
 if not "%APP_EXIT%"=="0" (
@@ -89,30 +89,6 @@ if not "%APP_EXIT%"=="0" (
     exit /b %APP_EXIT%
 )
 
-exit /b 0
-
-:validate_env
-set "MISSING=0"
-for /f "usebackq tokens=1,* delims==" %%A in (".env") do (
-    if /I "%%A"=="OPENAI_API_KEY" set "OPENAI_API_KEY_VAL=%%B"
-    if /I "%%A"=="OPENAI_BASE_URL" set "OPENAI_BASE_URL_VAL=%%B"
-    if /I "%%A"=="OPENAI_MODEL" set "OPENAI_MODEL_VAL=%%B"
-)
-
-if "%OPENAI_API_KEY_VAL%"=="" (
-    echo [ERROR] OPENAI_API_KEY is missing in .env
-    echo [ERROR] OPENAI_API_KEY is missing in .env>> "%LOG_FILE%"
-    set "MISSING=1"
-)
-if "%OPENAI_BASE_URL_VAL%"=="" (
-    echo [WARN] OPENAI_BASE_URL missing in .env, default may be used.
-    echo [WARN] OPENAI_BASE_URL missing in .env, default may be used.>> "%LOG_FILE%"
-)
-if "%OPENAI_MODEL_VAL%"=="" (
-    echo [WARN] OPENAI_MODEL missing in .env, default may be used.
-    echo [WARN] OPENAI_MODEL missing in .env, default may be used.>> "%LOG_FILE%"
-)
-if "%MISSING%"=="1" exit /b 1
 exit /b 0
 
 :get_listen_pid

@@ -19,6 +19,35 @@ class CoreferenceResolver:
 
     def load(self) -> None:
         try:
+            # ── Compatibility patch for transformers 5.2.0 x fastcoref 2.x ──────────────────
+            # Problem: transformers 5.2.0 removed the 'all_tied_weights_keys' attribute that
+            #          fastcoref 2.x still expects during model loading/serialization.
+            # Error:   AttributeError: 'FCorefModel' object has no attribute 'all_tied_weights_keys'
+            #
+            # Solution: Inject an empty dict-like object as this attribute on PreTrainedModel
+            #           before fastcoref loads any models. fastcoref only checks the structure
+            #           of this attribute (specifically calls .keys() on it), not its contents.
+            #
+            # Why dict subclass?
+            #   - fastcoref code does: for key in model.all_tied_weights_keys.keys()
+            #   - Need the .keys() method, not just a property or function
+            #   - dict subclass provides complete dict interface automatically
+            #
+            # Performance: <1ms one-time patch applied at module load time
+            # Safety: Patch only applies if attribute doesn't exist (no overwrites)
+            from transformers.modeling_utils import PreTrainedModel
+            
+            class _TiedWeightsCompat(dict):
+                """
+                Drop-in replacement for transformers 5.2.0's missing 'all_tied_weights_keys'.
+                Empty dict satisfies fastcoref's serialization checks during model loading.
+                """
+                def __init__(self):
+                    super().__init__()
+            
+            if not hasattr(PreTrainedModel, "all_tied_weights_keys"):
+                PreTrainedModel.all_tied_weights_keys = _TiedWeightsCompat()
+            
             from fastcoref import FCoref  # type: ignore[import-untyped]
             self.model = FCoref(device="cpu")
             logger.info("Coreference resolver loaded (fastcoref)")

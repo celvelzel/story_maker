@@ -89,53 +89,48 @@ story_maker/
 
 ### 部署与启动 (Windows / macOS)
 
-使用与你的操作系统匹配的一键脚本：
+使用与你的操作系统匹配的启动脚本进行部署：
 
-- Windows: `start_project.bat`
-- macOS/Linux: `start_project.sh`
+- Windows: `start_project_prod.bat`
+- macOS/Linux: `start_project_prod.sh`
 
-两个脚本执行相同的引导和启动序列：
+生产启动脚本提供以下功能：
 
-1. 自动创建 `.venv`（如果不存在）
-2. 升级 `pip`
-3. 安装 `requirements.txt`
-4. 安装 Streamlit 运行时依赖
-5. 尝试下载 `en_core_web_sm`（如果超时，应用仍会以回退提取启动）
-6. 缺少时从 `.env.example` 创建 `.env`
-7. 检查 `7860/7861` 上的运行实例并避免重复启动
-8. 通过 `python app.py` 启动应用（默认 URL: `http://127.0.0.1:7860` 或回退 `7861`）
+1. **端口占用检测和进程识别** — 自动检测现有 Streamlit 进程
+2. **安全重启策略** — 智能处理现有 Streamlit 应用进程
+3. **依赖项安装** — 具有显式网络超时控制的依赖安装
+4. **启动失败处理** — 结构化退出代码便于诊断
+5. **日志记录** — `logs/` 下带时间戳的完整日志文件输出
 
-#### 脚本使用记录
+#### 引导和启动序列
+
+脚本执行以下步骤：
+
+1. 检查 `7860` 端口上是否有现有 StoryWeaver 进程（有则安全重启）
+2. 自动创建 `.venv` 虚拟环境（如果不存在）
+3. 升级 `pip` 到最新版本
+4. 安装 `requirements.txt` 中的所有依赖
+5. 启动 Streamlit 应用（默认 URL: `http://127.0.0.1:7860`）
+6. 输出完整日志到 `logs/storyweaver_prod_<timestamp>.log`
+
+#### 脚本使用指南
 
 - **首次运行（全新机器/项目克隆）：**
-  - Windows: 在项目根目录打开 PowerShell，运行 `./start_project.bat`
-  - macOS/Linux: 运行一次 `chmod +x ./start_project.sh`，然后 `./start_project.sh`
+  - Windows: 在项目根目录打开 PowerShell，运行 `./start_project_prod.bat`
+  - macOS/Linux: 运行一次 `chmod +x ./start_project_prod.sh`，然后 `./start_project_prod.sh`
   - 等待直到在控制台看到 Streamlit 启动 URL
 
 - **后续运行：**
   - 为你的操作系统运行相同命令
   - 现有 `.venv` 被重用，依赖项被检查/更新
-  - 如果实例已在 `7860` 或 `7861` 上运行，脚本将打印 URL 并退出（无重复进程）
+  - 如果 StoryWeaver 实例已在 `7860` 上运行，脚本将自动重启该进程
+  - 完整执行日志保存至 `logs/` 目录供后续检查
 
-- **强制重启模式（停止旧实例，然后启动新实例）：**
-  - Windows: `./start_project.bat --force-restart` 或 `-f`
-  - macOS/Linux: `./start_project.sh --force-restart` 或 `-f`
+#### 日志和诊断
 
-### 生产启动脚本
-
-原始脚本已保留。为高可用性操作添加了生产脚本：
-
-- Windows: `start_project_prod.bat`
-- macOS/Linux: `start_project_prod.sh`
-
-生产脚本提供：
-
-1. 端口占用检测和进程识别
-2. 现有 Streamlit 应用进程的安全重启策略
-3. 具有显式网络超时控制的依赖项安装
-4. 环境变量验证（`OPENAI_API_KEY`、`OPENAI_BASE_URL`、`OPENAI_MODEL`）
-5. 启动失败的结构化退出代码
-6. `logs/` 下带时间戳的日志文件输出
+- 每次启动都在 `logs/` 目录生成带时间戳的日志文件（格式：`storyweaver_prod_YYYYMMDD_HHMMSS.log`）
+- 日志记录引导过程的每一步，便于诊断启动问题
+- 如果启动失败，查看日志文件获取详细错误信息
 
 ### 意图模型（CPU 友好默认值）
 
