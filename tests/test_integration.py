@@ -89,6 +89,8 @@ class TestEngineProcessTurn:
         result = engine.process_turn("look around")
         assert isinstance(result, TurnResult)
         assert "intent" in result.nlu_debug
+        assert "intent_backend" in result.nlu_debug
+        assert "intent_model_loaded" in result.nlu_debug
 
     @patch("src.utils.api_client.llm_client")
     def test_two_turns_accumulate_state(self, mock_llm):
@@ -119,6 +121,36 @@ class TestKGIntegration:
         kg.add_entity("Dragon", "creature")
         kg.add_relation("Hero", "Dragon", "encountered")
         assert kg.graph.number_of_nodes() == 3
+
+
+class TestNLULifecycle:
+    @patch("src.utils.api_client.llm_client")
+    def test_engine_can_disable_nlu_autoload(self, mock_llm):
+        mock_llm.chat.return_value = "Story text."
+        mock_llm.chat_json.side_effect = _chat_json_router
+
+        engine = GameEngine(auto_load_nlu=False)
+        assert engine.nlu_status["intent_model_loaded"] is False
+
+        engine.state.add_narration("Opening.")
+        result = engine.process_turn("look around")
+        assert result.nlu_debug["intent_model_loaded"] is False
+
+    @patch("src.utils.api_client.llm_client")
+    def test_engine_records_loaded_intent_model_status(self, mock_llm, monkeypatch):
+        mock_llm.chat.return_value = "Story text."
+        mock_llm.chat_json.side_effect = _chat_json_router
+
+        def _fake_load(self):
+            self.model = object()
+            self.tokenizer = object()
+            self.backend = "distilbert"
+
+        monkeypatch.setattr("src.nlu.intent_classifier.IntentClassifier.load", _fake_load)
+
+        engine = GameEngine()
+        assert engine.nlu_status["intent_model_loaded"] is True
+        assert engine.nlu_status["intent_backend"] == "distilbert"
 
 
 if __name__ == "__main__":

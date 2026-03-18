@@ -42,7 +42,7 @@ class TurnResult:
 class GameEngine:
     """Coordinates the full NLU → NLG → KG pipeline."""
 
-    def __init__(self, genre: str = "fantasy"):
+    def __init__(self, genre: str = "fantasy", intent_model_path: Optional[str] = None, auto_load_nlu: bool = True):
         self.genre = genre
         self.state = GameState()
         self.kg = KnowledgeGraph()
@@ -52,8 +52,19 @@ class GameEngine:
 
         # NLU
         self.coref = CoreferenceResolver()
-        self.intent_clf = IntentClassifier()
+        self.intent_clf = IntentClassifier(model_path=intent_model_path)
         self.entity_ext = EntityExtractor()
+        self.nlu_status: Dict[str, object] = {
+            "coref_loaded": False,
+            "intent_model_loaded": False,
+            "intent_backend": "rule_fallback",
+            "entity_model_loaded": False,
+        }
+
+        if auto_load_nlu:
+            self._load_nlu_components()
+        else:
+            logger.info("NLU auto-load disabled. Engine will run with lazy/fallback behavior.")
 
         # NLG
         self.story_gen = StoryGenerator()
@@ -138,6 +149,10 @@ class GameEngine:
             "intent": intent,
             "confidence": intent_result["confidence"],
             "entities": entities,
+            "intent_backend": self.nlu_status["intent_backend"],
+            "intent_model_loaded": self.nlu_status["intent_model_loaded"],
+            "coref_loaded": self.nlu_status["coref_loaded"],
+            "entity_model_loaded": self.nlu_status["entity_model_loaded"],
         }
 
         return TurnResult(
@@ -170,6 +185,38 @@ class GameEngine:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    def _load_nlu_components(self) -> None:
+        """Load all NLU submodules with graceful degradation on failure."""
+        try:
+            self.coref.load()
+            self.nlu_status["coref_loaded"] = self.coref.model is not None
+        except Exception as exc:
+            logger.warning("Coreference resolver init failed: %s", exc)
+
+        try:
+            self.intent_clf.load()
+            self.nlu_status["intent_model_loaded"] = (
+                self.intent_clf.model is not None and self.intent_clf.tokenizer is not None
+            )
+            self.nlu_status["intent_backend"] = self.intent_clf.backend
+        except Exception as exc:
+            logger.warning("Intent classifier init failed: %s", exc)
+            self.nlu_status["intent_backend"] = "rule_fallback"
+
+        try:
+            self.entity_ext.load()
+            self.nlu_status["entity_model_loaded"] = self.entity_ext.nlp is not None
+        except Exception as exc:
+            logger.warning("Entity extractor init failed: %s", exc)
+
+        logger.info(
+            "NLU load status: coref_loaded=%s, intent_model_loaded=%s, intent_backend=%s, entity_model_loaded=%s",
+            self.nlu_status["coref_loaded"],
+            self.nlu_status["intent_model_loaded"],
+            self.nlu_status["intent_backend"],
+            self.nlu_status["entity_model_loaded"],
+        )
 
     def _apply_extraction(self, text: str) -> None:
         """Run the LLM relation extractor and feed results into the KG."""

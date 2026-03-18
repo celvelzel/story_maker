@@ -22,6 +22,7 @@ from src.engine.game_engine import GameEngine, TurnResult
 from src.nlg.option_generator import StoryOption
 from src.evaluation.metrics import full_evaluation
 from src.evaluation.llm_judge import judge as llm_judge
+from config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -213,6 +214,7 @@ _DEFAULTS = {
     "eval_at": "",
     "chat_fold_mode": False,
     "last_elapsed": 0.0,
+    "intent_model_path": str(settings.INTENT_MODEL_PATH),
 }
 for _k, _v in _DEFAULTS.items():
     if _k not in st.session_state:
@@ -352,6 +354,13 @@ def _delta_pct(current: float, previous: dict, key: str) -> str | None:
 # ── Sidebar ──────────────────────────────────────────────────────────────
 
 with st.sidebar:
+    with st.expander("🧠 NLU 模型路径", expanded=False):
+        st.session_state.intent_model_path = st.text_input(
+            "Intent 模型目录",
+            value=st.session_state.intent_model_path,
+            help="留空时使用默认目录；目录不存在时自动降级为 rule_fallback。",
+        )
+
     st.markdown("<div class='section-title'>📊 故事世界观知识图谱</div>", unsafe_allow_html=True)
     if st.session_state.kg_html:
         components.html(st.session_state.kg_html, height=480, scrolling=True)
@@ -379,6 +388,8 @@ with st.sidebar:
                 f"**意图:** {nlu.get('intent', '?')}  "
                 f"(置信度 {nlu.get('confidence', 0):.2f})"
             )
+            st.markdown(f"**后端:** {nlu.get('intent_backend', 'rule_fallback')}")
+            st.markdown(f"**模型加载:** {nlu.get('intent_model_loaded', False)}")
             st.markdown(f"**实体:** {nlu.get('entities', [])}")
         else:
             st.caption("行动后自动展示 NLU 解析信息")
@@ -428,7 +439,11 @@ with col_btn:
 
 if new_game_clicked:
     with st.spinner("正在初始化冒险世界…"):
-        engine = GameEngine(genre=genre or "fantasy")
+        intent_model_path = st.session_state.intent_model_path.strip() or None
+        engine = GameEngine(
+            genre=genre or "fantasy",
+            intent_model_path=intent_model_path,
+        )
         st.session_state.engine = engine
         result: TurnResult = engine.start_game()
         st.session_state.history = [

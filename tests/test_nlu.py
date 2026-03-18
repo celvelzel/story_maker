@@ -1,4 +1,6 @@
 """Tests for NLU modules: intent classifier, entity extractor, coreference."""
+import sys
+import types
 import pytest
 
 from src.nlu.intent_classifier import IntentClassifier
@@ -37,6 +39,64 @@ class TestIntentClassifier:
     def test_returns_dict(self, clf):
         result = clf.predict("look around")
         assert "intent" in result and "confidence" in result
+
+    def test_invalid_model_path_falls_back_to_rule(self):
+        clf = IntentClassifier(model_path="not_exists/intent_classifier")
+        clf.load()
+        result = clf.predict("attack now")
+        assert clf.backend == "rule_fallback"
+        assert result["intent"] in {"action", "other"}
+        assert set(result.keys()) == {"intent", "confidence"}
+
+    def test_model_load_success_with_stubs(self, monkeypatch, tmp_path):
+        model_dir = tmp_path / "intent_classifier"
+        model_dir.mkdir(parents=True, exist_ok=True)
+
+        class _FakeCuda:
+            @staticmethod
+            def is_available():
+                return False
+
+        fake_torch = types.ModuleType("torch")
+        fake_torch.cuda = _FakeCuda()
+        fake_torch.device = lambda name: name
+
+        class _FakeTokenizer:
+            @classmethod
+            def from_pretrained(cls, path):
+                return cls()
+
+        class _FakeModel:
+            @classmethod
+            def from_pretrained(cls, path, num_labels=0):
+                return cls()
+
+            def to(self, device):
+                return self
+
+            def eval(self):
+                return self
+
+        fake_transformers = types.ModuleType("transformers")
+        fake_transformers.AutoTokenizer = _FakeTokenizer
+        fake_transformers.AutoModelForSequenceClassification = _FakeModel
+
+        monkeypatch.setitem(sys.modules, "torch", fake_torch)
+        monkeypatch.setitem(sys.modules, "transformers", fake_transformers)
+
+        clf = IntentClassifier(model_path=str(model_dir))
+        clf.load()
+
+        assert clf.backend == "distilbert"
+        assert clf.model is not None
+        assert clf.tokenizer is not None
+
+    def test_predict_output_schema_stable(self, clf):
+        result = clf.predict("talk to the guard")
+        assert isinstance(result, dict)
+        assert set(result.keys()) == {"intent", "confidence"}
+        assert isinstance(result["intent"], str)
+        assert isinstance(result["confidence"], float)
 
 
 # ── Entity extractor ────────────────────────────────────────────────

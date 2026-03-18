@@ -1,12 +1,10 @@
-"""Train intent classifier: fine-tune RoBERTa on text adventure actions."""
-import os
+"""Train intent classifier: fine-tune DistilBERT on text adventure actions."""
 import sys
-import json
 import argparse
 from pathlib import Path
 
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 from transformers import (
     AutoTokenizer,
     AutoModelForSequenceClassification,
@@ -14,7 +12,7 @@ from transformers import (
     Trainer,
 )
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import accuracy_score
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import settings
@@ -157,10 +155,12 @@ def create_synthetic_training_data():
 
 def train(args):
     """Main training function."""
-    print(f"Training intent classifier with {settings.INTENT_MODEL_NAME}")
+    model_name = args.model_name or settings.INTENT_MODEL_NAME
+    print(f"Training intent classifier with {model_name}")
+    print(f"CPU-friendly defaults: batch_size={args.batch_size}, max_length={args.max_length}")
     
     # Load tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(settings.INTENT_MODEL_NAME)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
     
     # Prepare data
     texts, labels = create_synthetic_training_data()
@@ -168,14 +168,14 @@ def train(args):
         texts, labels, test_size=0.2, random_state=42, stratify=labels
     )
     
-    train_dataset = IntentDataset(train_texts, train_labels, tokenizer)
-    val_dataset = IntentDataset(val_texts, val_labels, tokenizer)
+    train_dataset = IntentDataset(train_texts, train_labels, tokenizer, max_length=args.max_length)
+    val_dataset = IntentDataset(val_texts, val_labels, tokenizer, max_length=args.max_length)
     
     print(f"Train: {len(train_dataset)}, Val: {len(val_dataset)}")
     
     # Load model
     model = AutoModelForSequenceClassification.from_pretrained(
-        settings.INTENT_MODEL_NAME,
+        model_name,
         num_labels=len(settings.INTENT_LABELS),
         id2label={i: l for i, l in enumerate(settings.INTENT_LABELS)},
         label2id={l: i for i, l in enumerate(settings.INTENT_LABELS)},
@@ -196,6 +196,7 @@ def train(args):
         logging_steps=10,
         warmup_ratio=0.1,
         fp16=torch.cuda.is_available(),
+        dataloader_num_workers=0,
     )
     
     trainer = Trainer(
@@ -222,8 +223,10 @@ def train(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train intent classifier")
     parser.add_argument("--output_dir", default="models/intent_classifier", help="Output directory")
-    parser.add_argument("--epochs", type=int, default=10, help="Number of training epochs")
-    parser.add_argument("--batch_size", type=int, default=16, help="Batch size")
+    parser.add_argument("--model_name", default=settings.INTENT_MODEL_NAME, help="Base encoder model")
+    parser.add_argument("--epochs", type=int, default=6, help="Number of training epochs")
+    parser.add_argument("--batch_size", type=int, default=settings.INTENT_CPU_BATCH_SIZE, help="Batch size (CPU: 8 recommended)")
+    parser.add_argument("--max_length", type=int, default=settings.INTENT_MAX_LENGTH, help="Tokenizer max length")
     parser.add_argument("--lr", type=float, default=2e-5, help="Learning rate")
     
     args = parser.parse_args()

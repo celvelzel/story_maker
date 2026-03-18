@@ -26,7 +26,10 @@ class Settings(BaseSettings):
     OPENAI_TOP_P: float = 0.95
 
     # ── NLU Config ────────────────────────────────────────
-    INTENT_MODEL_NAME: str = "roberta-base"
+    INTENT_MODEL_NAME: str = "distilbert-base-uncased"
+    INTENT_MODEL_PATH: Path = PROJECT_ROOT / "models" / "intent_classifier"
+    INTENT_MAX_LENGTH: int = 128
+    INTENT_CPU_BATCH_SIZE: int = 8
     INTENT_LABELS: List[str] = [
         "action", "dialogue", "explore", "use_item",
         "ask_info", "rest", "trade", "other",

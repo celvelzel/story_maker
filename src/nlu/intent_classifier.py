@@ -1,4 +1,4 @@
-"""Intent classification using fine-tuned RoBERTa + keyword fallback.
+"""Intent classification using fine-tuned DistilBERT + keyword fallback.
 
 8 labels: action, dialogue, explore, use_item, ask_info, rest, trade, other
 """
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class IntentClassifier:
     """Classify player input into one of 8 intent categories.
 
-    When a fine-tuned RoBERTa checkpoint is available it is used;
+    When a fine-tuned DistilBERT checkpoint is available it is used;
     otherwise ``rule_fallback()`` keyword matching takes over transparently.
     """
 
@@ -27,35 +27,44 @@ class IntentClassifier:
         "trade": ["trade", "buy", "sell", "barter", "exchange", "offer", "shop", "purchase", "bargain"],
     }
 
-    def __init__(self, model_path: Optional[str] = None) -> None:
+    def __init__(self, model_path: Optional[str] = None, max_length: int = 128) -> None:
         self.model_path = model_path
+        self.max_length = max_length
         self.model = None
         self.tokenizer = None
         self.device = None
+        self.backend = "rule_fallback"
 
     # ── model loading ─────────────────────────────────────
     def load(self) -> None:
-        """Try to load a fine-tuned RoBERTa checkpoint."""
-        if not self.model_path:
-            logger.info("No intent model path – using rule_fallback.")
+        """Try to load a fine-tuned DistilBERT checkpoint from local path."""
+        from pathlib import Path
+        from config import settings
+
+        configured_path = self.model_path or str(settings.INTENT_MODEL_PATH)
+        model_dir = Path(configured_path)
+        if not model_dir.exists():
+            logger.info("Intent model directory missing (%s) – using rule_fallback.", model_dir)
+            self.backend = "rule_fallback"
             return
         try:
             import torch
             from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-            from config import settings
-
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
+            self.tokenizer = AutoTokenizer.from_pretrained(str(model_dir))
             self.model = AutoModelForSequenceClassification.from_pretrained(
-                self.model_path,
+                str(model_dir),
                 num_labels=len(settings.INTENT_LABELS),
             ).to(self.device)
             self.model.eval()
-            logger.info("Intent classifier loaded from %s", self.model_path)
+            self.backend = "distilbert"
+            logger.info("Intent classifier loaded from %s", model_dir)
         except Exception as exc:
             logger.warning("Intent model load failed (%s) – using rule_fallback.", exc)
             self.model = None
+            self.tokenizer = None
+            self.backend = "rule_fallback"
 
     # ── prediction ────────────────────────────────────────
     def predict(self, text: str) -> Dict[str, object]:
@@ -69,7 +78,7 @@ class IntentClassifier:
         from config import settings
 
         inputs = self.tokenizer(
-            text, return_tensors="pt", truncation=True, max_length=128, padding=True,
+            text, return_tensors="pt", truncation=True, max_length=self.max_length, padding=True,
         ).to(self.device)
         with torch.no_grad():
             logits = self.model(**inputs).logits
