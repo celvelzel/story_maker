@@ -47,6 +47,27 @@ class Settings(BaseSettings):
         "knows", "part_of", "caused_by", "has_attribute",
     ]
 
+    # ── KG Strategy Config ────────────────────────────────
+    KG_CONFLICT_RESOLUTION: str = "llm_arbitrate"
+    # Options: "keep_latest" | "llm_arbitrate"
+
+    KG_EXTRACTION_MODE: str = "dual_extract"
+    # Options: "story_only" | "dual_extract"
+
+    KG_IMPORTANCE_MODE: str = "composite"
+    # Options: "degree_only" | "composite"
+
+    KG_SUMMARY_MODE: str = "layered"
+    # Options: "flat" | "layered"
+
+    # ── KG Tuning Params ──────────────────────────────────
+    KG_IMPORTANCE_DECAY_FACTOR: float = 0.95
+    KG_RELATION_DECAY_FACTOR: float = 0.90
+    KG_RELATION_MIN_CONFIDENCE: float = 0.2
+    KG_IMPORTANCE_MENTION_BOOST: float = 0.15
+    KG_IMPORTANCE_PLAYER_BOOST: float = 0.3
+    KG_MAX_TIMELINE_ENTRIES: int = 5
+
     # ── Game Config ───────────────────────────────────────
     NARRATIVE_HISTORY_WINDOW: int = 6
     MAX_CONTEXT_TOKENS: int = 512

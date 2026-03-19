@@ -215,6 +215,11 @@ _DEFAULTS = {
     "chat_fold_mode": False,
     "last_elapsed": 0.0,
     "intent_model_path": str(settings.INTENT_MODEL_PATH),
+    # KG strategy settings
+    "kg_conflict_resolution": settings.KG_CONFLICT_RESOLUTION,
+    "kg_extraction_mode": settings.KG_EXTRACTION_MODE,
+    "kg_importance_mode": settings.KG_IMPORTANCE_MODE,
+    "kg_summary_mode": settings.KG_SUMMARY_MODE,
 }
 for _k, _v in _DEFAULTS.items():
     if _k not in st.session_state:
@@ -361,6 +366,49 @@ with st.sidebar:
             help="留空时使用默认目录；目录不存在时自动降级为 rule_fallback。",
         )
 
+    with st.expander("⚙ KG 策略设置", expanded=False):
+        st.caption("策略变更将在下一次"开始新游戏"后生效。")
+
+        st.session_state.kg_conflict_resolution = st.selectbox(
+            "冲突解决策略",
+            ["llm_arbitrate", "keep_latest"],
+            index=0 if st.session_state.kg_conflict_resolution == "llm_arbitrate" else 1,
+            help=(
+                "llm_arbitrate: LLM 判断保留哪个信息，效果最好\n"
+                "keep_latest: 保留时间戳更新的信息，无需 LLM 调用"
+            ),
+        )
+
+        st.session_state.kg_extraction_mode = st.selectbox(
+            "实体提取模式",
+            ["dual_extract", "story_only"],
+            index=0 if st.session_state.kg_extraction_mode == "dual_extract" else 1,
+            help=(
+                "dual_extract: 从玩家输入+故事文本双重提取，信息更全\n"
+                "story_only: 仅从故事文本提取（向后兼容）"
+            ),
+        )
+
+        st.session_state.kg_summary_mode = st.selectbox(
+            "KG 摘要格式",
+            ["layered", "flat"],
+            index=0 if st.session_state.kg_summary_mode == "layered" else 1,
+            help=(
+                "layered: 按重要性分层（核心/次要/背景），含描述和时间线\n"
+                "flat: 简单列表格式（向后兼容）"
+            ),
+        )
+
+        st.session_state.kg_importance_mode = st.selectbox(
+            "实体淘汰策略",
+            ["composite", "degree_only"],
+            index=0 if st.session_state.kg_importance_mode == "composite" else 1,
+            help=(
+                "composite: 综合 degree+recency+mention_count 评分\n"
+                "degree_only: 仅按连接数（向后兼容）"
+            ),
+        )
+
     st.markdown("<div class='section-title'>📊 故事世界观知识图谱</div>", unsafe_allow_html=True)
     if st.session_state.kg_html:
         components.html(st.session_state.kg_html, height=480, scrolling=True)
@@ -406,6 +454,12 @@ with st.sidebar:
     c2.metric("实体", entity_count)
     c3.metric("冲突", conflict_total)
 
+    if engine:
+        st.caption(
+            f"策略: {engine.conflict_resolution} | {engine.extraction_mode} | "
+            f"{engine.summary_mode} | {engine.importance_mode}"
+        )
+
     st.markdown("---")
 
     if st.session_state.history:
@@ -443,6 +497,10 @@ if new_game_clicked:
         engine = GameEngine(
             genre=genre or "fantasy",
             intent_model_path=intent_model_path,
+            conflict_resolution=st.session_state.kg_conflict_resolution,
+            extraction_mode=st.session_state.kg_extraction_mode,
+            importance_mode=st.session_state.kg_importance_mode,
+            summary_mode=st.session_state.kg_summary_mode,
         )
         st.session_state.engine = engine
         result: TurnResult = engine.start_game()
