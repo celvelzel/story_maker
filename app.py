@@ -367,7 +367,7 @@ with st.sidebar:
         )
 
     with st.expander("⚙ KG 策略设置", expanded=False):
-        st.caption("策略变更将在下一次"开始新游戏"后生效。")
+        st.caption('策略变更将在下一次"开始新游戏"后生效。')
 
         st.session_state.kg_conflict_resolution = st.selectbox(
             "冲突解决策略",
