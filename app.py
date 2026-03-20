@@ -12,8 +12,11 @@ from __future__ import annotations
 import os
 import sys
 import time
+import signal
+import atexit
 import logging
 from datetime import datetime
+from pathlib import Path
 
 import streamlit as st
 import streamlit.components.v1 as components
@@ -22,12 +25,23 @@ import streamlit.components.v1 as components
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src.engine.game_engine import GameEngine, TurnResult
+from src.engine.runtime_session import (
+    deserialize_options,
+    load_runtime_session,
+    remove_runtime_files,
+    runtime_engine_path,
+    save_runtime_session,
+    serialize_options,
+)
 from src.nlg.option_generator import StoryOption
 from src.evaluation.metrics import full_evaluation
 from src.evaluation.llm_judge import judge as llm_judge
 from config import settings
 
 logger = logging.getLogger(__name__)
+
+_RUNTIME_CLEANUP_REGISTERED = False
+_RUNTIME_CLEANED = False
 
 
 # ── Page config ──────────────────────────────────────────────────────────
@@ -857,6 +871,133 @@ for _k, _v in _DEFAULTS.items():
         st.session_state[_k] = _v
 
 
+def _runtime_save_dir() -> Path:
+    return Path(settings.KG_SAVE_DIR)
+
+
+def _persist_runtime_session() -> None:
+    engine: GameEngine | None = st.session_state.engine
+    if engine is None:
+        return
+
+    save_dir = _runtime_save_dir()
+    engine_file = runtime_engine_path(save_dir)
+    engine.save_game(str(engine_file))
+
+    payload = {
+        "version": 1,
+        "genre": engine.genre,
+        "history": st.session_state.history,
+        "consistency_history": st.session_state.consistency_history,
+        "kg_html": st.session_state.kg_html,
+        "options": serialize_options(st.session_state.options),
+        "nlu_debug": st.session_state.nlu_debug,
+        "chat_fold_mode": st.session_state.chat_fold_mode,
+        "last_elapsed": st.session_state.last_elapsed,
+        "intent_model_path": st.session_state.intent_model_path,
+        "kg_conflict_resolution": st.session_state.kg_conflict_resolution,
+        "kg_extraction_mode": st.session_state.kg_extraction_mode,
+        "kg_importance_mode": st.session_state.kg_importance_mode,
+        "kg_summary_mode": st.session_state.kg_summary_mode,
+        "eval_result": st.session_state.eval_result,
+        "eval_auto": st.session_state.eval_auto,
+        "eval_llm": st.session_state.eval_llm,
+        "eval_prev_auto": st.session_state.eval_prev_auto,
+        "eval_prev_llm": st.session_state.eval_prev_llm,
+        "eval_at": st.session_state.eval_at,
+        "engine_file": str(engine_file),
+    }
+    save_runtime_session(save_dir, payload)
+
+
+def _restore_runtime_session_once() -> None:
+    if st.session_state.engine is not None:
+        return
+
+    data = load_runtime_session(_runtime_save_dir())
+    if not data:
+        return
+
+    engine_file = str(data.get("engine_file", "")).strip()
+    if not engine_file or not Path(engine_file).exists():
+        return
+
+    intent_model_path = str(data.get("intent_model_path", "")).strip() or None
+    engine = GameEngine(
+        genre=str(data.get("genre", "fantasy")) or "fantasy",
+        intent_model_path=intent_model_path,
+        conflict_resolution=str(data.get("kg_conflict_resolution", settings.KG_CONFLICT_RESOLUTION)),
+        extraction_mode=str(data.get("kg_extraction_mode", settings.KG_EXTRACTION_MODE)),
+        importance_mode=str(data.get("kg_importance_mode", settings.KG_IMPORTANCE_MODE)),
+        summary_mode=str(data.get("kg_summary_mode", settings.KG_SUMMARY_MODE)),
+    )
+    engine.load_game(engine_file)
+
+    st.session_state.engine = engine
+    st.session_state.history = data.get("history", []) if isinstance(data.get("history"), list) else []
+    st.session_state.consistency_history = (
+        data.get("consistency_history", [])
+        if isinstance(data.get("consistency_history"), list)
+        else []
+    )
+    st.session_state.kg_html = str(data.get("kg_html", ""))
+    st.session_state.options = deserialize_options(data.get("options", []))
+    st.session_state.nlu_debug = data.get("nlu_debug", {}) if isinstance(data.get("nlu_debug"), dict) else {}
+    st.session_state.chat_fold_mode = bool(data.get("chat_fold_mode", False))
+    st.session_state.last_elapsed = float(data.get("last_elapsed", 0.0))
+    st.session_state.intent_model_path = str(data.get("intent_model_path", st.session_state.intent_model_path))
+    st.session_state.kg_conflict_resolution = str(
+        data.get("kg_conflict_resolution", st.session_state.kg_conflict_resolution)
+    )
+    st.session_state.kg_extraction_mode = str(data.get("kg_extraction_mode", st.session_state.kg_extraction_mode))
+    st.session_state.kg_importance_mode = str(data.get("kg_importance_mode", st.session_state.kg_importance_mode))
+    st.session_state.kg_summary_mode = str(data.get("kg_summary_mode", st.session_state.kg_summary_mode))
+    st.session_state.eval_result = str(data.get("eval_result", ""))
+    st.session_state.eval_auto = data.get("eval_auto", {}) if isinstance(data.get("eval_auto"), dict) else {}
+    st.session_state.eval_llm = data.get("eval_llm", {}) if isinstance(data.get("eval_llm"), dict) else {}
+    st.session_state.eval_prev_auto = (
+        data.get("eval_prev_auto", {}) if isinstance(data.get("eval_prev_auto"), dict) else {}
+    )
+    st.session_state.eval_prev_llm = (
+        data.get("eval_prev_llm", {}) if isinstance(data.get("eval_prev_llm"), dict) else {}
+    )
+    st.session_state.eval_at = str(data.get("eval_at", ""))
+
+
+def _cleanup_runtime_files() -> None:
+    global _RUNTIME_CLEANED
+    if _RUNTIME_CLEANED:
+        return
+    try:
+        remove_runtime_files(_runtime_save_dir())
+    finally:
+        _RUNTIME_CLEANED = True
+
+
+def _register_runtime_cleanup() -> None:
+    global _RUNTIME_CLEANUP_REGISTERED
+    if _RUNTIME_CLEANUP_REGISTERED or getattr(signal, "_storyweaver_runtime_cleanup_registered", False):
+        return
+    _RUNTIME_CLEANUP_REGISTERED = True
+    signal._storyweaver_runtime_cleanup_registered = True
+    atexit.register(_cleanup_runtime_files)
+
+    previous_handler = signal.getsignal(signal.SIGINT)
+
+    def _sigint_handler(signum, frame):
+        _cleanup_runtime_files()
+        if callable(previous_handler):
+            previous_handler(signum, frame)
+        else:
+            raise KeyboardInterrupt
+
+    signal.signal(signal.SIGINT, _sigint_handler)
+
+
+_register_runtime_cleanup()
+_restore_runtime_session_once()
+
+
 # ── Helpers ──────────────────────────────────────────────────────────────
 
 def _process_action(action: str) -> None:
@@ -893,6 +1034,7 @@ def _process_action(action: str) -> None:
     st.session_state.consistency_history.append(score)
 
     st.session_state.last_elapsed = time.time() - start
+    _persist_runtime_session()
 
 
 def _run_evaluation() -> tuple[str, dict, dict]:
@@ -1175,6 +1317,7 @@ if new_game_clicked:
         st.session_state.eval_prev_llm = {}
         st.session_state.eval_at = ""
         st.session_state.last_elapsed = 0.0
+        _persist_runtime_session()
     st.rerun()
 
 if st.session_state.engine is None:
@@ -1279,6 +1422,7 @@ if run_eval:
         st.session_state.eval_auto = auto_scores
         st.session_state.eval_llm = llm_scores
         st.session_state.eval_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        _persist_runtime_session()
 
 if st.session_state.eval_result:
     if st.session_state.eval_auto and st.session_state.eval_llm:
