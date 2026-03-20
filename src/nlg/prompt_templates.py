@@ -1,9 +1,19 @@
 """Prompt templates consumed by the NLG layer (OpenAI chat completions).
 
-Each template is a *plain string* with ``{placeholders}`` filled by callers.
+NLG 层使用的提示模板（OpenAI 聊天补全）。
+
+每个模板都是带有 ``{placeholders}`` 占位符的纯字符串，
+由调用者填充具体内容。
+
+模板包括：
+- SYSTEM_PROMPT: 系统提示（用于所有聊天补全）
+- OPENING_PROMPT: 开场场景提示
+- STORY_CONTINUE_PROMPT: 故事续写提示
+- OPTION_GENERATION_PROMPT: 选项生成提示
 """
 
 # ── System prompt (used for every chat completion) ────────
+# 系统提示：用于所有聊天补全，定义叙述者的角色和行为规则
 SYSTEM_PROMPT = """\
 You are an expert interactive-fiction narrator for a text-adventure game.
 
@@ -18,6 +28,7 @@ Rules:
 """
 
 # ── Opening scene ─────────────────────────────────────────
+# 开场场景提示：生成新游戏的开场场景
 OPENING_PROMPT = """\
 Create the opening scene of a {genre} text adventure.
 
@@ -27,6 +38,7 @@ player must make a choice.
 """
 
 # ── Continue story ────────────────────────────────────────
+# 故事续写提示：根据玩家行动和世界状态续写故事
 STORY_CONTINUE_PROMPT = """\
 {kg_summary}
 
@@ -43,6 +55,7 @@ influence pacing, word choice, and atmosphere. Advance the plot.
 """
 
 # ── Option generation ─────────────────────────────────────
+# 选项生成提示：根据故事和世界状态生成玩家选项
 OPTION_GENERATION_PROMPT = """\
 Given the latest story passage and world state below, generate exactly \
 {num_options} player options as a JSON array.

@@ -1,12 +1,14 @@
 """Entity extraction: spaCy NER + noun-phrase heuristic + KG context.
 
-Enhanced with:
-- Expanded word lists (60+ creatures, 50+ locations, 50+ items, magic words)
-- KG context-assisted extraction (fuzzy matching against known entities)
-- Multi-word entity preservation
-- Possessive handling ("dragon's lair" → dragon)
+实体提取模块：结合 spaCy NER + 名词短语启发式 + 知识图谱上下文。
 
-Returns list of dicts: {"text", "type", "start", "end", "source"}.
+增强功能：
+- 扩展词表（60+ 生物、50+ 地点、50+ 物品、魔法词汇）
+- 知识图谱上下文辅助提取（与已知实体进行模糊匹配）
+- 多词实体保留
+- 所有格处理（"dragon's lair" → dragon）
+
+返回字典列表：{"text", "type", "start", "end", "source"}。
 """
 from __future__ import annotations
 
@@ -114,13 +116,24 @@ for _w in _MAGIC_WORDS:
 
 
 class EntityExtractor:
-    """spaCy NER + noun-phrase extraction with type inference and KG context."""
+    """spaCy NER + noun-phrase extraction with type inference and KG context.
+    
+    实体提取器：结合 spaCy NER + 名词短语提取 + 类型推断 + 知识图谱上下文。
+    支持多种提取来源：spaCy NER、名词短语、启发式词表匹配。
+    """
 
     def __init__(self, spacy_model: str = "en_core_web_sm") -> None:
-        self.spacy_model_name = spacy_model
-        self.nlp = None
+        """
+        初始化实体提取器。
+        
+        参数:
+            spacy_model: spaCy 模型名称
+        """
+        self.spacy_model_name = spacy_model  # spaCy 模型名称
+        self.nlp = None  # spaCy NLP 管道
 
     def load(self) -> None:
+        """加载 spaCy 模型。如果加载失败，仅使用名词短语提取。"""
         try:
             import spacy
             self.nlp = spacy.load(self.spacy_model_name)
@@ -137,10 +150,15 @@ class EntityExtractor:
     ) -> List[Dict[str, object]]:
         """Return a deduplicated list of entity dicts.
 
-        Args:
-            text: The text to extract entities from.
-            known_entities: Optional list of known entity names from the KG,
-                used for fuzzy-matching and type inference.
+        提取文本中的实体，返回去重后的实体字典列表。
+        
+        参数:
+            text: 要提取实体的文本
+            known_entities: 知识图谱中已知实体名称列表（可选），
+                用于模糊匹配和类型推断
+        
+        返回:
+            List[Dict]: 实体字典列表，每个包含 text, type, start, end, source
         """
         entities: List[Dict[str, object]] = []
         if self.nlp:
@@ -155,6 +173,7 @@ class EntityExtractor:
 
     # ── spaCy NER ─────────────────────────────────────────
     def _spacy_extract(self, text: str) -> List[Dict[str, object]]:
+        """使用 spaCy NER 提取实体。"""
         doc = self.nlp(text)  # type: ignore[union-attr]
         results: List[Dict[str, object]] = []
         for ent in doc.ents:
@@ -171,6 +190,7 @@ class EntityExtractor:
 
     # ── noun phrase + heuristic type ──────────────────────
     def _noun_phrase_extract(self, text: str) -> List[Dict[str, object]]:
+        """使用名词短语提取 + 启发式类型推断。"""
         results: List[Dict[str, object]] = []
         if self.nlp:
             doc = self.nlp(text)  # type: ignore[union-attr]

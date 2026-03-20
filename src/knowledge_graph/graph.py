@@ -1,13 +1,14 @@
 """KnowledgeGraph: MultiDiGraph-based world state tracker.
 
-Node keys are always **lowercased** names.  Supports multiple edges between the
-same pair (NetworkX ``MultiDiGraph``).
+知识图谱模块：基于 NetworkX MultiDiGraph 的世界状态跟踪器。
 
-Enhanced with:
-- Rich node attributes (description, status, temporal tracking, importance)
-- Rich edge attributes (context, confidence, temporal tracking)
-- Per-turn decay and importance recalculation
-- Layered summary generation for LLM prompts
+节点键始终为小写名称。支持同一对节点之间的多条边。
+
+增强功能：
+- 丰富的节点属性（描述、状态、时间跟踪、重要性）
+- 丰富的边属性（上下文、置信度、时间跟踪）
+- 每回合衰减和重要性重新计算
+- 分层摘要生成（用于 LLM 提示）
 """
 from __future__ import annotations
 
@@ -22,20 +23,29 @@ logger = logging.getLogger(__name__)
 
 
 class KnowledgeGraph:
-    """Real-time world-state graph backed by ``nx.MultiDiGraph``."""
+    """Real-time world-state graph backed by ``nx.MultiDiGraph``.
+    
+    实时世界状态图，基于 NetworkX MultiDiGraph。
+    管理游戏中的实体（节点）和关系（边），支持丰富的属性和时间跟踪。
+    """
 
     def __init__(self) -> None:
-        self.graph: nx.MultiDiGraph = nx.MultiDiGraph()
-        self._current_turn: int = 0
+        """初始化知识图谱。"""
+        self.graph: nx.MultiDiGraph = nx.MultiDiGraph()  # NetworkX 多重有向图
+        self._current_turn: int = 0  # 当前回合号
         logger.debug("[KG][init] New KnowledgeGraph created")
 
     # ── node helpers ──────────────────────────────────────
     @staticmethod
     def _key(name: str) -> str:
+        """将实体名称标准化为小写键名。"""
         return name.strip().lower()
 
     def set_turn(self, turn_id: int) -> None:
-        """Update the current turn counter for temporal tracking."""
+        """Update the current turn counter for temporal tracking.
+        
+        更新当前回合计数器，用于时间跟踪。
+        """
         self._current_turn = turn_id
         logger.debug("[KG][set_turn] Turn updated to %d", turn_id)
 
@@ -52,12 +62,26 @@ class KnowledgeGraph:
     ) -> str:
         """Upsert a node with rich attributes.  Returns the lowered key.
 
-        Attributes managed automatically:
-        - ``created_turn``: first turn this entity appeared
-        - ``last_mentioned_turn``: most recent turn referencing this entity
-        - ``mention_count``: total times referenced
-        - ``player_mention_count``: times directly mentioned by the player
-        - ``importance_score``: composite importance (0-1)
+        添加或更新实体节点（带丰富属性）。返回小写键名。
+        
+        参数:
+            name: 实体名称
+            entity_type: 实体类型（person, location, item, creature, event）
+            description: 实体描述
+            status: 状态字典（可选）
+            turn_id: 回合号（可选）
+            is_player_mentioned: 是否被玩家提及
+            emotion: 情感标签（可选）
+            
+        返回:
+            str: 标准化的小写键名
+            
+        自动管理的属性:
+        - ``created_turn``: 实体首次出现的回合
+        - ``last_mentioned_turn``: 最近提及的回合
+        - ``mention_count``: 总提及次数
+        - ``player_mention_count``: 被玩家直接提及的次数
+        - ``importance_score``: 综合重要性分数 (0-1)
         """
         key = self._key(name)
         turn = turn_id if turn_id is not None else self._current_turn
@@ -152,12 +176,14 @@ class KnowledgeGraph:
         return key
 
     def get_entity(self, name: str) -> Optional[Dict[str, Any]]:
+        """获取实体信息。如果不存在返回 None。"""
         key = self._key(name)
         if key in self.graph:
             return dict(self.graph.nodes[key])
         return None
 
     def remove_entity(self, name: str) -> None:
+        """删除实体及其所有关联的关系。"""
         key = self._key(name)
         if key in self.graph:
             self.graph.remove_node(key)
@@ -165,14 +191,21 @@ class KnowledgeGraph:
 
     # ── temporal queries ──────────────────────────────────
     def get_entity_history(self, name: str) -> List[Dict[str, Any]]:
-        """Return the status change history for an entity."""
+        """Return the status change history for an entity.
+        
+        返回实体的状态变更历史记录。
+        """
         key = self._key(name)
         if key in self.graph:
             return list(self.graph.nodes[key].get("status_history", []))
         return []
 
     def get_entity_status_at_turn(self, name: str, turn: int) -> Dict[str, Any]:
-        """Reconstruct an entity's status as of a specific turn."""
+        """Reconstruct an entity's status as of a specific turn.
+        
+        重建实体在特定回合时的状态。
+        通过撤销目标回合之后的状态变更来实现。
+        """
         key = self._key(name)
         if key not in self.graph:
             return {}
@@ -211,8 +244,18 @@ class KnowledgeGraph:
     ) -> None:
         """Add an edge with rich attributes.  Auto-creates missing nodes.
 
-        Duplicate (source, target, relation) triples update ``last_confirmed_turn``
-        instead of creating a new edge.
+        添加关系边（带丰富属性）。自动创建缺失的节点。
+        
+        参数:
+            source: 源实体名称
+            target: 目标实体名称
+            relation: 关系类型
+            context: 关系上下文描述
+            turn_id: 回合号（可选）
+            confidence: 置信度 (0-1)
+            
+        重复的 (source, target, relation) 三元组会更新 ``last_confirmed_turn``
+        而不是创建新边。
         """
         src = self._key(source)
         tgt = self._key(target)
@@ -249,6 +292,7 @@ class KnowledgeGraph:
         )
 
     def get_relations(self, name: str) -> List[Dict[str, Any]]:
+        """获取实体的所有关系（出边）。"""
         key = self._key(name)
         results: List[Dict[str, Any]] = []
         if key not in self.graph:
@@ -265,7 +309,15 @@ class KnowledgeGraph:
     ) -> bool:
         """Update specific status fields of an existing entity.
 
-        Returns True if the entity was found and updated.
+        更新实体的特定状态字段。
+        
+        参数:
+            name: 实体名称
+            state_updates: 要更新的状态字典
+            turn_id: 回合号（可选）
+            
+        返回:
+            bool: 如果实体被找到并更新返回 True
         """
         key = self._key(name)
         if not self.graph.has_node(key):
@@ -294,7 +346,14 @@ class KnowledgeGraph:
     ) -> None:
         """Batch-update mention tracking and importance for referenced entities.
 
-        Entities NOT mentioned get a small importance decay.
+        批量更新被提及实体的提及跟踪和重要性。
+        
+        参数:
+            mentioned_names: 被提及的实体名称列表
+            turn_id: 回合号（可选）
+            player_mentioned_names: 被玩家提及的实体名称列表（可选）
+            
+        未被提及的实体会获得小幅重要性衰减。
         """
         turn = turn_id if turn_id is not None else self._current_turn
         player_set: Set[str] = set()
@@ -334,7 +393,12 @@ class KnowledgeGraph:
 
     # ── temporal decay ────────────────────────────────────
     def apply_decay(self, turn_id: Optional[int] = None) -> None:
-        """Reduce confidence of relations not confirmed recently. Prune weak ones."""
+        """Reduce confidence of relations not confirmed recently. Prune weak ones.
+        
+        对未被近期确认的关系应用时间衰减。修剪弱关系。
+        
+        每回合关系置信度乘以衰减因子，低于阈值的关系会被删除。
+        """
         turn = turn_id if turn_id is not None else self._current_turn
         edges_to_remove: List[tuple] = []
 
@@ -363,7 +427,11 @@ class KnowledgeGraph:
     def recalculate_importance(self) -> None:
         """Recalculate importance scores using composite formula.
 
-        importance = 0.3*norm(degree) + 0.3*recency + 0.2*norm(mention_count) + 0.2*norm(player_mentions)
+        使用综合公式重新计算重要性分数。
+        
+        importance = 0.3*归一化(度数) + 0.3*新近度 + 0.2*归一化(提及次数) + 0.2*归一化(玩家提及)
+        
+        这确保了重要实体（被频繁提及、连接多的）在知识图谱摘要中优先展示。
         """
         if self.graph.number_of_nodes() == 0:
             return

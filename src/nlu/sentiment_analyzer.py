@@ -1,9 +1,11 @@
 """Sentiment / emotion analysis for player input.
 
-6-class Ekman model: anger, disgust, fear, joy, sadness, surprise + neutral.
+情感/情绪分析模块：分析玩家输入的情感。
 
-Primary: HuggingFace distilroberta model.
-Fallback: keyword-based rule matching.
+6 类 Ekman 模型：anger（愤怒）, disgust（厌恶）, fear（恐惧）, joy（快乐）, sadness（悲伤）, surprise（惊讶）+ neutral（中性）。
+
+主要方式：HuggingFace distilroberta 模型。
+回退方式：基于关键词的规则匹配。
 """
 from __future__ import annotations
 
@@ -51,16 +53,24 @@ _EMOTION_KEYWORDS: Dict[str, List[str]] = {
 
 
 class SentimentAnalyzer:
-    """Analyze emotion in player input text."""
+    """Analyze emotion in player input text.
+    
+    情感分析器：分析玩家输入文本中的情绪。
+    支持 6 种 Ekman 情绪类别 + 中性。
+    """
 
     def __init__(self) -> None:
-        self.model = None
-        self.tokenizer = None
-        self.device = None
-        self.backend = "rule_fallback"
+        """初始化情感分析器。"""
+        self.model = None  # distilroberta 模型
+        self.tokenizer = None  # 分词器
+        self.device = None  # 计算设备
+        self.backend = "rule_fallback"  # 当前后端
 
     def load(self) -> None:
-        """Try to load the emotion classification model."""
+        """Try to load the emotion classification model.
+        
+        尝试加载情感分类模型。如果不可用，使用规则回退。
+        """
         try:
             import torch
             from transformers import AutoModelForSequenceClassification, AutoTokenizer
@@ -81,11 +91,16 @@ class SentimentAnalyzer:
     def analyze(self, text: str) -> Dict[str, object]:
         """Analyze the emotion in text.
 
-        Returns:
-            {
-                "emotion": str,          # dominant emotion label
-                "confidence": float,     # confidence score (0-1)
-                "scores": Dict[str, float]  # all emotion scores
+        分析文本中的情感。
+        
+        参数:
+            text: 要分析的文本
+            
+        返回:
+            Dict: {
+                "emotion": str,          # 主导情绪标签
+                "confidence": float,     # 置信度分数 (0-1)
+                "scores": Dict[str, float]  # 所有情绪分数
             }
         """
         if self.model is not None and self.tokenizer is not None:

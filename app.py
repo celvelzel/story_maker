@@ -1,8 +1,11 @@
 """StoryWeaver – Streamlit chat-based text adventure UI.
 
-Layout (Streamlit):
-    Sidebar:    KG visualisation · consistency trend · debug info · download
-    Main area:  controls · story chat · option buttons · evaluation dashboard
+StoryWeaver Streamlit 前端界面。
+提供赛博朋克风格的交互式故事生成界面。
+
+布局（Streamlit）:
+    侧边栏:    知识图谱可视化 · 一致性趋势 · 调试信息 · 下载功能
+    主区域:    控制面板 · 故事聊天 · 选项按钮 · 评估仪表板
 """
 from __future__ import annotations
 
@@ -857,7 +860,11 @@ for _k, _v in _DEFAULTS.items():
 # ── Helpers ──────────────────────────────────────────────────────────────
 
 def _process_action(action: str) -> None:
-    """Run a player action through the engine and update session state."""
+    """Run a player action through the engine and update session state.
+    
+    处理玩家行动：将玩家输入传递给游戏引擎，更新会话状态。
+    包括：处理回合、更新聊天历史、更新知识图谱、跟踪一致性。
+    """
     engine: GameEngine | None = st.session_state.engine
     if engine is None:
         st.warning("Please start a new game before entering an action.")
@@ -889,7 +896,12 @@ def _process_action(action: str) -> None:
 
 
 def _run_evaluation() -> tuple[str, dict, dict]:
-    """Collect session data from the engine and run all evaluations."""
+    """Collect session data from the engine and run all evaluations.
+    
+    收集会话数据并运行所有评估：
+    1. 自动指标（Distinct-n、Self-BLEU、实体覆盖率、一致性率）
+    2. LLM 评分（叙事质量、一致性、玩家代理、创意、节奏）
+    """
     engine: GameEngine | None = st.session_state.engine
     if engine is None or not engine.all_story_texts:
         return "*No evaluable content yet. Please start and progress the story first.*", {}, {}
@@ -935,12 +947,19 @@ def _run_evaluation() -> tuple[str, dict, dict]:
 
 
 def _story_turn_count() -> int:
-    """Return number of user turns in current chat history."""
+    """Return number of user turns in current chat history.
+    
+    返回当前聊天历史中用户回合的数量。
+    """
     return sum(1 for m in st.session_state.history if m["role"] == "user")
 
 
 def _build_turn_pairs(history: list[dict]) -> tuple[str, list[tuple[int, str, str]]]:
-    """Return opening narration and user-assistant turn pairs."""
+    """Return opening narration and user-assistant turn pairs.
+    
+    构建回合配对：从聊天历史中提取开场白和用户-助手对话配对。
+    返回 (开场白, [(回合号, 用户输入, 助手回复), ...])
+    """
     opening = ""
     pairs: list[tuple[int, str, str]] = []
     i = 0
@@ -969,7 +988,11 @@ def _build_turn_pairs(history: list[dict]) -> tuple[str, list[tuple[int, str, st
 
 
 def _delta_str(current: float, previous: dict, key: str, fmt: str = ".4f") -> str | None:
-    """Format metric delta string for st.metric."""
+    """Format metric delta string for st.metric.
+    
+    格式化指标变化字符串：计算当前值与前值的差值。
+    用于 Streamlit 的 st.metric 组件显示变化量。
+    """
     if not previous or key not in previous:
         return None
     diff = float(current) - float(previous.get(key, 0))
@@ -977,7 +1000,11 @@ def _delta_str(current: float, previous: dict, key: str, fmt: str = ".4f") -> st
 
 
 def _delta_pct(current: float, previous: dict, key: str) -> str | None:
-    """Format percentage-point delta for st.metric."""
+    """Format percentage-point delta for st.metric.
+    
+    格式化百分点变化：计算当前值与前值的百分点差值。
+    返回格式如 "+5.23pp"。
+    """
     if not previous or key not in previous:
         return None
     diff = float(current) - float(previous.get(key, 0))

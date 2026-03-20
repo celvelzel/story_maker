@@ -1,12 +1,13 @@
 """Coreference resolution using fastcoref FCoref.
 
-Resolves pronouns in player input given recent story context.
+共指消解模块：使用 fastcoref FCoref 模型解析玩家输入中的代词。
+根据最近的故事上下文，将代词替换为具体的实体名称。
 
-Enhanced with:
-- Possessive pronoun support (his, her, their, its)
-- Multi-pronoun batch replacement
-- Reflexive pronoun handling (himself, herself, themselves)
-- Entity-type-aware pronoun disambiguation
+增强功能：
+- 所有格代词支持（his, her, their, its）
+- 多代词批量替换
+- 反身代词处理（himself, herself, themselves）
+- 实体类型感知的代词消歧
 """
 from __future__ import annotations
 
@@ -59,12 +60,18 @@ _POSSESSIVE_FORM = {
 
 
 class CoreferenceResolver:
-    """Resolve pronouns → antecedents using fastcoref (or rule fallback)."""
+    """Resolve pronouns → antecedents using fastcoref (or rule fallback).
+    
+    共指消解器：使用 fastcoref（或规则回退）将代词解析为先行词。
+    支持人称代词、非人称代词、所有格代词的处理。
+    """
 
     def __init__(self) -> None:
-        self.model = None
+        """初始化共指消解器。"""
+        self.model = None  # fastcoref 模型
 
     def load(self) -> None:
+        """加载 fastcoref 模型。如果不可用，使用规则回退。"""
         try:
             # ── Compatibility patch for transformers 5.2.0 x fastcoref 2.x ──────────────────
             from transformers.modeling_utils import PreTrainedModel
@@ -92,11 +99,16 @@ class CoreferenceResolver:
     ) -> str:
         """Return *text* with pronouns replaced by antecedents when possible.
 
-        Args:
-            text: The player input text to resolve.
-            context: Recent story history entries for context.
-            known_entities: Optional list of dicts with 'text' and 'type' keys
-                from the KG, used for entity-type-aware resolution.
+        解析文本中的代词，尽可能替换为先行词。
+        
+        参数:
+            text: 要解析的玩家输入文本
+            context: 最近的故事历史条目（用于上下文）
+            known_entities: 知识图谱中已知实体列表（可选），
+                每个包含 'text' 和 'type' 键，用于实体类型感知的消解
+        
+        返回:
+            str: 解析后的文本
         """
         if not context:
             return text

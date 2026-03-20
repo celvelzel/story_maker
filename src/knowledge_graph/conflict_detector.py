@@ -1,12 +1,20 @@
 """Rule-based + LLM conflict detection and multi-strategy resolution for the knowledge graph.
 
-Detection layers:
-- Layer 1 — deterministic rules (exclusive relation pairs, attribute contradictions)
-- Layer 2 — LLM reasoning against the KG summary
+知识图谱冲突检测与多策略解决模块。
 
-Resolution strategies:
-- ``keep_latest`` — retain newer information, remove older contradictory data
-- ``llm_arbitrate`` — let the LLM decide which information to keep
+检测层次：
+- 第 1 层 — 确定性规则检测（互斥关系对、属性矛盾）
+- 第 2 层 — LLM 推理检测（基于知识图谱摘要的逻辑矛盾）
+
+解决策略：
+- ``keep_latest`` — 保留最新信息，删除较早的矛盾数据
+- ``llm_arbitrate`` — 让 LLM 决定保留哪些信息
+
+检测的冲突类型：
+- exclusive_relation（互斥关系）：如同时存在 ally_of 和 enemy_of
+- dead_active（死亡活跃）：已死亡实体仍有活跃关系
+- temporal（时间矛盾）：死亡后的行为、因果倒置
+- llm（LLM检测）：LLM 推理发现的逻辑矛盾
 """
 from __future__ import annotations
 
@@ -18,33 +26,54 @@ from config import settings
 
 logger = logging.getLogger(__name__)
 
-# Pairs of relations that cannot coexist between the same source→target
+# 互斥关系对：同一 source→target 之间不能同时存在的关系类型
 EXCLUSIVE_PAIRS: List[tuple[str, str]] = [
-    ("ally_of", "enemy_of"),
-    ("alive", "dead"),
+    ("ally_of", "enemy_of"),  # 同盟与敌对互斥
+    ("alive", "dead"),        # 存活与死亡互斥
 ]
 
 
 # ══════════════════════════════════════════════════════════
-#  Detection
+#  Detection（检测层）
 # ══════════════════════════════════════════════════════════
 
 class ConflictDetector:
-    """Detect contradictions in a :class:`KnowledgeGraph`."""
+    """知识图谱矛盾检测器。
 
-    def __init__(self, kg: Any) -> None:  # avoid circular import typing
-        self.kg = kg
+    通过多层检测机制发现知识图谱中的逻辑矛盾：
+    - 规则检测：互斥关系、死亡活跃实体
+    - 时间检测：时间矛盾、因果倒置
+    - LLM 检测：基于 LLM 推理的深度矛盾发现
+    """
+
+    def __init__(self, kg: Any) -> None:  # 避免循环导入
+        """初始化冲突检测器。
+
+        参数：
+            kg: 关联的知识图谱对象
+        """
+        self.kg = kg  # 关联的知识图谱
 
     # ── public entry point ────────────────────────────────
     def check_all(self, new_text: str = "") -> List[Dict[str, str]]:
-        """Return a list of conflict dicts (may be empty)."""
+        """执行所有检测层，返回冲突字典列表。
+
+        综合使用规则检测、时间检测和 LLM 检测。
+        返回的每个冲突字典包含 type、description 等字段。
+
+        参数：
+            new_text: 新生成的故事文本（用于 LLM 检测，可选）
+
+        返回：
+            List[Dict[str, str]]: 冲突列表，可能为空
+        """
         conflicts: List[Dict[str, str]] = []
-        conflicts.extend(self._rule_based_check())
-        conflicts.extend(self._temporal_check())
+        conflicts.extend(self._rule_based_check())  # 规则层检测
+        conflicts.extend(self._temporal_check())   # 时间层检测
         if new_text:
-            conflicts.extend(self._llm_check(new_text))
+            conflicts.extend(self._llm_check(new_text))  # LLM 层检测
         logger.info(
-            "[ConflictDetector][check_all] Found %d conflicts (rule=%d, temporal=%d, llm=%d)",
+            "[ConflictDetector][check_all] 发现 %d 个冲突 (规则=%d, 时间=%d, LLM=%d)",
             len(conflicts),
             len([c for c in conflicts if c.get("type") not in ("llm", "temporal")]),
             len([c for c in conflicts if c.get("type") == "temporal"]),
@@ -54,13 +83,23 @@ class ConflictDetector:
 
     # ── layer 1: rule-based ───────────────────────────────
     def _rule_based_check(self) -> List[Dict[str, str]]:
+        """基于规则的冲突检测（确定性层）。
+
+        检测以下冲突类型：
+        1. 互斥关系对：同一实体对之间存在矛盾的关系
+        2. 死亡活跃：已标记为死亡的实体仍有活跃状态关系
+
+        返回：
+            List[Dict[str, str]]: 规则层检测到的冲突列表
+        """
         conflicts: List[Dict[str, str]] = []
         g = self.kg.graph
 
-        # 1. exclusive relation pairs
+        # 1. 检测互斥关系对
         for src, tgt, data in g.edges(data=True):
             rel = data.get("relation", "")
             for a, b in EXCLUSIVE_PAIRS:
+                # 检查是否存在互斥关系
                 opposite = b if rel == a else (a if rel == b else None)
                 if opposite is None:
                     continue
@@ -74,11 +113,11 @@ class ConflictDetector:
                                 "relation_a": rel,
                                 "relation_b": opposite,
                                 "description": (
-                                    f"{src} has both '{rel}' and '{opposite}' towards {tgt}."
+                                    f"{src} 同时存在 '{rel}' 和 '{opposite}' 关系指向 {tgt}."
                                 ),
                             })
 
-        # 2. dead entity with positive-health relation
+        # 2. 检测死亡实体的活跃关系
         for node, ndata in g.nodes(data=True):
             status = ndata.get("status", {})
             if isinstance(status, dict) and status.get("status") == "dead":
@@ -90,28 +129,31 @@ class ConflictDetector:
                             "source": node,
                             "target": tgt,
                             "relation": rel,
-                            "description": f"{node} is dead but has relation '{rel}' → {tgt}.",
+                            "description": f"{node} 已死亡但仍有关系 '{rel}' → {tgt}.",
                         })
         return conflicts
 
     # ── layer 1b: temporal ────────────────────────────────
     def _temporal_check(self) -> List[Dict[str, str]]:
-        """Check for temporal/causal inconsistencies.
+        """检查时间/因果矛盾。
 
-        Detects:
-        1. Dead entity actions after death: relations created after entity is marked dead
-        2. Causal inversion: B.created_turn < A.created_turn but A --[causes]--> B
+        检测以下冲突类型：
+        1. 死后行为：实体死亡后仍创建关系
+        2. 因果倒置：原因实体在结果实体之后才被创建
+
+        返回：
+            List[Dict[str, str]]: 时间层检测到的冲突列表
         """
         conflicts: List[Dict[str, str]] = []
         g = self.kg.graph
 
-        # 1. Check for dead entity actions after death
+        # 1. 检测死亡后的实体行为
         for node, ndata in g.nodes(data=True):
             status = ndata.get("status", {})
             if not isinstance(status, dict) or status.get("status") != "dead":
                 continue
 
-            # Find when entity died (look in status_history)
+            # 查找实体的死亡回合（从状态历史中）
             death_turn = None
             for entry in reversed(ndata.get("status_history", [])):
                 changes = entry.get("changes", {})
@@ -120,10 +162,10 @@ class ConflictDetector:
                     break
 
             if death_turn is None:
-                # Death was set directly in status, use last_mentioned_turn as proxy
+                # 死亡状态直接设置，使用最后提及回合作为代理
                 death_turn = ndata.get("last_mentioned_turn", 999)
 
-            # Check for relations created after death
+            # 检查死亡后创建的关系
             for _, tgt, edata in g.out_edges(node, data=True):
                 rel_turn = edata.get("created_turn", 0)
                 if rel_turn > death_turn:
@@ -137,12 +179,12 @@ class ConflictDetector:
                         "death_turn": death_turn,
                         "relation_turn": rel_turn,
                         "description": (
-                            f"{node} (died turn {death_turn}) has relation "
-                            f"'{rel}' → {tgt} created at turn {rel_turn}."
+                            f"{node} (死亡于回合 {death_turn}) 仍有关系 "
+                            f"'{rel}' → {tgt}，创建于回合 {rel_turn}."
                         ),
                     })
 
-        # 2. Check for causal inversion
+        # 2. 检测因果倒置
         for src, tgt, data in g.edges(data=True):
             relation = data.get("relation", "")
             if relation not in ("causes", "enables"):
@@ -153,6 +195,7 @@ class ConflictDetector:
             src_created = g.nodes[src].get("created_turn", 0)
             tgt_created = g.nodes[tgt].get("created_turn", 0)
 
+            # 如果结果实体比原因实体更早创建，则存在因果倒置
             if tgt_created < src_created:
                 conflicts.append({
                     "type": "temporal",
@@ -161,9 +204,9 @@ class ConflictDetector:
                     "target": tgt,
                     "relation": relation,
                     "description": (
-                        f"Causal inversion: {src} (created turn {src_created}) "
-                        f"'{relation}' {tgt} (created turn {tgt_created}), "
-                        f"but {tgt} was created first."
+                        f"因果倒置: {src} (创建于回合 {src_created}) "
+                        f"'{relation}' {tgt} (创建于回合 {tgt_created}), "
+                        f"但 {tgt} 实际上更早被创建."
                     ),
                 })
 
@@ -171,6 +214,17 @@ class ConflictDetector:
 
     # ── layer 2: LLM ─────────────────────────────────────
     def _llm_check(self, new_text: str) -> List[Dict[str, str]]:
+        """基于 LLM 推理的冲突检测（深度分析层）。
+
+        将当前世界状态和新生成的故事文本发送给 LLM，
+        让 LLM 识别可能存在的逻辑矛盾。
+
+        参数：
+            new_text: 新生成的故事文本
+
+        返回：
+            List[Dict[str, str]]: LLM 检测到的冲突列表
+        """
         try:
             from src.utils.api_client import llm_client
 
@@ -195,31 +249,57 @@ class ConflictDetector:
             raw = data.get("conflicts", [])
             return [{"type": "llm", "description": c.get("description", str(c))} for c in raw]
         except Exception as exc:
-            logger.warning("[ConflictDetector][_llm_check] Failed: %s", exc)
+            logger.warning("[ConflictDetector][_llm_check] LLM检测失败: %s", exc)
             return []
 
 
 # ══════════════════════════════════════════════════════════
-#  Resolution Strategies
+#  Resolution Strategies（解决策略层）
 # ══════════════════════════════════════════════════════════
 
 class ConflictResolutionStrategy(ABC):
-    """Abstract base for conflict resolution strategies."""
+    """冲突解决策略抽象基类。
+
+    定义冲突解决的接口规范。
+    所有具体解决策略都需要实现 resolve 方法。
+    """
 
     @abstractmethod
     def resolve(self, conflicts: List[Dict[str, str]], kg: Any) -> List[Dict[str, str]]:
-        """Resolve conflicts in the KG. Return list of unresolved conflicts."""
+        """解决知识图谱中的冲突。
+
+        参数：
+            conflicts: 冲突列表
+            kg: 知识图谱对象
+
+        返回：
+            List[Dict[str, str]]: 未能解决的冲突列表
+        """
         ...
 
 
 class KeepLatestResolver(ConflictResolutionStrategy):
-    """Resolve conflicts by keeping the newer information.
+    """保留最新策略。
 
-    For exclusive relation pairs, removes the edge with the lower
-    ``last_confirmed_turn`` value.
+    解决冲突的方法：保留较新的信息，删除较早的矛盾数据。
+    对于互斥关系对，删除 last_confirmed_turn 值较小的边。
     """
 
     def resolve(self, conflicts: List[Dict[str, str]], kg: Any) -> List[Dict[str, str]]:
+        """解决冲突列表。
+
+        处理逻辑：
+        - exclusive_relation：删除较旧的关系
+        - dead_active：删除死亡实体的活跃关系
+        - llm：LLM检测的冲突无法确定性解决，保留为未解决
+
+        参数：
+            conflicts: 冲突列表
+            kg: 知识图谱对象
+
+        返回：
+            List[Dict[str, str]]: 未能解决的冲突列表
+        """
         unresolved: List[Dict[str, str]] = []
         for conflict in conflicts:
             ctype = conflict.get("type", "")
@@ -229,18 +309,18 @@ class KeepLatestResolver(ConflictResolutionStrategy):
                 if not resolved:
                     unresolved.append(conflict)
             elif ctype == "dead_active":
-                # for dead entity with active relation, remove the relation
+                # 对于死亡实体的活跃关系，直接删除该关系
                 src = conflict.get("source", "")
                 rel = conflict.get("relation", "")
                 tgt = conflict.get("target", "")
                 if src and tgt and rel:
                     self._remove_relation(kg, src, tgt, rel)
                     logger.info(
-                        "[KeepLatestResolver] Removed dead-active relation %s --[%s]--> %s",
+                        "[KeepLatestResolver] 删除了死亡活跃关系 %s --[%s]--> %s",
                         src, rel, tgt,
                     )
             elif ctype == "llm":
-                # LLM-detected conflicts: keep as unresolved (no deterministic way to resolve)
+                # LLM检测的冲突：无法确定性解决，保留为未解决
                 unresolved.append(conflict)
             else:
                 unresolved.append(conflict)
@@ -248,7 +328,15 @@ class KeepLatestResolver(ConflictResolutionStrategy):
         return unresolved
 
     def _resolve_exclusive(self, conflict: Dict[str, str], kg: Any) -> bool:
-        """Remove the older of two exclusive relations. Returns True if resolved."""
+        """解决互斥关系冲突，删除两者中较旧的关系。
+
+        参数：
+            conflict: 互斥关系冲突
+            kg: 知识图谱对象
+
+        返回：
+            bool: 是否成功解决
+        """
         src = conflict.get("source", "")
         tgt = conflict.get("target", "")
         rel_a = conflict.get("relation_a", "")
@@ -261,6 +349,7 @@ class KeepLatestResolver(ConflictResolutionStrategy):
         if not g.has_edge(src, tgt):
             return False
 
+        # 查找两条互斥关系的确认时间
         turn_a, turn_b = -1, -1
         key_a, key_b = None, None
 
@@ -272,17 +361,18 @@ class KeepLatestResolver(ConflictResolutionStrategy):
                 turn_b = data.get("last_confirmed_turn", 0)
                 key_b = k
 
+        # 删除较旧的关系
         if turn_a >= turn_b and key_b is not None:
             g.remove_edge(src, tgt, key=key_b)
             logger.info(
-                "[KeepLatestResolver] Removed older relation %s --[%s]--> %s (turn %d < %d)",
+                "[KeepLatestResolver] 删除了较旧关系 %s --[%s]--> %s (回合 %d < %d)",
                 src, rel_b, tgt, turn_b, turn_a,
             )
             return True
         elif turn_b > turn_a and key_a is not None:
             g.remove_edge(src, tgt, key=key_a)
             logger.info(
-                "[KeepLatestResolver] Removed older relation %s --[%s]--> %s (turn %d < %d)",
+                "[KeepLatestResolver] 删除了较旧关系 %s --[%s]--> %s (回合 %d < %d)",
                 src, rel_a, tgt, turn_a, turn_b,
             )
             return True
@@ -290,6 +380,14 @@ class KeepLatestResolver(ConflictResolutionStrategy):
 
     @staticmethod
     def _remove_relation(kg: Any, src: str, tgt: str, relation: str) -> None:
+        """从图中删除指定关系的所有边。
+
+        参数：
+            kg: 知识图谱对象
+            src: 源实体
+            tgt: 目标实体
+            relation: 关系类型
+        """
         g = kg.graph
         if not g.has_edge(src, tgt):
             return
@@ -302,9 +400,24 @@ class KeepLatestResolver(ConflictResolutionStrategy):
 
 
 class LLMArbitrateResolver(ConflictResolutionStrategy):
-    """Resolve conflicts by asking the LLM which information to keep."""
+    """LLM 仲裁解决策略。
+
+    通过调用 LLM 来决定如何解决冲突。
+    LLM 可以根据上下文选择：保留新信息、保留旧信息、删除关系、更新实体状态等。
+    """
 
     def resolve(self, conflicts: List[Dict[str, str]], kg: Any) -> List[Dict[str, str]]:
+        """解决冲突列表，每个冲突都通过 LLM 仲裁。
+
+        对每个冲突调用 LLM 获取解决建议，然后执行相应操作。
+
+        参数：
+            conflicts: 冲突列表
+            kg: 知识图谱对象
+
+        返回：
+            List[Dict[str, str]]: 未能解决的冲突列表
+        """
         unresolved: List[Dict[str, str]] = []
 
         for conflict in conflicts:
@@ -320,7 +433,22 @@ class LLMArbitrateResolver(ConflictResolutionStrategy):
         return unresolved
 
     def _arbitrate_single(self, conflict: Dict[str, str], kg: Any) -> bool:
-        """Use LLM to decide how to resolve one conflict. Returns True if resolved."""
+        """使用 LLM 决定单个冲突的解决方法。
+
+        LLM 可以返回以下解决方式：
+        - keep_new: 删除较旧的关系
+        - keep_old: 删除较新的关系
+        - remove_relation: 删除特定关系
+        - update_entity: 更新实体状态
+        - no_action: 无需操作
+
+        参数：
+            conflict: 冲突字典
+            kg: 知识图谱对象
+
+        返回：
+            bool: 是否成功解决
+        """
         try:
             from src.utils.api_client import llm_client
 
@@ -358,13 +486,15 @@ class LLMArbitrateResolver(ConflictResolutionStrategy):
             reason = data.get("reason", "")
 
             logger.info(
-                "[LLMArbitrateResolver] Conflict: '%s' | resolution=%s | reason=%s",
+                "[LLMArbitrateResolver] 冲突: '%s' | 解决方案=%s | 原因=%s",
                 conflict_desc[:80], resolution, reason,
             )
 
+            # LLM 认为无需操作
             if resolution == "no_action":
-                return True  # LLM says it's fine, consider it resolved
+                return True
 
+            # 根据 LLM 决定执行相应操作
             if resolution in ("keep_new", "remove_relation"):
                 return self._apply_remove(conflict, kg)
 
@@ -377,11 +507,20 @@ class LLMArbitrateResolver(ConflictResolutionStrategy):
             return False
 
         except Exception as exc:
-            logger.warning("[LLMArbitrateResolver] Arbitration failed: %s", exc)
+            logger.warning("[LLMArbitrateResolver] LLM仲裁失败: %s", exc)
             return False
 
     def _apply_remove(self, conflict: Dict[str, str], kg: Any, remove_newer: bool = False) -> bool:
-        """Remove a conflicting relation edge from the graph."""
+        """根据冲突类型删除矛盾关系边。
+
+        参数：
+            conflict: 冲突字典
+            kg: 知识图谱对象
+            remove_newer: 是否删除较新的关系（True）或较旧的关系（False）
+
+        返回：
+            bool: 是否成功删除
+        """
         ctype = conflict.get("type", "")
         g = kg.graph
 
@@ -393,7 +532,7 @@ class LLMArbitrateResolver(ConflictResolutionStrategy):
             if not (src and tgt and rel_a and rel_b and g.has_edge(src, tgt)):
                 return False
 
-            # find turns
+            # 查找两条互斥关系的时间戳
             turns: Dict[str, int] = {}
             keys: Dict[str, Any] = {}
             for k, data in g[src][tgt].items():
@@ -402,6 +541,7 @@ class LLMArbitrateResolver(ConflictResolutionStrategy):
                     turns[rel] = data.get("last_confirmed_turn", 0)
                     keys[rel] = k
 
+            # 确定要删除的目标关系
             if remove_newer:
                 target_rel = max(turns, key=turns.get) if turns else None
             else:
@@ -409,7 +549,7 @@ class LLMArbitrateResolver(ConflictResolutionStrategy):
 
             if target_rel and target_rel in keys:
                 g.remove_edge(src, tgt, key=keys[target_rel])
-                logger.info("[LLMArbitrateResolver] Removed '%s' edge %s→%s", target_rel, src, tgt)
+                logger.info("[LLMArbitrateResolver] 删除了 '%s' 边 %s→%s", target_rel, src, tgt)
                 return True
 
         elif ctype == "dead_active":
@@ -418,37 +558,53 @@ class LLMArbitrateResolver(ConflictResolutionStrategy):
             rel = conflict.get("relation", "")
             if src and tgt and rel:
                 KeepLatestResolver._remove_relation(kg, src, tgt, rel)
-                logger.info("[LLMArbitrateResolver] Removed dead-active %s→%s [%s]", src, tgt, rel)
+                logger.info("[LLMArbitrateResolver] 删除了死亡活跃关系 %s→%s [%s]", src, tgt, rel)
                 return True
 
         return False
 
     def _apply_entity_update(self, conflict: Dict[str, str], kg: Any, llm_data: Dict) -> bool:
-        """Update an entity's status based on LLM arbitration."""
+        """根据 LLM 仲裁建议更新实体状态。
+
+        参数：
+            conflict: 冲突字典
+            kg: 知识图谱对象
+            llm_data: LLM 返回的数据，包含 target_entity 等字段
+
+        返回：
+            bool: 是否成功更新
+        """
         target = llm_data.get("target_entity", "")
         if not target:
             return False
-        # mark as resolved — the status update will be handled by the engine
-        logger.info("[LLMArbitrateResolver] Entity update suggested for '%s'", target)
+        # 标记为已解决 — 状态更新将由引擎处理
+        logger.info("[LLMArbitrateResolver] 建议更新实体 '%s' 的状态", target)
         return True
 
 
 # ══════════════════════════════════════════════════════════
-#  Factory
+#  Factory（工厂函数）
 # ══════════════════════════════════════════════════════════
 
 def get_resolver(mode: str = "") -> ConflictResolutionStrategy:
-    """Factory: return the appropriate resolution strategy.
+    """工厂函数：返回适当的冲突解决策略。
 
-    Falls back to ``settings.KG_CONFLICT_RESOLUTION`` if *mode* is empty.
+    根据 mode 参数返回对应的解决策略实例。
+    如果 mode 为空，使用配置文件中的默认策略。
+
+    参数：
+        mode: 解决策略模式，可选 "keep_latest" 或 "llm_arbitrate"
+
+    返回：
+        ConflictResolutionStrategy: 解决策略实例
     """
     mode = mode or settings.KG_CONFLICT_RESOLUTION
     if mode == "keep_latest":
-        logger.debug("[ConflictResolver] Using KeepLatestResolver")
+        logger.debug("[ConflictResolver] 使用 KeepLatestResolver")
         return KeepLatestResolver()
     elif mode == "llm_arbitrate":
-        logger.debug("[ConflictResolver] Using LLMArbitrateResolver")
+        logger.debug("[ConflictResolver] 使用 LLMArbitrateResolver")
         return LLMArbitrateResolver()
     else:
-        logger.warning("[ConflictResolver] Unknown mode '%s', falling back to llm_arbitrate", mode)
+        logger.warning("[ConflictResolver] 未知模式 '%s'，回退到 llm_arbitrate", mode)
         return LLMArbitrateResolver()
