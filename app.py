@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 # ── Page config ──────────────────────────────────────────────────────────
 
 st.set_page_config(
-    page_title="StoryWeaver - AI 故事生成器",
+    page_title="StoryWeaver - AI Story Generator",
     page_icon="🎭",
     layout="wide",
 )
@@ -295,6 +295,13 @@ st.markdown(
     .muted-note {{
         color: {tokens['muted']};
         font-size: 0.88rem;
+    }}
+
+    .option-meta-center {{
+        text-align: center;
+        color: {tokens['muted']};
+        font-size: 0.88rem;
+        margin-top: 6px;
     }}
 
     /* ── Neon Divider (replaces st.markdown("---")) ───────── */
@@ -604,7 +611,7 @@ st.markdown(
         color: {tokens['neon_cyan']} !important;
     }}
 
-    /* ── Expander panels (NLU 路径 / KG 策略 / NLU 解析) ── */
+    /* ── Expander panels (NLU Path / KG Strategy / NLU Details) ── */
     [data-testid="stExpander"] {{
         background: {tokens['panel']} !important;
         border: 1px solid {tokens['panel_border']} !important;
@@ -810,7 +817,7 @@ st.markdown(
     """
 <div class="hero">
   <h2>&#x1F3AD; STORYWEAVER</h2>
-  <p>混合 NLU + LLM + KG 的多轮互动叙事系统 &mdash; 动态知识图谱 · 实时世界状态追踪 · 会话评测</p>
+    <p>Multi-turn interactive storytelling system powered by NLU + LLM + KG &mdash; Dynamic Knowledge Graph · Real-time World State Tracking · Session Evaluation</p>
   <span class="hero-tag">&#x26A1; Dynamic KG Story Engine</span>
 </div>
 """,
@@ -853,7 +860,7 @@ def _process_action(action: str) -> None:
     """Run a player action through the engine and update session state."""
     engine: GameEngine | None = st.session_state.engine
     if engine is None:
-        st.warning("请先开始新游戏，再输入行动。")
+        st.warning("Please start a new game before entering an action.")
         return
 
     start = time.time()
@@ -885,7 +892,7 @@ def _run_evaluation() -> tuple[str, dict, dict]:
     """Collect session data from the engine and run all evaluations."""
     engine: GameEngine | None = st.session_state.engine
     if engine is None or not engine.all_story_texts:
-        return "*暂无可评测内容，请先开始并推进故事。*", {}, {}
+        return "*No evaluable content yet. Please start and progress the story first.*", {}, {}
 
     texts = engine.all_story_texts
 
@@ -902,7 +909,7 @@ def _run_evaluation() -> tuple[str, dict, dict]:
 
     # Format as Markdown table (kept for one-click report display)
     lines = [
-        "### 自动指标",
+        "### Automatic Metrics",
         "",
         "| Metric | Value |",
         "|--------|-------|",
@@ -980,90 +987,90 @@ def _delta_pct(current: float, previous: dict, key: str) -> str | None:
 # ── Sidebar ──────────────────────────────────────────────────────────────
 
 with st.sidebar:
-    with st.expander("🧠 NLU 模型路径", expanded=False):
+    with st.expander("🧠 NLU Model Path", expanded=False):
         st.session_state.intent_model_path = st.text_input(
-            "Intent 模型目录",
+            "Intent model directory",
             value=st.session_state.intent_model_path,
-            help="留空时使用默认目录；目录不存在时自动降级为 rule_fallback。",
+            help="Leave empty to use the default directory; if it doesn't exist, it falls back to rule_fallback.",
         )
 
-    with st.expander("⚙ KG 策略设置", expanded=False):
-        st.caption("策略变更将在下一次\"开始新游戏\"后生效。" )
+    with st.expander("⚙ KG Strategy Settings", expanded=False):
+        st.caption("Strategy changes take effect after the next \"Start New Game\".")
 
         st.session_state.kg_conflict_resolution = st.selectbox(
-            "冲突解决策略",
+            "Conflict resolution strategy",
             ["llm_arbitrate", "keep_latest"],
             index=0 if st.session_state.kg_conflict_resolution == "llm_arbitrate" else 1,
             help=(
-                "llm_arbitrate: LLM 判断保留哪个信息，效果最好\n"
-                "keep_latest: 保留时间戳更新的信息，无需 LLM 调用"
+                "llm_arbitrate: LLM decides which information to keep (best quality)\n"
+                "keep_latest: Keep the most recently updated information (no LLM call required)"
             ),
         )
 
         st.session_state.kg_extraction_mode = st.selectbox(
-            "实体提取模式",
+            "Entity extraction mode",
             ["dual_extract", "story_only"],
             index=0 if st.session_state.kg_extraction_mode == "dual_extract" else 1,
             help=(
-                "dual_extract: 从玩家输入+故事文本双重提取，信息更全\n"
-                "story_only: 仅从故事文本提取（向后兼容）"
+                "dual_extract: Extract from both player input and story text for fuller context\n"
+                "story_only: Extract only from story text (backward compatible)"
             ),
         )
 
         st.session_state.kg_summary_mode = st.selectbox(
-            "KG 摘要格式",
+            "KG summary format",
             ["layered", "flat"],
             index=0 if st.session_state.kg_summary_mode == "layered" else 1,
             help=(
-                "layered: 按重要性分层（核心/次要/背景），含描述和时间线\n"
-                "flat: 简单列表格式（向后兼容）"
+                "layered: Group by importance (core/secondary/background), with descriptions and timeline\n"
+                "flat: Simple list format (backward compatible)"
             ),
         )
 
         st.session_state.kg_importance_mode = st.selectbox(
-            "实体淘汰策略",
+            "Entity pruning strategy",
             ["composite", "degree_only"],
             index=0 if st.session_state.kg_importance_mode == "composite" else 1,
             help=(
-                "composite: 综合 degree+recency+mention_count 评分\n"
-                "degree_only: 仅按连接数（向后兼容）"
+                "composite: Score by degree + recency + mention_count\n"
+                "degree_only: Degree-only pruning (backward compatible)"
             ),
         )
 
-    st.markdown("<div class='section-title'>&#x1F4CA; 故事世界观知识图谱</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>&#x1F4CA; Story World Knowledge Graph</div>", unsafe_allow_html=True)
     if st.session_state.kg_html:
         st.markdown("<div class='kg-frame'>", unsafe_allow_html=True)
         components.html(st.session_state.kg_html, height=480, scrolling=True)
         st.markdown("</div>", unsafe_allow_html=True)
     else:
-        st.info("开始游戏后将显示知识图谱。")
+        st.info("The knowledge graph will appear after starting a game.")
 
-    st.markdown("<div class='section-title'>&#x1F4C8; 一致性趋势</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>&#x1F4C8; Consistency Trend</div>", unsafe_allow_html=True)
     if st.session_state.consistency_history:
         recent = st.session_state.consistency_history[-5:]
         offset = max(0, len(st.session_state.consistency_history) - 5)
         for i, score in enumerate(recent):
             st.progress(
                 max(0.0, min(1.0, score)),
-                text=f"轮次 {offset + i + 1}: {score:.2f}",
+                text=f"Turn {offset + i + 1}: {score:.2f}",
             )
         st.line_chart(st.session_state.consistency_history, height=120, use_container_width=True)
     else:
-        st.caption("第一轮行动后显示一致性分数")
+        st.caption("Consistency scores appear after the first action")
 
-    with st.expander("🔍 NLU 解析详情", expanded=False):
+    with st.expander("🔍 NLU Parsing Details", expanded=False):
         nlu = st.session_state.nlu_debug
         if nlu:
-            st.markdown(f"**消解后输入:** {nlu.get('resolved_input', '')}")
+            st.markdown(f"**Resolved Input:** {nlu.get('resolved_input', '')}")
             st.markdown(
-                f"**意图:** {nlu.get('intent', '?')}  "
-                f"(置信度 {nlu.get('confidence', 0):.2f})"
+                f"**Intent:** {nlu.get('intent', '?')}  "
+                f"(confidence {nlu.get('confidence', 0):.2f})"
             )
-            st.markdown(f"**后端:** {nlu.get('intent_backend', 'rule_fallback')}")
-            st.markdown(f"**模型加载:** {nlu.get('intent_model_loaded', False)}")
-            st.markdown(f"**实体:** {nlu.get('entities', [])}")
+            st.markdown(f"**Backend:** {nlu.get('intent_backend', 'rule_fallback')}")
+            st.markdown(f"**Model Loaded:** {nlu.get('intent_model_loaded', False)}")
+            st.markdown(f"**Entities:** {nlu.get('entities', [])}")
         else:
-            st.caption("行动后自动展示 NLU 解析信息")
+            st.caption("NLU parsing details will appear after each action")
 
     st.markdown("<hr class='neon-divider'>", unsafe_allow_html=True)
 
@@ -1073,13 +1080,13 @@ with st.sidebar:
     conflict_total = sum(engine.turn_conflict_counts) if engine else 0
 
     c1, c2, c3 = st.columns(3)
-    c1.metric("轮次", turn_count)
-    c2.metric("实体", entity_count)
-    c3.metric("冲突", conflict_total)
+    c1.metric("Turns", turn_count)
+    c2.metric("Entities", entity_count)
+    c3.metric("Conflicts", conflict_total)
 
     if engine:
         st.caption(
-            f"策略: {engine.conflict_resolution} | {engine.extraction_mode} | "
+            f"Strategy: {engine.conflict_resolution} | {engine.extraction_mode} | "
             f"{engine.summary_mode} | {engine.importance_mode}"
         )
 
@@ -1091,7 +1098,7 @@ with st.sidebar:
             for m in st.session_state.history
         )
         st.download_button(
-            "📥 下载完整故事",
+            "📥 Download Full Story",
             full_story,
             file_name="full_story.txt",
             mime="text/plain",
@@ -1106,16 +1113,16 @@ with col_genre:
     genre = st.text_input(
         "Genre",
         value="fantasy",
-        placeholder="类型，如 fantasy / sci-fi / mystery",
+        placeholder="Genre, e.g. fantasy / sci-fi / mystery",
         label_visibility="collapsed",
     )
 with col_btn:
     new_game_clicked = st.button(
-        "🎮 开始新游戏", type="primary", use_container_width=True
+        "🎮 Start New Game", type="primary", use_container_width=True
     )
 
 if new_game_clicked:
-    with st.spinner("正在初始化冒险世界…"):
+    with st.spinner("Initializing the adventure world…"):
         intent_model_path = st.session_state.intent_model_path.strip() or None
         engine = GameEngine(
             genre=genre or "fantasy",
@@ -1144,15 +1151,15 @@ if new_game_clicked:
     st.rerun()
 
 if st.session_state.engine is None:
-    st.info("点击上方“开始新游戏”后，即可进行剧情互动。")
+    st.info("Click \"Start New Game\" above to begin the interactive story.")
 
 
 # ── Chat history ─────────────────────────────────────────────────────────
 
 chat_fold_mode = st.toggle(
-    "按轮次折叠历史",
+    "Fold history by turn",
     value=st.session_state.chat_fold_mode,
-    help="开启后按“用户输入 + 系统回复”折叠显示，适合长会话阅读。",
+    help="When enabled, each turn is folded as \"user input + system response\" for easier long-session reading.",
 )
 st.session_state.chat_fold_mode = chat_fold_mode
 
@@ -1164,13 +1171,13 @@ if chat_fold_mode:
 
     for turn, user_text, ai_text in turn_pairs:
         preview = user_text[:28] + ("..." if len(user_text) > 28 else "")
-        title = f"第 {turn} 轮 | {preview or '（空输入）'}"
+        title = f"Turn {turn} | {preview or '(empty input)'}"
         with st.expander(title, expanded=(turn == len(turn_pairs))):
             if user_text:
-                st.markdown("**你：**")
+                st.markdown("**You:**")
                 st.markdown(user_text)
             if ai_text:
-                st.markdown("**系统：**")
+                st.markdown("**System:**")
                 st.markdown(ai_text)
 else:
     for msg in st.session_state.history:
@@ -1182,13 +1189,17 @@ else:
 # ── Option buttons ───────────────────────────────────────────────────────
 
 if st.session_state.options:
-    st.markdown("<div class='section-title'>&#x1F9ED; 分支选项</div>", unsafe_allow_html=True)
-    st.caption("可直接点击选项，也可在下方输入自由行动。")
+    st.markdown("<div class='section-title'>&#x1F9ED; Branch Options</div>", unsafe_allow_html=True)
+    st.caption("You can click an option directly, or type a free-form action below.")
     opt_cols = st.columns(len(st.session_state.options))
     for idx, opt in enumerate(st.session_state.options):
         with opt_cols[idx]:
-            st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
-            st.caption(f"意图: {opt.intent_hint} | 风险: {opt.risk_level}")
+            #st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
+            #st.caption(f"Intent: {opt.intent_hint} | Risk: {opt.risk_level}")
+            st.markdown(
+                f"<div class='option-meta-center'>Intent: {opt.intent_hint} | Risk: {opt.risk_level}</div>",
+                unsafe_allow_html=True,
+            )
             btn_key = f"opt_{idx}_{len(st.session_state.history)}"
             if st.button(
                 f"{idx + 1}. {opt.text}",
@@ -1197,12 +1208,16 @@ if st.session_state.options:
             ):
                 _process_action(opt.text)
                 st.rerun()
+            #st.markdown(
+            #    f"<div class='option-meta-center'>Intent: {opt.intent_hint} | Risk: {opt.risk_level}</div>",
+            #    unsafe_allow_html=True,
+            #)
             st.markdown("</div>", unsafe_allow_html=True)
 
 
 # ── Chat input ───────────────────────────────────────────────────────────
 
-user_input = st.chat_input("输入你的行动（例如：调查遗迹中的符文）…")
+user_input = st.chat_input("Enter your action (e.g., investigate the runes in the ruins)…")
 if user_input:
     _process_action(user_input)
     st.rerun()
@@ -1211,22 +1226,22 @@ if user_input:
 # ── Performance footer ──────────────────────────────────────────────────
 
 if st.session_state.last_elapsed > 0:
-    st.caption(f"✅ 本轮生成耗时 {st.session_state.last_elapsed:.2f}s")
+    st.caption(f"✅ Generation time for this turn: {st.session_state.last_elapsed:.2f}s")
 
 
 # ── Evaluation Dashboard (kept and enhanced) ───────────────────────────
 
 st.markdown("<hr class='neon-divider'>", unsafe_allow_html=True)
-st.markdown("<div class='section-title'>&#x1F4CA; 会话评测面板</div>", unsafe_allow_html=True)
+st.markdown("<div class='section-title'>&#x1F4CA; Session Evaluation Panel</div>", unsafe_allow_html=True)
 
 col_eval_btn, col_eval_hint = st.columns([1, 2])
 with col_eval_btn:
-    run_eval = st.button("运行评测", use_container_width=True)
+    run_eval = st.button("Run Evaluation", use_container_width=True)
 with col_eval_hint:
-    st.markdown("<div class='muted-note'>评测将基于当前会话文本计算自动指标，并调用 LLM Judge 打分。</div>", unsafe_allow_html=True)
+    st.markdown("<div class='muted-note'>Evaluation computes automatic metrics from the current session and calls the LLM Judge for scoring.</div>", unsafe_allow_html=True)
 
 if run_eval:
-    with st.spinner("正在计算评测结果…"):
+    with st.spinner("Calculating evaluation results…"):
         report_md, auto_scores, llm_scores = _run_evaluation()
 
         if st.session_state.eval_auto and st.session_state.eval_llm:
@@ -1240,14 +1255,14 @@ if run_eval:
 
 if st.session_state.eval_result:
     if st.session_state.eval_auto and st.session_state.eval_llm:
-        st.caption(f"最近评测时间: {st.session_state.eval_at}")
+        st.caption(f"Last evaluation time: {st.session_state.eval_at}")
 
         auto = st.session_state.eval_auto
         llm = st.session_state.eval_llm
         prev_auto = st.session_state.eval_prev_auto
         prev_llm = st.session_state.eval_prev_llm
 
-        st.markdown("**自动指标**")
+        st.markdown("**Automatic Metrics**")
         a1, a2, a3 = st.columns(3)
         a1.metric(
             "Distinct-1",
@@ -1282,7 +1297,7 @@ if st.session_state.eval_result:
             _delta_pct(auto.get("consistency_rate", 0), prev_auto, "consistency_rate"),
         )
 
-        st.markdown("**LLM Judge 维度评分**")
+        st.markdown("**LLM Judge Dimension Scores**")
         j1, j2, j3 = st.columns(3)
         j1.metric(
             "Narrative",
@@ -1317,7 +1332,7 @@ if st.session_state.eval_result:
             _delta_str(llm.get("average", 0), prev_llm, "average", ".2f"),
         )
 
-        with st.expander("查看原始评测报告 (Markdown)", expanded=False):
+        with st.expander("View Raw Evaluation Report (Markdown)", expanded=False):
             st.markdown(st.session_state.eval_result)
     else:
         st.markdown(st.session_state.eval_result)
