@@ -8,14 +8,14 @@ import networkx as nx
 
 logger = logging.getLogger(__name__)
 
-# Colour / shape mapping per entity type
+# Colour / shape mapping per entity type — cyberpunk neon palette
 _TYPE_STYLE = {
-    "person":   {"color": "#4A90D9", "shape": "dot"},
-    "location": {"color": "#50C878", "shape": "diamond"},
-    "item":     {"color": "#FFB347", "shape": "triangle"},
-    "creature": {"color": "#FF6B6B", "shape": "star"},
-    "event":    {"color": "#9B59B6", "shape": "square"},
-    "unknown":  {"color": "#C0C0C0", "shape": "dot"},
+    "person":   {"color": "#00f0ff", "shape": "dot"},
+    "location": {"color": "#39ff14", "shape": "diamond"},
+    "item":     {"color": "#ffd700", "shape": "triangle"},
+    "creature": {"color": "#ff00aa", "shape": "star"},
+    "event":    {"color": "#7b2fff", "shape": "square"},
+    "unknown":  {"color": "#5a6a8a", "shape": "dot"},
 }
 
 
@@ -30,7 +30,7 @@ def render_kg_html(graph: nx.MultiDiGraph, output_path: str = "kg_vis.html") -> 
         return _fallback_html(graph)
 
     net = Network(height="480px", width="100%", directed=True,
-                  bgcolor="#1a1a2e", font_color="white")
+                  bgcolor="#06080f", font_color="#e0e8ff")
     net.set_options("""
     {"physics": {"forceAtlas2Based": {"gravitationalConstant": -50,
       "centralGravity": 0.01, "springLength": 100, "springConstant": 0.08},
@@ -47,7 +47,7 @@ def render_kg_html(graph: nx.MultiDiGraph, output_path: str = "kg_vis.html") -> 
 
     for src, tgt, data in graph.edges(data=True):
         rel = data.get("relation", "related_to")
-        net.add_edge(src, tgt, label=rel, title=rel, width=2, color="#95A5A6")
+        net.add_edge(src, tgt, label=rel, title=rel, width=2, color="#00f0ff55")
 
     try:
         net.save_graph(output_path)
@@ -63,7 +63,7 @@ def _fallback_html(graph: nx.MultiDiGraph) -> str:
         rel = data.get("relation", "related_to")
         rows += f"<tr><td>{src}</td><td>{rel}</td><td>{tgt}</td></tr>"
     return (
-        "<table border='1' style='color:white;background:#1a1a2e;'>"
+        "<table border='1' style='color:#e0e8ff;background:#06080f;border-color:#00f0ff33;'>"
         "<tr><th>Source</th><th>Relation</th><th>Target</th></tr>"
         f"{rows}</table>"
     )
