@@ -297,6 +297,13 @@ st.markdown(
         font-size: 0.88rem;
     }}
 
+    .option-meta-center {{
+        text-align: center;
+        color: {tokens['muted']};
+        font-size: 0.88rem;
+        margin-top: 6px;
+    }}
+
     /* ── Neon Divider (replaces st.markdown("---")) ───────── */
     .neon-divider {{
         border: none;
@@ -1187,8 +1194,12 @@ if st.session_state.options:
     opt_cols = st.columns(len(st.session_state.options))
     for idx, opt in enumerate(st.session_state.options):
         with opt_cols[idx]:
-            st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
-            st.caption(f"意图: {opt.intent_hint} | 风险: {opt.risk_level}")
+            #st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
+            #st.caption(f"意图: {opt.intent_hint} | 风险: {opt.risk_level}")
+            st.markdown(
+                f"<div class='option-meta-center'>意图: {opt.intent_hint} | 风险: {opt.risk_level}</div>",
+                unsafe_allow_html=True,
+            )
             btn_key = f"opt_{idx}_{len(st.session_state.history)}"
             if st.button(
                 f"{idx + 1}. {opt.text}",
@@ -1197,6 +1208,10 @@ if st.session_state.options:
             ):
                 _process_action(opt.text)
                 st.rerun()
+            #st.markdown(
+            #    f"<div class='option-meta-center'>意图: {opt.intent_hint} | 风险: {opt.risk_level}</div>",
+            #    unsafe_allow_html=True,
+            #)
             st.markdown("</div>", unsafe_allow_html=True)
 
 
