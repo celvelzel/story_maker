@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 import inspect
+import time
 from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
@@ -57,12 +58,14 @@ class IntentClassifier:
         self.device = None  # 计算设备（CPU/GPU）
         self.backend = "rule_fallback"  # 当前后端："distilbert" 或 "rule_fallback"
 
-    # ── model loading ─────────────────────────────────────
+    MAX_RETRIES: int = 3
+    RETRY_DELAY: float = 1.0
+
     def load(self) -> None:
-        """Try to load a fine-tuned DistilBERT checkpoint from local path.
+        """Load a fine-tuned DistilBERT checkpoint with retry and fallback.
         
-        尝试从本地路径加载微调的 DistilBERT 检查点。
-        如果模型目录不存在或加载失败，回退到关键词匹配模式。
+        Attempts to load from local path up to MAX_RETRIES times.
+        Falls back to rule-based keyword matching on any failure.
         """
         from pathlib import Path
         from config import settings
@@ -70,27 +73,65 @@ class IntentClassifier:
         configured_path = self.model_path or str(settings.INTENT_MODEL_PATH)
         model_dir = Path(configured_path)
         if not model_dir.exists():
-            logger.info("Intent model directory missing (%s) – using rule_fallback.", model_dir)
+            logger.info("Intent model dir missing (%s) – rule_fallback.", model_dir)
             self.backend = "rule_fallback"
             return
-        try:
-            import torch
-            from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            self.tokenizer = AutoTokenizer.from_pretrained(str(model_dir))
-            self.model = AutoModelForSequenceClassification.from_pretrained(
-                str(model_dir),
-                num_labels=len(settings.INTENT_LABELS),
-            ).to(self.device)
-            self.model.eval()
-            self.backend = "distilbert"
-            logger.info("Intent classifier loaded from %s", model_dir)
-        except Exception as exc:
-            logger.warning("Intent model load failed (%s) – using rule_fallback.", exc)
-            self.model = None
-            self.tokenizer = None
-            self.backend = "rule_fallback"
+        last_error: Optional[Exception] = None
+        for attempt in range(1, self.MAX_RETRIES + 1):
+            try:
+                import torch
+                from transformers import AutoModelForSequenceClassification, AutoTokenizer
+
+                self._check_transformers_version()
+                self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                self.tokenizer = AutoTokenizer.from_pretrained(str(model_dir))
+                self.model = AutoModelForSequenceClassification.from_pretrained(
+                    str(model_dir),
+                    num_labels=len(settings.INTENT_LABELS),
+                ).to(self.device)
+                self.model.eval()
+                self.backend = "distilbert"
+                logger.info("Intent classifier loaded from %s (attempt %d)", model_dir, attempt)
+                return
+            except Exception as exc:
+                last_error = exc
+                if attempt < self.MAX_RETRIES:
+                    logger.warning(
+                        "Intent model load attempt %d/%d failed (%s) – retrying in %.1fs",
+                        attempt, self.MAX_RETRIES, exc, self.RETRY_DELAY,
+                    )
+                    time.sleep(self.RETRY_DELAY)
+                    self._reset_model_state()
+
+        logger.warning(
+            "Intent model load exhausted %d attempts (%s) – using rule_fallback.",
+            self.MAX_RETRIES, last_error,
+        )
+        self._reset_model_state()
+        self.backend = "rule_fallback"
+
+    def _check_transformers_version(self) -> None:
+        """Warn if transformers version is outside tested range."""
+        try:
+            import transformers
+            v = getattr(transformers, "__version__", "unknown")
+            major = int(v.split(".")[0])
+            minor = int(v.split(".")[1])
+            if major > 4 or (major == 4 and minor >= 50):
+                logger.warning(
+                    "transformers %s detected – version >= 4.50 may have breaking changes "
+                    "in model/tokenizer compatibility. Tested range: 4.40–4.49.",
+                    v,
+                )
+        except Exception:
+            pass
+
+    def _reset_model_state(self) -> None:
+        """Reset model, tokenizer, and device to clean state."""
+        self.model = None
+        self.tokenizer = None
+        self.device = None
 
     # ── prediction ────────────────────────────────────────
     def predict(self, text: str) -> Dict[str, object]:

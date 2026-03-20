@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import inspect
+import time
 from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -67,27 +68,70 @@ class SentimentAnalyzer:
         self.device = None  # 计算设备
         self.backend = "rule_fallback"  # 当前后端
 
-    def load(self) -> None:
-        """Try to load the emotion classification model.
-        
-        尝试加载情感分类模型。如果不可用，使用规则回退。
-        """
-        try:
-            import torch
-            from transformers import AutoModelForSequenceClassification, AutoTokenizer
+    MODEL_NAME: str = "j-hartmann/emotion-english-distilroberta-base"
+    MAX_RETRIES: int = 3
+    RETRY_DELAY: float = 1.0
 
-            model_name = "j-hartmann/emotion-english-distilroberta-base"
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-            self.model = AutoModelForSequenceClassification.from_pretrained(model_name).to(self.device)
-            self.model.eval()
-            self.backend = "distilroberta"
-            logger.info("Sentiment analyzer loaded: %s", model_name)
-        except Exception as exc:
-            logger.warning("Sentiment model unavailable (%s) – using rule_fallback.", exc)
-            self.model = None
-            self.tokenizer = None
-            self.backend = "rule_fallback"
+    def load(self) -> None:
+        """Load the emotion classification model with retry and fallback.
+        
+        Attempts to load the distilroberta model up to MAX_RETRIES times.
+        Falls back to rule-based keyword matching on any failure.
+        """
+        last_error: Optional[Exception] = None
+        for attempt in range(1, self.MAX_RETRIES + 1):
+            try:
+                import torch
+                from transformers import AutoModelForSequenceClassification, AutoTokenizer
+
+                self._check_transformers_version()
+                self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                self.tokenizer = AutoTokenizer.from_pretrained(self.MODEL_NAME)
+                self.model = AutoModelForSequenceClassification.from_pretrained(
+                    self.MODEL_NAME,
+                ).to(self.device)
+                self.model.eval()
+                self.backend = "distilroberta"
+                logger.info("Sentiment analyzer loaded: %s (attempt %d)", self.MODEL_NAME, attempt)
+                return
+            except Exception as exc:
+                last_error = exc
+                if attempt < self.MAX_RETRIES:
+                    logger.warning(
+                        "Sentiment model load attempt %d/%d failed (%s) – retrying in %.1fs",
+                        attempt, self.MAX_RETRIES, exc, self.RETRY_DELAY,
+                    )
+                    time.sleep(self.RETRY_DELAY)
+                    self._reset_model_state()
+
+        logger.warning(
+            "Sentiment model load exhausted %d attempts (%s) – using rule_fallback.",
+            self.MAX_RETRIES, last_error,
+        )
+        self._reset_model_state()
+        self.backend = "rule_fallback"
+
+    def _check_transformers_version(self) -> None:
+        """Warn if transformers version is outside tested range."""
+        try:
+            import transformers
+            v = getattr(transformers, "__version__", "unknown")
+            major = int(v.split(".")[0])
+            minor = int(v.split(".")[1])
+            if major > 4 or (major == 4 and minor >= 50):
+                logger.warning(
+                    "transformers %s detected – version >= 4.50 may have breaking changes "
+                    "in model/tokenizer compatibility. Tested range: 4.40–4.49.",
+                    v,
+                )
+        except Exception:
+            pass
+
+    def _reset_model_state(self) -> None:
+        """Reset model, tokenizer, and device to clean state."""
+        self.model = None
+        self.tokenizer = None
+        self.device = None
 
     def analyze(self, text: str) -> Dict[str, object]:
         """Analyze the emotion in text.

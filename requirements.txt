@@ -1,11 +1,11 @@
 # Core / API
-openai>=1.14.0
-pydantic-settings>=2.2.0
+openai>=1.14.0,<2.0.0
+pydantic-settings>=2.2.0,<3.0.0
 
 # NLU
-spacy>=3.7.0
+spacy>=3.7.0,<4.0.0
 fastcoref>=2.1.0
-transformers>=4.40.0  # 🔧 Requires compatibility patch in src/nlu/coreference.py for fastcoref support
+transformers>=4.40.0,<4.50.0  # Pinned: newer versions may reject token_type_ids in DistilBERT
 torch>=2.2.0
 accelerate>=1.1.0
 scikit-learn>=1.4.0

@@ -77,7 +77,17 @@ class TestIntentClassifier:
             def eval(self):
                 return self
 
+            def forward(self, **kwargs):
+                class FakeLogits:
+                    logits = [[0.1, 0.9]]
+                    def __getitem__(self, key):
+                        if key == "logits":
+                            return self.logits
+                        raise KeyError(key)
+                return FakeLogits()
+
         fake_transformers = types.ModuleType("transformers")
+        fake_transformers.__version__ = "4.40.0"
         fake_transformers.AutoTokenizer = _FakeTokenizer
         fake_transformers.AutoModelForSequenceClassification = _FakeModel
 
