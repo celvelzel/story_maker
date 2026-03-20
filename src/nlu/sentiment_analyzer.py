@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import logging
+import inspect
 from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -112,8 +113,15 @@ class SentimentAnalyzer:
         import torch
 
         inputs = self.tokenizer(
-            text, return_tensors="pt", truncation=True, max_length=128, padding=True,
-        ).to(self.device)
+            text,
+            return_tensors="pt",
+            truncation=True,
+            max_length=128,
+            padding=True,
+            return_token_type_ids=False,
+        )
+        inputs = self._filter_model_inputs(inputs)
+        inputs = {key: value.to(self.device) for key, value in inputs.items()}
         with torch.no_grad():
             logits = self.model(**inputs).logits
             probs = torch.softmax(logits, dim=-1)[0]
@@ -161,3 +169,17 @@ class SentimentAnalyzer:
             "confidence": round(max_score, 4),
             "scores": scores,
         }
+
+    def _filter_model_inputs(self, inputs):
+        """Filter tokenizer outputs to parameters accepted by model.forward."""
+        signature = inspect.signature(self.model.forward)
+        parameters = signature.parameters
+        accepts_kwargs = any(
+            parameter.kind == inspect.Parameter.VAR_KEYWORD
+            for parameter in parameters.values()
+        )
+        if accepts_kwargs:
+            return inputs
+
+        allowed_keys = set(parameters.keys())
+        return {key: value for key, value in inputs.items() if key in allowed_keys}
