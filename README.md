@@ -48,51 +48,79 @@ story_maker/
 ├── app.py                    # Streamlit application entry point
 ├── config.py                 # Pydantic Settings with .env support
 ├── requirements.txt          # Dependencies
-├── src/
-│   ├── engine/
-│   │   ├── game_engine.py    # Main orchestrator (NLU → NLG → KG pipeline)
+├── config/
+│   └── .env.example          # Environment configuration template
+├── src/                      # Source code modules
+│   ├── engine/               # Game engine orchestrator
+│   │   ├── game_engine.py    # Main pipeline coordinator (NLU → NLG → KG)
+│   │   ├── runtime_session.py # Session persistence management
 │   │   └── state.py          # Game state & history tracking
-│   ├── nlu/
+│   ├── nlu/                  # Natural Language Understanding
 │   │   ├── intent_classifier.py   # DistilBERT + keyword fallback
-│   │   ├── entity_extractor.py    # spaCy NER + regex
-│   │   └── coreference.py         # fastcoref + rule-based
-│   ├── nlg/
+│   │   ├── entity_extractor.py    # spaCy NER + regex patterns
+│   │   ├── coreference.py         # fastcoref + rule-based resolution
+│   │   └── sentiment_analyzer.py  # Emotion/tone analysis (Ekman 6-class)
+│   ├── nlg/                  # Natural Language Generation
 │   │   ├── story_generator.py     # OpenAI API story generation
 │   │   ├── option_generator.py    # Player choice generation (API)
 │   │   └── prompt_templates.py    # Prompt engineering templates
-│   ├── knowledge_graph/
+│   ├── knowledge_graph/      # Dynamic world state management
 │   │   ├── graph.py               # NetworkX MultiDiGraph wrapper
 │   │   ├── relation_extractor.py  # LLM-based relation extraction
-│   │   ├── conflict_detector.py   # Rule-based + LLM consistency
+│   │   ├── conflict_detector.py   # Rule-based + LLM consistency checking
 │   │   └── visualizer.py          # PyVis HTML visualization
-│   ├── evaluation/
+│   ├── evaluation/           # Quality assessment metrics
 │   │   ├── metrics.py             # Distinct-n, Self-BLEU, coverage
 │   │   ├── llm_judge.py           # LLM-as-Judge scoring
 │   │   └── consistency_eval.py    # KG consistency evaluation
-│   └── utils/
+│   └── utils/                # Shared utilities
 │       └── api_client.py          # Singleton LLM client with retry
-├── data/
+├── data/                     # Data assets and processing
 │   ├── intent_labels.json         # Intent label definitions
-│   └── scripts/
-│       ├── download_data.py       # Dataset download scripts
+│   ├── raw/                       # Raw datasets (git-ignored)
+│   └── scripts/                   # Data processing scripts
+│       ├── download_data.py       # Dataset download automation
 │       └── preprocess.py          # Data preprocessing pipeline
-├── training/
+├── training/                 # Model training scripts
 │   ├── train_intent.py            # DistilBERT intent classifier training
-│   └── train_generator.py         # GPT-2 LoRA fine-tuning (legacy/optional)
-├── tests/
-│   ├── test_nlu.py
-│   ├── test_nlg.py
-│   ├── test_knowledge_graph.py
-│   └── test_integration.py
-└── info/                          # Project documentation
+│   ├── train_generator.py         # GPT-2 LoRA fine-tuning (legacy/optional)
+│   └── data_augmenter.py          # Training data augmentation
+├── tests/                    # Test suite (organized by module)
+│   ├── engine/              # Engine component tests
+│   ├── nlu/                 # NLU module tests
+│   ├── nlg/                 # NLG module tests
+│   ├── kg/                  # Knowledge graph tests
+│   ├── integration/         # Cross-module integration tests
+│   └── training/            # Training pipeline tests
+├── scripts/                  # Utility and deployment scripts
+│   ├── start_project_prod.bat     # Windows production launcher
+│   ├── start_project_prod.sh      # macOS/Linux production launcher
+│   ├── health_check.py            # Pre-deployment health validation
+│   └── generate_dataset.py        # Dataset generation utility
+├── docs/                     # Comprehensive documentation
+│   ├── api/                 # API reference documentation
+│   ├── design/              # Architecture and design documents
+│   ├── guides/              # Deployment and usage guides
+│   ├── fixes/               # Issue resolution reports
+│   ├── reports/             # Optimization and improvement reports
+│   └── project/             # Project specifications and plans
+├── models/                   # Trained model artifacts (git-ignored)
+│   └── intent_classifier/   # Fine-tuned DistilBERT checkpoints
+├── lib/                      # Third-party frontend libraries
+│   ├── vis-9.1.2/           # Vis.js network visualization
+│   ├── tom-select/          # Enhanced select component
+│   └── bindings/            # JavaScript utility bindings
+├── logs/                     # Application logs (git-ignored)
+├── saves/                    # Game save files (git-ignored)
+└── .env                      # Environment variables (git-ignored)
 ```
 
 ### Deployment & Startup (Windows / macOS)
 
 Use the startup script that matches your OS for production deployment:
 
-- Windows: `start_project_prod.bat`
-- macOS/Linux: `start_project_prod.sh`
+- Windows: `scripts/start_project_prod.bat`
+- macOS/Linux: `scripts/start_project_prod.sh`
 
 Production startup scripts are optimized and provide:
 
@@ -116,8 +144,8 @@ The scripts perform the following steps:
 #### Script Usage Guide
 
 - **First run (fresh machine/project clone):**
-  - Windows: open PowerShell in project root, run `./start_project_prod.bat`
-  - macOS/Linux: run `chmod +x ./start_project_prod.sh` once, then `./start_project_prod.sh`
+  - Windows: open PowerShell in project root, run `./scripts/start_project_prod.bat`
+  - macOS/Linux: run `chmod +x ./scripts/start_project_prod.sh` once, then `./scripts/start_project_prod.sh`
   - Wait until you see the Streamlit startup URL in console
 
 - **Subsequent runs:**
@@ -211,9 +239,14 @@ python training/train_intent.py --output_dir models/intent_classifier --model_na
 
 At runtime, if `models/intent_classifier` is unavailable, the system automatically falls back to keyword `rule_fallback` mode.
 
-### Chinese Documentation Index
+### Documentation Index
 
-1. `docs/technical_route_zh.md` - NLU/KG/NLG technical route and fallback strategy
-2. `docs/data_flow_zh.md` - Per-turn field-level data flow and module mapping
-3. `docs/deployment_windows_zh.md` - Windows high-availability deployment guide
-4. `docs/deployment_macos_zh.md` - macOS high-availability deployment guide
+1. `docs/guides/technical-route.md` - NLU/KG/NLG technical route and fallback strategy
+2. `docs/guides/data-flow.md` - Per-turn field-level data flow and module mapping
+3. `docs/guides/deployment-windows.md` - Windows high-availability deployment guide
+4. `docs/guides/deployment-macos.md` - macOS high-availability deployment guide
+5. `docs/design/entity-importance.md` - Entity importance scoring strategy
+6. `docs/design/nlg-local-model-finetuning.md` - NLG local model fine-tuning plan
+7. `docs/reports/kg-optimization.md` - Knowledge graph optimization report
+8. `docs/reports/nlu-kg-improvement.md` - NLU & KG improvement report
+9. `docs/api/API_REFERENCE.md` - Complete API reference documentation

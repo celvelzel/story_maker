@@ -1,6 +1,6 @@
 """Prompt-based dataset generator for StoryWeaver NLG fine-tuning.
 
-直接批量发送构造好的 prompt 到 LLM（mimo-v2-flash），收集 (prompt → response) 对，
+直接批量发送构造好的 prompt 到 LLM ，收集 (prompt → response) 对，
 生成 ms-swift 兼容的 ChatML 格式 .jsonl 训练数据。
 
 生成两个子任务数据集:

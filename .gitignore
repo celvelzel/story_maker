@@ -33,6 +33,7 @@ nul
 # Environment variables
 .env
 .env.*
+!config/.env.example
 
 # Jupyter
 .ipynb_checkpoints/
