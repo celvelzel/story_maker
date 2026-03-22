@@ -1,160 +1,216 @@
-"""Fine-tune GPT-2 for story generation using LoRA (PEFT)."""
+"""Fine-tune Llama-3.2-3B-Instruct for story generation using ms-swift + LoRA."""
+import json
 import os
 import sys
 import argparse
+import logging
 from pathlib import Path
-
-import torch
-from datasets import load_from_disk, Dataset
-from transformers import (
-    AutoTokenizer,
-    AutoModelForCausalLM,
-    TrainingArguments,
-    Trainer,
-    DataCollatorForLanguageModeling,
-)
-from peft import LoraConfig, get_peft_model, TaskType
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import settings
 
-# This script is for optional GPT-2 LoRA fine-tuning (legacy).
-# The main project uses API-based NLG (gpt-4o-mini) — this is NOT required.
-GENERATOR_MODEL_NAME = "gpt2"
+logger = logging.getLogger(__name__)
+
+MODEL_ID = "meta-llama/Llama-3.2-3B-Instruct"
+
+SYSTEM_PROMPT = (
+    "You are an expert interactive-fiction narrator for a text-adventure game.\n"
+    "Rules:\n"
+    '1. Always narrate in **second person** ("You see…", "You feel…").\n'
+    "2. Keep each response between 2-4 paragraphs.\n"
+    "3. Maintain absolute consistency with the world state provided.\n"
+    "4. Use vivid, sensory language — sights, sounds, smells.\n"
+    "5. Never mention game mechanics, stats, or that you are an AI.\n"
+    "6. Seamlessly incorporate the player's action into the narrative.\n"
+    "7. End the passage at a moment that invites the player to act next."
+)
 
 
-def prepare_dataset(data_path: str, tokenizer, max_length: int = 512):
+# ── Data preparation ───────────────────────────────────────────
+
+def convert_arrow_to_jsonl(arrow_path: str, output_path: str, max_samples: int = 0) -> str:
+    """Convert WritingPrompts Arrow dataset to ms-swift JSONL format.
+
+    Each Arrow sample has ``prompt`` and ``story`` fields.
+    Output JSONL format (one per line)::
+
+        {"messages": [
+            {"role": "system", "content": "..."},
+            {"role": "user",   "content": "<prompt>"},
+            {"role": "assistant", "content": "<story>"}
+        ]}
+
+    Parameters
+    ----------
+    arrow_path : str
+        Path to the HuggingFace Arrow dataset directory
+        (e.g. ``data/raw/writingprompts``).
+    output_path : str
+        Destination ``.jsonl`` file path.
+    max_samples : int
+        If > 0, limit to this many samples (useful for quick experiments).
+
+    Returns
+    -------
+    str
+        The output file path.
     """
-    Load and prepare dataset for causal language modeling.
-    
-    Expected format: each sample is a story segment with
-    [SETTING], [CHARACTERS], [STORY] markers.
-    """
-    if os.path.exists(data_path):
-        dataset = load_from_disk(data_path)
-        if "train" in dataset:
-            dataset = dataset["train"]
-    else:
-        # Fallback: create a small demo dataset
-        print(f"WARNING: {data_path} not found. Using demo data.")
-        dataset = Dataset.from_dict({
-            "text": [
-                "[SETTING] A dark forest with ancient trees.\n[CHARACTERS] A wandering knight, a mysterious fairy\n[STORY] The knight ventured deeper into the forest, guided by a faint glow between the trees. The fairy appeared, hovering just above the mossy ground. 'Turn back, mortal,' she whispered. 'The Forest King does not welcome strangers.' But the knight drew his sword, its blade gleaming with enchanted light.",
-                "[SETTING] A bustling medieval marketplace.\n[CHARACTERS] A merchant, a thief, a guard captain\n[STORY] The marketplace hummed with activity as vendors called out their wares. Among the crowd, a hooded figure slipped between the stalls, fingers quick and light. The merchant noticed too late that his purse was gone. 'Thief!' he bellowed. The guard captain turned, eyes narrowing.",
-            ] * 50  # Repeat for minimal training
-        })
-    
-    def tokenize_function(examples):
-        return tokenizer(
-            examples["text"],
-            truncation=True,
-            max_length=max_length,
-            padding="max_length",
-        )
-    
-    tokenized = dataset.map(tokenize_function, batched=True, remove_columns=dataset.column_names)
-    return tokenized
+    from datasets import load_from_disk
 
+    dataset = load_from_disk(arrow_path)
+    if "train" in dataset:
+        dataset = dataset["train"]
+
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+
+    count = 0
+    with open(output_path, "w", encoding="utf-8") as f:
+        for sample in dataset:
+            prompt = (sample.get("prompt") or "").strip()
+            story = (sample.get("story") or "").strip()
+            if not prompt or not story:
+                continue
+
+            record = {
+                "messages": [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt},
+                    {"role": "assistant", "content": story},
+                ]
+            }
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+            count += 1
+            if 0 < max_samples <= count:
+                break
+
+    logger.info("Wrote %d samples to %s", count, output_path)
+    return output_path
+
+
+def ensure_jsonl(data_path: str, output_dir: str, max_samples: int = 0) -> str:
+    """Return a JSONL path, converting from Arrow if necessary.
+
+    Parameters
+    ----------
+    data_path : str
+        Either a ``.jsonl`` file or an Arrow dataset directory.
+    output_dir : str
+        Directory to write the converted JSONL if needed.
+    max_samples : int
+        Passed through to :func:`convert_arrow_to_jsonl`.
+
+    Returns
+    -------
+    str
+        Path to a ``.jsonl`` file ready for ms-swift.
+    """
+    if data_path.endswith(".jsonl") and os.path.isfile(data_path):
+        return data_path
+
+    jsonl_path = os.path.join(output_dir, "train_dataset.jsonl")
+    if os.path.exists(jsonl_path):
+        logger.info("Reusing existing JSONL: %s", jsonl_path)
+        return jsonl_path
+
+    return convert_arrow_to_jsonl(data_path, jsonl_path, max_samples=max_samples)
+
+
+# ── Training ───────────────────────────────────────────────────
 
 def train(args):
-    """Fine-tune GPT-2 with LoRA for story generation."""
-    print(f"Fine-tuning {GENERATOR_MODEL_NAME} with LoRA")
-    print(f"  LoRA rank: {args.lora_r}")
-    print(f"  LoRA alpha: {args.lora_alpha}")
-    print(f"  Epochs: {args.epochs}")
-    
-    # Load tokenizer and model
-    tokenizer = AutoTokenizer.from_pretrained(GENERATOR_MODEL_NAME)
-    model = AutoModelForCausalLM.from_pretrained(GENERATOR_MODEL_NAME)
-    
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-        model.config.pad_token_id = model.config.eos_token_id
-    
-    # Configure LoRA
-    lora_config = LoraConfig(
-        task_type=TaskType.CAUSAL_LM,
-        r=args.lora_r,
-        lora_alpha=args.lora_alpha,
-        lora_dropout=args.lora_dropout,
-        target_modules=["c_attn", "c_proj"],  # GPT-2 attention layers
-        bias="none",
+    """Fine-tune Llama-3.2-3B-Instruct with LoRA via ms-swift."""
+    from swift.llm import sft_main, TrainArguments
+
+    jsonl_path = ensure_jsonl(args.data_path, args.output_dir, args.max_samples)
+
+    print(f"Fine-tuning {MODEL_ID} with LoRA via ms-swift")
+    print(f"  Dataset:        {jsonl_path}")
+    print(f"  LoRA rank:      {args.lora_r}")
+    print(f"  LoRA alpha:     {args.lora_alpha}")
+    print(f"  Epochs:         {args.epochs}")
+    print(f"  Max length:     {args.max_length}")
+    print(f"  Output:         {args.output_dir}")
+
+    result = sft_main(
+        TrainArguments(
+            model=MODEL_ID,
+            train_type="lora",
+            dataset=[jsonl_path],
+            torch_dtype="bfloat16",
+            # LoRA
+            lora_rank=args.lora_r,
+            lora_alpha=args.lora_alpha,
+            lora_dropout=args.lora_dropout,
+            target_modules="all-linear",
+            # Training
+            num_train_epochs=args.epochs,
+            per_device_train_batch_size=args.batch_size,
+            gradient_accumulation_steps=args.grad_accum,
+            learning_rate=args.lr,
+            lr_scheduler_type="cosine",
+            warmup_ratio=0.05,
+            weight_decay=0.01,
+            gradient_checkpointing=True,
+            # Sequence
+            max_length=args.max_length,
+            # Logging / saving
+            output_dir=args.output_dir,
+            logging_steps=10,
+            save_strategy="epoch",
+            report_to=["tensorboard"],
+        )
     )
-    
-    model = get_peft_model(model, lora_config)
-    model.print_trainable_parameters()
-    
-    # Prepare dataset
-    train_dataset = prepare_dataset(args.data_path, tokenizer, args.max_length)
-    
-    # Data collator
-    data_collator = DataCollatorForLanguageModeling(
-        tokenizer=tokenizer,
-        mlm=False,  # Causal LM
-    )
-    
-    # Training arguments
-    training_args = TrainingArguments(
-        output_dir=args.output_dir,
-        num_train_epochs=args.epochs,
-        per_device_train_batch_size=args.batch_size,
-        gradient_accumulation_steps=args.grad_accum,
-        learning_rate=args.lr,
-        weight_decay=0.01,
-        warmup_ratio=0.1,
-        logging_steps=50,
-        save_strategy="epoch",
-        fp16=torch.cuda.is_available(),
-        optim="adamw_torch",
-        lr_scheduler_type="cosine",
-        report_to="none",
-    )
-    
-    trainer = Trainer(
-        model=model,
-        args=training_args,
-        train_dataset=train_dataset,
-        data_collator=data_collator,
-    )
-    
-    # Train
-    print("\nStarting LoRA fine-tuning...")
-    trainer.train()
-    
-    # Save LoRA weights
-    model.save_pretrained(args.output_dir)
-    tokenizer.save_pretrained(args.output_dir)
-    print(f"\nLoRA model saved to {args.output_dir}")
-    
-    # Save training config for reference
+
+    logger.info("Training finished. Best checkpoint: %s", result)
+
+    # Persist training config alongside the adapter weights
     config = {
-        "base_model": GENERATOR_MODEL_NAME,
+        "base_model": MODEL_ID,
         "lora_r": args.lora_r,
         "lora_alpha": args.lora_alpha,
         "lora_dropout": args.lora_dropout,
         "epochs": args.epochs,
         "batch_size": args.batch_size,
+        "grad_accum": args.grad_accum,
         "lr": args.lr,
         "max_length": args.max_length,
+        "data_path": args.data_path,
     }
-    
-    import json
-    with open(os.path.join(args.output_dir, "training_config.json"), "w") as f:
+    config_path = os.path.join(args.output_dir, "training_config.json")
+    os.makedirs(args.output_dir, exist_ok=True)
+    with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2)
+    print(f"\nTraining config saved to {config_path}")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Fine-tune GPT-2 with LoRA")
-    parser.add_argument("--data_path", default="data/processed/stories", help="Training data path")
-    parser.add_argument("--output_dir", default="models/story_generator_lora", help="Output directory")
+    parser = argparse.ArgumentParser(
+        description="Fine-tune Llama-3.2-3B-Instruct with LoRA (ms-swift)"
+    )
+    parser.add_argument(
+        "--data_path",
+        default=str(settings.DATA_DIR / "raw" / "writingprompts"),
+        help="Path to Arrow dataset directory or .jsonl file",
+    )
+    parser.add_argument(
+        "--output_dir",
+        default=str(settings.PROJECT_ROOT / "models" / "story_generator_lora"),
+        help="Output directory for checkpoints",
+    )
     parser.add_argument("--epochs", type=int, default=3, help="Training epochs")
-    parser.add_argument("--batch_size", type=int, default=4, help="Batch size")
-    parser.add_argument("--grad_accum", type=int, default=4, help="Gradient accumulation steps")
-    parser.add_argument("--lr", type=float, default=2e-4, help="Learning rate")
-    parser.add_argument("--max_length", type=int, default=512, help="Max sequence length")
+    parser.add_argument("--batch_size", type=int, default=1, help="Per-device batch size")
+    parser.add_argument("--grad_accum", type=int, default=16, help="Gradient accumulation steps")
+    parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")
+    parser.add_argument("--max_length", type=int, default=2048, help="Max sequence length")
     parser.add_argument("--lora_r", type=int, default=8, help="LoRA rank")
     parser.add_argument("--lora_alpha", type=int, default=32, help="LoRA alpha")
-    parser.add_argument("--lora_dropout", type=float, default=0.1, help="LoRA dropout")
-    
+    parser.add_argument("--lora_dropout", type=float, default=0.05, help="LoRA dropout")
+    parser.add_argument(
+        "--max_samples",
+        type=int,
+        default=0,
+        help="Limit training samples (0 = use all)",
+    )
+
     args = parser.parse_args()
     train(args)
