@@ -130,6 +130,18 @@ class TestEngineProcessTurn:
         assert "intent" in result.nlu_debug
         assert "intent_backend" in result.nlu_debug
         assert "intent_model_loaded" in result.nlu_debug
+        assert "stage_metrics" in result.nlu_debug
+        expected_stages = {
+            "coref",
+            "intent",
+            "sentiment",
+            "entity_extraction",
+            "story_generation",
+            "kg_update",
+            "conflict_detection_resolution",
+            "options_and_render",
+        }
+        assert expected_stages.issubset(set(result.nlu_debug["stage_metrics"].keys()))
 
     @patch("src.utils.api_client.llm_client")
     def test_two_turns_accumulate_state(self, mock_llm):

@@ -33,6 +33,7 @@ class KnowledgeGraph:
         """初始化知识图谱。"""
         self.graph: nx.MultiDiGraph = nx.MultiDiGraph()  # NetworkX 多重有向图
         self._current_turn: int = 0  # 当前回合号
+        self._dirty_nodes: Set[str] = set()
         logger.debug("[KG][init] New KnowledgeGraph created")
 
     # ── node helpers ──────────────────────────────────────
@@ -144,6 +145,7 @@ class KnowledgeGraph:
             # update emotion
             if emotion:
                 node["last_emotion"] = emotion
+            self._dirty_nodes.add(key)
 
             logger.debug(
                 "[KG][add_entity] Updated '%s' type=%s turn=%d mentions=%d importance=%.2f | total_nodes=%d",
@@ -169,6 +171,7 @@ class KnowledgeGraph:
                 status_history=[],
             )
             self._enforce_limit()
+            self._dirty_nodes.add(key)
             logger.info(
                 "[KG][add_entity] Created '%s' type=%s turn=%d importance=%.2f | total_nodes=%d",
                 key, entity_type, turn, min(1.0, importance), self.num_nodes,
@@ -272,6 +275,8 @@ class KnowledgeGraph:
                 if data.get("relation") == relation:
                     data["last_confirmed_turn"] = turn
                     data["confidence"] = max(data.get("confidence", 0.5), confidence)
+                    self._dirty_nodes.add(src)
+                    self._dirty_nodes.add(tgt)
                     logger.debug(
                         "[KG][add_relation] Confirmed existing %s --[%s]--> %s turn=%d",
                         src, relation, tgt, turn,
@@ -290,6 +295,8 @@ class KnowledgeGraph:
             "[KG][add_relation] %s --[%s]--> %s turn=%d confidence=%.2f | edges=%d",
             src, relation, tgt, turn, confidence, self.num_edges,
         )
+        self._dirty_nodes.add(src)
+        self._dirty_nodes.add(tgt)
 
     def get_relations(self, name: str) -> List[Dict[str, Any]]:
         """获取实体的所有关系（出边）。"""
@@ -330,6 +337,7 @@ class KnowledgeGraph:
         existing_status.update(state_updates)
         node["status"] = existing_status
         node["last_mentioned_turn"] = turn
+        self._dirty_nodes.add(key)
 
         logger.debug(
             "[KG][update_entity_state] '%s' updated %s turn=%d",
@@ -376,6 +384,7 @@ class KnowledgeGraph:
             else:
                 boost = settings.KG_IMPORTANCE_MENTION_BOOST
             node["importance_score"] = min(1.0, node.get("importance_score", 0.5) + boost)
+            self._dirty_nodes.add(key)
 
         # decay unmentioned entities
         for key in self.graph.nodes():
@@ -385,6 +394,7 @@ class KnowledgeGraph:
                     0.0,
                     node.get("importance_score", 0.5) * settings.KG_IMPORTANCE_DECAY_FACTOR,
                 )
+                self._dirty_nodes.add(key)
 
         logger.debug(
             "[KG][refresh_mentions] Mentioned=%d player=%d | total_nodes=%d",
@@ -411,10 +421,14 @@ class KnowledgeGraph:
                 )
                 if data["confidence"] < settings.KG_RELATION_MIN_CONFIDENCE:
                     edges_to_remove.append((src, tgt, key))
+                self._dirty_nodes.add(src)
+                self._dirty_nodes.add(tgt)
 
         for src, tgt, key in edges_to_remove:
             rel = self.graph.edges[src, tgt, key].get("relation", "?")
             self.graph.remove_edge(src, tgt, key=key)
+            self._dirty_nodes.add(src)
+            self._dirty_nodes.add(tgt)
             logger.info(
                 "[KG][apply_decay] Removed weak relation %s --[%s]--> %s (confidence below threshold)",
                 src, rel, tgt,
@@ -434,6 +448,10 @@ class KnowledgeGraph:
         这确保了重要实体（被频繁提及、连接多的）在知识图谱摘要中优先展示。
         """
         if self.graph.number_of_nodes() == 0:
+            return
+
+        if settings.KG_IMPORTANCE_MODE == "incremental" and settings.KG_ENABLE_INCREMENTAL_IMPORTANCE:
+            self._recalculate_importance_incremental()
             return
 
         max_degree = max((self.graph.degree(n) for n in self.graph.nodes()), default=1) or 1
@@ -468,6 +486,40 @@ class KnowledgeGraph:
             "[KG][recalculate_importance] Mode=%s | nodes recalculated=%d",
             settings.KG_IMPORTANCE_MODE, self.num_nodes,
         )
+
+    def _recalculate_importance_incremental(self) -> None:
+        """Incremental importance update with periodic full recalculation safeguard."""
+        if self.graph.number_of_nodes() == 0:
+            return
+
+        full_interval = max(1, settings.KG_INCREMENTAL_FULL_RECALC_INTERVAL)
+        do_full = (self._current_turn % full_interval == 0) or not self._dirty_nodes
+        targets = list(self.graph.nodes()) if do_full else [n for n in self._dirty_nodes if n in self.graph]
+
+        max_degree = max((self.graph.degree(n) for n in self.graph.nodes()), default=1) or 1
+        max_mentions = max(
+            (self.graph.nodes[n].get("mention_count", 0) for n in self.graph.nodes()), default=1
+        ) or 1
+        max_player = max(
+            (self.graph.nodes[n].get("player_mention_count", 0) for n in self.graph.nodes()), default=1
+        ) or 1
+
+        for key in targets:
+            node = self.graph.nodes[key]
+            degree_score = self.graph.degree(key) / max_degree
+            mentions_score = node.get("mention_count", 0) / max_mentions
+            player_score = node.get("player_mention_count", 0) / max_player
+            turns_since = self._current_turn - node.get("last_mentioned_turn", self._current_turn)
+            recency_score = 0.95 ** turns_since
+
+            node["importance_score"] = (
+                0.3 * degree_score
+                + 0.3 * recency_score
+                + 0.2 * mentions_score
+                + 0.2 * player_score
+            )
+
+        self._dirty_nodes.clear()
 
     # ── timeline ──────────────────────────────────────────
     def get_timeline(self, n: Optional[int] = None) -> List[Dict[str, Any]]:

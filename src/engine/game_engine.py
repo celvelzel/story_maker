@@ -14,6 +14,7 @@ StoryWeaver 主游戏引擎，协调整个 NLU → NLG → KG 流水线。
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -33,6 +34,7 @@ from src.knowledge_graph.relation_extractor import (
 )
 from src.knowledge_graph.conflict_detector import ConflictDetector, get_resolver
 from src.knowledge_graph.visualizer import render_kg_html
+from src.utils.api_client import llm_client
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +127,15 @@ class GameEngine:
         # KG 辅助组件
         self.conflict_det = ConflictDetector(self.kg)  # 冲突检测器
         self.conflict_resolver = get_resolver(self.conflict_resolution)  # 冲突解决策略
+        self._turn_cached_summary: Optional[str] = None
+
+    def _current_kg_summary(self) -> str:
+        """Per-turn KG summary cache to avoid repeated graph traversals."""
+        if not settings.KG_ENABLE_SUMMARY_CACHE:
+            return self.kg.to_summary()
+        if self._turn_cached_summary is None:
+            self._turn_cached_summary = self.kg.to_summary()
+        return self._turn_cached_summary
 
     # ------------------------------------------------------------------
     # Public API
@@ -187,9 +198,27 @@ class GameEngine:
             "[Engine][process_turn] === Turn %d START === | input='%s'",
             self.state.turn_id + 1, player_input[:60],
         )
+        self._turn_cached_summary = None
+
+        stage_metrics: Dict[str, Dict[str, float]] = {}
+
+        def _stage_begin() -> tuple[float, Dict[str, float | int]]:
+            return time.perf_counter(), llm_client.usage_snapshot()
+
+        def _stage_end(stage_name: str, started_at: float, usage_before: Dict[str, float | int]) -> None:
+            elapsed_ms = (time.perf_counter() - started_at) * 1000.0
+            usage_after = llm_client.usage_snapshot()
+            usage_delta = llm_client.usage_delta(usage_before, usage_after)
+            stage_metrics[stage_name] = {
+                "elapsed_ms": elapsed_ms,
+                "input_tokens": usage_delta["input_tokens"],
+                "output_tokens": usage_delta["output_tokens"],
+                "cost_usd": usage_delta["cost_usd"],
+            }
 
         # ========== 1. 共指消解 ==========
         # 获取最近 4 条故事记录作为上下文
+        t0, u0 = _stage_begin()
         recent_entries = self.state.story_history[-4:]
         recent_texts = [t["text"] for t in recent_entries]
         # 从知识图谱构建已知实体列表（用于实体类型感知的消解）
@@ -200,30 +229,41 @@ class GameEngine:
         # 解析玩家输入中的代词（如 "it" → "dragon"）
         resolved = self.coref.resolve(player_input, recent_texts, known_entities=known_entities)
         logger.debug("[Engine][coref] 消解: '%s' → '%s'", player_input[:40], resolved[:40])
+        _stage_end("coref", t0, u0)
 
         # ========== 2. 意图分类 ==========
+        t0, u0 = _stage_begin()
         intent_result = self.intent_clf.predict(resolved)
-        intent = intent_result["intent"]  # 提取意图标签
+        intent_raw = intent_result.get("intent", "other")
+        intent = intent_raw if isinstance(intent_raw, str) else "other"
         logger.debug("[Engine][intent] 意图=%s 置信度=%.2f", intent, intent_result["confidence"])
+        _stage_end("intent", t0, u0)
 
         # ========== 2b. 情感分析 ==========
         # 分析玩家输入的情感（用于调整叙事风格）
+        t0, u0 = _stage_begin()
         emotion_result = self.sentiment.analyze(resolved)
-        logger.debug("[Engine][sentiment] 情感=%s 置信度=%.2f", emotion_result["emotion"], emotion_result["confidence"])
+        emotion_raw = emotion_result.get("emotion", "neutral")
+        emotion = emotion_raw if isinstance(emotion_raw, str) else "neutral"
+        logger.debug("[Engine][sentiment] 情感=%s 置信度=%.2f", emotion, emotion_result["confidence"])
+        _stage_end("sentiment", t0, u0)
 
         # ========== 3. 实体提取 (NLU 层) ==========
         # 从解析后的文本中提取实体（使用知识图谱上下文辅助）
+        t0, u0 = _stage_begin()
         kg_entity_names = list(self.kg.graph.nodes())
         entities = self.entity_ext.extract(resolved, known_entities=kg_entity_names)
         entity_names = [e["text"] for e in entities]
         logger.debug("[Engine][nlu_entities] 提取了 %d 个实体: %s", len(entities), entity_names)
+        _stage_end("entity_extraction", t0, u0)
 
         # 记录玩家输入到游戏状态
         self.state.add_player_input(player_input)
 
         # ========== 4. 故事生成 ==========
         # 获取知识图谱摘要作为世界状态上下文
-        kg_summary = self.kg.to_summary()
+        t0, u0 = _stage_begin()
+        kg_summary = self._current_kg_summary()
         # 获取最近 6 条历史记录
         history = self.state.recent_history(6)
         # 调用故事生成器续写故事
@@ -232,24 +272,29 @@ class GameEngine:
             intent=intent,            # 玩家意图
             kg_summary=kg_summary,     # 世界状态摘要
             history=history,           # 最近对话历史
-            emotion=emotion_result["emotion"],  # 玩家情感
+            emotion=emotion,  # 玩家情感
         )
         # 将生成的故事添加到状态并推进回合
         self.state.add_narration(story_text)
         current_turn = self.state.turn_id
+        _stage_end("story_generation", t0, u0)
 
         # ========== 5. 知识图谱更新 ==========
+        t0, u0 = _stage_begin()
         self.kg.set_turn(current_turn)
         self._apply_kg_update(
             story_text=story_text,
             player_input=resolved,
             nlu_entities=entities,
             turn_id=current_turn,
-            emotion=emotion_result["emotion"],
+            emotion=emotion,
         )
+        self._turn_cached_summary = None
+        _stage_end("kg_update", t0, u0)
 
         # ========== 6. 冲突检测 + 解决 ==========
         # 检测故事中的逻辑矛盾
+        t0, u0 = _stage_begin()
         raw_conflicts = self.conflict_det.check_all(story_text)
         # 根据配置的策略解决冲突
         unresolved = self.conflict_resolver.resolve(raw_conflicts, self.kg)
@@ -265,21 +310,24 @@ class GameEngine:
             len(unresolved),
             self.conflict_resolution,
         )
+        _stage_end("conflict_detection_resolution", t0, u0)
 
         # ========== 7. 选项生成 ==========
         # 更新知识图谱摘要（KG 更新后刷新）
-        kg_summary = self.kg.to_summary()
+        t0, u0 = _stage_begin()
+        kg_summary = self._current_kg_summary()
         # 为玩家生成下一步可选的行动选项
         options = self.option_gen.generate(story_text, kg_summary)
         # 渲染知识图谱可视化
         kg_html = render_kg_html(self.kg.graph)
+        _stage_end("options_and_render", t0, u0)
 
         nlu_debug = {
             "resolved_input": resolved,
             "intent": intent,
             "confidence": intent_result["confidence"],
             "entities": entities,
-            "emotion": emotion_result["emotion"],
+            "emotion": emotion,
             "emotion_confidence": emotion_result["confidence"],
             "emotion_scores": emotion_result.get("scores", {}),
             "intent_backend": self.nlu_status["intent_backend"],
@@ -287,6 +335,7 @@ class GameEngine:
             "coref_loaded": self.nlu_status["coref_loaded"],
             "entity_model_loaded": self.nlu_status["entity_model_loaded"],
             "sentiment_loaded": self.nlu_status["sentiment_loaded"],
+            "stage_metrics": stage_metrics,
         }
 
         logger.info(
@@ -296,6 +345,7 @@ class GameEngine:
 
         # Auto-save
         self._auto_save()
+        self._turn_cached_summary = None
 
         return TurnResult(
             story_text=story_text,
@@ -489,7 +539,9 @@ class GameEngine:
 
         # ========== 步骤 6: 应用时间衰减 ==========
         # 降低长时间未确认的关系的置信度，删除弱关系
-        self.kg.apply_decay(turn_id=turn_id)
+        decay_cadence = max(1, settings.KG_DECAY_CADENCE)
+        if turn_id % decay_cadence == 0:
+            self.kg.apply_decay(turn_id=turn_id)
 
         # ========== 步骤 7: 重新计算重要性 ==========
         # 基于度数、新近度、提及次数等因素重新评估实体重要性

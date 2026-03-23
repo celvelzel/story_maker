@@ -225,6 +225,43 @@ class TestRecalculateImportance:
             hero = kg.get_entity("hero")
             assert 0.0 <= hero["importance_score"] <= 1.0
 
+    def test_incremental_mode_matches_composite(self, kg):
+        # Fix _current_turn so recency_score is consistent (turns_since must be positive)
+        kg._current_turn = 10
+
+        # Baseline composite scores
+        with patch("src.knowledge_graph.graph.settings") as mock_settings:
+            mock_settings.KG_IMPORTANCE_MODE = "composite"
+            mock_settings.KG_IMPORTANCE_DECAY_FACTOR = 0.95
+            mock_settings.KG_RELATION_DECAY_FACTOR = 0.90
+            mock_settings.KG_RELATION_MIN_CONFIDENCE = 0.2
+            mock_settings.KG_IMPORTANCE_MENTION_BOOST = 0.15
+            mock_settings.KG_IMPORTANCE_PLAYER_BOOST = 0.3
+            mock_settings.KG_MAX_NODES = 200
+            mock_settings.KG_ENABLE_INCREMENTAL_IMPORTANCE = True
+            mock_settings.KG_INCREMENTAL_FULL_RECALC_INTERVAL = 10
+            kg.recalculate_importance()
+            composite_scores = {
+                n: kg.graph.nodes[n]["importance_score"] for n in kg.graph.nodes()
+            }
+
+        # Incremental mode should produce same score on full-recalc turn (turn 10 % 10 == 0)
+        kg._dirty_nodes.clear()
+        with patch("src.knowledge_graph.graph.settings") as mock_settings:
+            mock_settings.KG_IMPORTANCE_MODE = "incremental"
+            mock_settings.KG_IMPORTANCE_DECAY_FACTOR = 0.95
+            mock_settings.KG_RELATION_DECAY_FACTOR = 0.90
+            mock_settings.KG_RELATION_MIN_CONFIDENCE = 0.2
+            mock_settings.KG_IMPORTANCE_MENTION_BOOST = 0.15
+            mock_settings.KG_IMPORTANCE_PLAYER_BOOST = 0.3
+            mock_settings.KG_MAX_NODES = 200
+            mock_settings.KG_ENABLE_INCREMENTAL_IMPORTANCE = True
+            mock_settings.KG_INCREMENTAL_FULL_RECALC_INTERVAL = 10
+            kg.recalculate_importance()
+
+        for node, score in composite_scores.items():
+            assert abs(kg.graph.nodes[node]["importance_score"] - score) < 1e-6
+
 
 class TestGetTimeline:
     """Test timeline generation."""

@@ -238,6 +238,30 @@ class LLMClient:
         self._total_input_tokens = 0
         self._total_output_tokens = 0
 
+    def usage_snapshot(self) -> Dict[str, float | int]:
+        """Capture current aggregate usage counters.
+
+        Returns:
+            Dict[str, float | int]: snapshot containing input/output tokens and USD cost.
+        """
+        return {
+            "input_tokens": self._total_input_tokens,
+            "output_tokens": self._total_output_tokens,
+            "cost_usd": self.total_cost_usd,
+        }
+
+    def usage_delta(
+        self,
+        before: Dict[str, float | int],
+        after: Dict[str, float | int],
+    ) -> Dict[str, float]:
+        """Compute usage delta between two snapshots."""
+        return {
+            "input_tokens": float(after.get("input_tokens", 0)) - float(before.get("input_tokens", 0)),
+            "output_tokens": float(after.get("output_tokens", 0)) - float(before.get("output_tokens", 0)),
+            "cost_usd": float(after.get("cost_usd", 0.0)) - float(before.get("cost_usd", 0.0)),
+        }
+
 
 # Convenience module-level singleton
 llm_client = LLMClient()
