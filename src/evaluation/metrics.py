@@ -13,7 +13,7 @@ StoryWeaver 轻量级自动评估指标模块。
 from __future__ import annotations
 
 from collections import Counter
-from typing import Dict, List
+from typing import Dict, List, Iterable, Set, cast
 
 
 # ── Distinct-n ──────────────────────────────────────────────────────────
@@ -74,9 +74,8 @@ def self_bleu(texts: List[str], max_n: int = 4) -> float:
         if not hyp_tok or not refs:
             continue
         try:
-            scores.append(
-                sentence_bleu(refs, hyp_tok, weights=weights, smoothing_function=smoother)
-            )
+            score = cast(float, sentence_bleu(refs, hyp_tok, weights=weights, smoothing_function=smoother))
+            scores.append(score)
         except Exception:
             continue
     return sum(scores) / len(scores) if scores else 0.0
@@ -161,3 +160,56 @@ def full_evaluation(
     if turn_conflict_counts is not None:
         results["consistency_rate"] = consistency_rate(turn_conflict_counts)
     return results
+
+
+# ── Wave-A regression helpers ───────────────────────────────────────────
+
+
+def precision_recall_f1(tp: int, fp: int, fn: int) -> Dict[str, float]:
+    """Compute precision/recall/F1 from confusion counts.
+
+    Returns a stable dict with keys: precision, recall, f1.
+    """
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0.0
+    return {"precision": precision, "recall": recall, "f1": f1}
+
+
+def exact_match_accuracy(predicted: List[str], expected: List[str]) -> float:
+    """Compute exact-match accuracy for aligned label lists."""
+    if not expected:
+        return 1.0
+    n = min(len(predicted), len(expected))
+    if n == 0:
+        return 0.0
+    correct = sum(1 for i in range(n) if str(predicted[i]).strip().lower() == str(expected[i]).strip().lower())
+    return correct / len(expected)
+
+
+def overlap_prf(predicted_items: Iterable[str], expected_items: Iterable[str]) -> Dict[str, float]:
+    """Compute set-overlap precision/recall/F1 for normalized string items."""
+    p_set: Set[str] = {str(x).strip().lower() for x in predicted_items if str(x).strip()}
+    e_set: Set[str] = {str(x).strip().lower() for x in expected_items if str(x).strip()}
+
+    tp = len(p_set & e_set)
+    fp = len(p_set - e_set)
+    fn = len(e_set - p_set)
+    return precision_recall_f1(tp, fp, fn)
+
+
+def entity_signature(name: str, entity_type: str) -> str:
+    """Canonical entity signature for deterministic comparisons."""
+    return f"{str(name).strip().lower()}::{str(entity_type).strip().lower()}"
+
+
+def relation_signature(source: str, target: str, relation: str) -> str:
+    """Canonical relation signature for deterministic comparisons."""
+    return "::".join(
+        [str(source).strip().lower(), str(target).strip().lower(), str(relation).strip().lower()]
+    )
+
+
+def conflict_signature(conflict_type: str, entity: str) -> str:
+    """Canonical conflict signature for deterministic comparisons."""
+    return f"{str(conflict_type).strip().lower()}::{str(entity).strip().lower()}"
