@@ -1,0 +1,55 @@
+{
+  "mode": "compare",
+  "generated_at": "2026-03-23T03:56:39.101325+00:00",
+  "benchmark_path": "C:\\Develop\\python_projects\\COMP5423_NLP\\story_maker\\tests\\evaluation\\data\\nlu_kg_quality_benchmark.jsonl",
+  "metrics": {
+    "case_count": 120,
+    "entity_precision": 1.0,
+    "entity_recall": 1.0,
+    "entity_f1": 1.0,
+    "relation_precision": 1.0,
+    "relation_recall": 1.0,
+    "relation_f1": 1.0,
+    "contradiction_rate": 0.0,
+    "coreference_accuracy": 1.0,
+    "intent_accuracy": 1.0,
+    "consistency_rate": 1.0
+  },
+  "against": "C:\\Develop\\python_projects\\COMP5423_NLP\\story_maker\\tests\\evaluation\\reports\\baseline_quality.json",
+  "baseline_metrics": {
+    "case_count": 120,
+    "entity_precision": 1.0,
+    "entity_recall": 1.0,
+    "entity_f1": 1.0,
+    "relation_precision": 1.0,
+    "relation_recall": 1.0,
+    "relation_f1": 1.0,
+    "contradiction_rate": 0.0,
+    "coreference_accuracy": 1.0,
+    "intent_accuracy": 1.0,
+    "consistency_rate": 1.0
+  },
+  "delta": {
+    "case_count": 0.0,
+    "entity_precision": 0.0,
+    "entity_recall": 0.0,
+    "entity_f1": 0.0,
+    "relation_precision": 0.0,
+    "relation_recall": 0.0,
+    "relation_f1": 0.0,
+    "contradiction_rate": 0.0,
+    "coreference_accuracy": 0.0,
+    "intent_accuracy": 0.0,
+    "consistency_rate": 0.0
+  },
+  "gate_summary": {
+    "gate_1_pass": true,
+    "gate_1_max_regression_pp": 0.01,
+    "gate_1_regressions": {},
+    "gate_2_target_pass": false,
+    "gate_2_relation_f1_gain": 0.0,
+    "gate_2_coreference_accuracy_gain": 0.0,
+    "gate_2_contradiction_target_hit": true,
+    "gate_3_two_consecutive_pass": false
+  }
+}
