@@ -6,10 +6,7 @@ StoryWeaver 项目全局配置文件。
 from pathlib import Path
 from typing import List
 
-try:
-    from pydantic_settings import BaseSettings
-except ImportError:  # graceful fallback
-    from pydantic import BaseSettings  # type: ignore[no-redef]
+from pydantic_settings import BaseSettings
 
 from pydantic import Field
 
@@ -70,7 +67,7 @@ class Settings(BaseSettings):
     # 可选值: "story_only"（仅故事文本）| "dual_extract"（双重提取：玩家输入+故事文本）
 
     KG_IMPORTANCE_MODE: str = "composite"  # 重要性计算模式
-    # 可选值: "degree_only"（仅度数）| "composite"（综合：度数+提及次数+玩家提及）
+    # 可选值: "degree_only"（仅度数）| "composite"（全量综合）| "incremental"（增量综合）
 
     KG_SUMMARY_MODE: str = "layered"  # 知识图谱摘要模式
     # 可选值: "flat"（扁平）| "layered"（分层：按重要性分层展示）
@@ -83,6 +80,12 @@ class Settings(BaseSettings):
     KG_IMPORTANCE_MENTION_BOOST: float = 0.15  # 提及次数对重要性的提升
     KG_IMPORTANCE_PLAYER_BOOST: float = 0.3  # 玩家提及对重要性的提升
     KG_MAX_TIMELINE_ENTRIES: int = 5  # 时间线最大条目数
+    KG_DECAY_CADENCE: int = 1  # 每 N 回合执行一次关系衰减
+    KG_INCREMENTAL_FULL_RECALC_INTERVAL: int = 10  # 增量模式每 N 回合执行一次全量重算
+
+    # ── Safe rollback toggles ─────────────────────────────
+    KG_ENABLE_INCREMENTAL_IMPORTANCE: bool = True  # 允许使用增量重要性计算
+    KG_ENABLE_SUMMARY_CACHE: bool = True  # 允许在单回合缓存 KG 摘要
 
     # ── Game Config ───────────────────────────────────────
     # 游戏配置
