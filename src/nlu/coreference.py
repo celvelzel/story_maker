@@ -81,7 +81,7 @@ class CoreferenceResolver:
                     super().__init__()
 
             if not hasattr(PreTrainedModel, "all_tied_weights_keys"):
-                PreTrainedModel.all_tied_weights_keys = _TiedWeightsCompat()
+                setattr(PreTrainedModel, "all_tied_weights_keys", _TiedWeightsCompat())
 
             from fastcoref import FCoref  # type: ignore[import-untyped]
             self.model = FCoref(device="cpu")
@@ -121,6 +121,8 @@ class CoreferenceResolver:
 
     # ── neural ────────────────────────────────────────────
     def _neural_resolve(self, full_context: str, original: str) -> str:
+        if self.model is None:
+            return original
         try:
             preds = self.model.predict(texts=[full_context])
             if preds and hasattr(preds[0], "get_resolved_text"):
@@ -184,6 +186,14 @@ class CoreferenceResolver:
         return original
 
     # ── rule fallback ─────────────────────────────────────
+    @staticmethod
+    def _replace_outside_quotes(text: str, pattern: str, replacement: str) -> str:
+        """Replace regex matches only in non-quoted segments."""
+        segments = re.split(r'(".*?"|\'.*?\')', text)
+        for idx in range(0, len(segments), 2):
+            segments[idx] = re.sub(pattern, replacement, segments[idx], flags=re.IGNORECASE)
+        return "".join(segments)
+
     @staticmethod
     def _rule_resolve(
         text: str,
@@ -271,38 +281,32 @@ class CoreferenceResolver:
             last_person = person_names[-1]
             for pronoun in _PERSONAL_PRONOUNS["subject"] + _PERSONAL_PRONOUNS["object"]:
                 pat = rf"\b{pronoun}\b"
-                if re.search(pat, result, re.IGNORECASE):
-                    result = re.sub(pat, last_person, result, count=1, flags=re.IGNORECASE)
-                    break
+                result = CoreferenceResolver._replace_outside_quotes(result, pat, last_person)
 
             # Possessive pronouns → name's
             for pronoun in _POSSESSIVE_PRONOUNS["person"]:
                 pat = rf"\b{pronoun}\b"
-                if re.search(pat, result, re.IGNORECASE):
-                    possessive = f"{last_person}'s"
-                    result = re.sub(pat, possessive, result, count=1, flags=re.IGNORECASE)
-                    break
+                possessive = f"{last_person}'s"
+                result = CoreferenceResolver._replace_outside_quotes(result, pat, possessive)
 
             # Reflexive pronouns
             for pronoun in _PERSONAL_PRONOUNS["reflexive"]:
                 pat = rf"\b{pronoun}\b"
-                if re.search(pat, result, re.IGNORECASE):
-                    result = re.sub(pat, f"{last_person} themselves", result, count=1, flags=re.IGNORECASE)
-                    break
+                result = CoreferenceResolver._replace_outside_quotes(
+                    result, pat, f"{last_person} themselves"
+                )
 
         # Replace non-personal pronouns → non-person entity names
         if non_person_names:
             last_non_person = non_person_names[-1]
             for pronoun in _NON_PERSONAL_PRONOUNS["subject"] + _NON_PERSONAL_PRONOUNS["object"]:
                 pat = rf"\b{pronoun}\b"
-                if re.search(pat, result, re.IGNORECASE):
-                    result = re.sub(pat, last_non_person, result, count=1, flags=re.IGNORECASE)
-                    break
+                result = CoreferenceResolver._replace_outside_quotes(result, pat, last_non_person)
 
             for pronoun in _NON_PERSONAL_PRONOUNS["possessive"]:
                 pat = rf"\b{pronoun}\b"
-                if re.search(pat, result, re.IGNORECASE):
-                    result = re.sub(pat, f"{last_non_person}'s", result, count=1, flags=re.IGNORECASE)
-                    break
+                result = CoreferenceResolver._replace_outside_quotes(
+                    result, pat, f"{last_non_person}'s"
+                )
 
         return result

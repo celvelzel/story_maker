@@ -43,6 +43,16 @@ class TestRuleResolveBasicPronouns:
         text = "He went there."
         assert resolver.resolve(text, []) == text
 
+    def test_multi_personal_pronouns_all_replaced(self, resolver):
+        result = resolver._rule_resolve(
+            "He saw her and told them to follow him.",
+            ["Captain Rowan entered the hall."],
+        )
+        assert "Captain Rowan" in result
+        assert " him" not in result.lower()
+        assert " her" not in result.lower()
+        assert " them" not in result.lower()
+
 
 class TestRuleResolvePossessives:
     """Test possessive pronoun replacement."""
@@ -72,6 +82,14 @@ class TestRuleResolvePossessives:
             ["Merchants set up shop."],
         )
         assert "'s" in result
+
+    def test_multi_possessives_all_replaced(self, resolver):
+        result = resolver._rule_resolve(
+            "His shield and their banner were raised.",
+            ["Commander Alaric gave the order."],
+        )
+        assert "Alaric's" in result
+        assert " their " not in f" {result.lower()} "
 
 
 class TestRuleResolveNonPersonal:
@@ -119,6 +137,22 @@ class TestRuleResolveReflexive:
         )
         assert "Warrior" in result
         assert "himself" not in result.lower()
+
+
+class TestRuleResolveDialogueSafe:
+    """Quoted text should not be rewritten by fallback replacement."""
+
+    @pytest.fixture
+    def resolver(self):
+        return CoreferenceResolver()
+
+    def test_pronouns_inside_quotes_are_not_replaced(self, resolver):
+        result = resolver._rule_resolve(
+            '"He will arrive soon," I said. He opened the gate.',
+            ["Ranger Elias watched the road."],
+        )
+        assert '"He will arrive soon,"' in result
+        assert "Elias opened the gate." in result
 
 
 class TestRuleResolveWithKnownEntities:
