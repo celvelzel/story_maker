@@ -176,6 +176,70 @@ class RelationExtractor:
             enhanced: 是否使用增强模式（提取丰富属性）
         """
         self.enhanced = enhanced  # 是否启用增强提取
+        self.last_quarantine: List[Dict[str, Any]] = []
+
+    @staticmethod
+    def _to_str(value: Any) -> str:
+        if isinstance(value, str):
+            return value.strip()
+        if value is None:
+            return ""
+        return str(value).strip()
+
+    def _sanitize_payload(self, data: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
+        """Normalize payload schema and quarantine malformed records."""
+        quarantine: List[Dict[str, Any]] = []
+        entities_raw = data.get("entities", [])
+        relations_raw = data.get("relations", [])
+
+        entities_out: List[Dict[str, Any]] = []
+        if not isinstance(entities_raw, list):
+            quarantine.append({"kind": "entities", "reason": "not_list", "raw": entities_raw})
+            entities_raw = []
+        for idx, ent in enumerate(entities_raw):
+            if not isinstance(ent, dict):
+                quarantine.append({"kind": "entity", "reason": "not_dict", "index": idx, "raw": ent})
+                continue
+            name = self._to_str(ent.get("name", ""))
+            if not name:
+                quarantine.append({"kind": "entity", "reason": "missing_name", "index": idx, "raw": ent})
+                continue
+            sanitized = {
+                "name": name,
+                "type": _normalize_type(self._to_str(ent.get("type", "unknown"))),
+                "description": self._to_str(ent.get("description", "")),
+                "status": ent.get("status", {}) if isinstance(ent.get("status", {}), dict) else {},
+                "state_changes": ent.get("state_changes", {}) if isinstance(ent.get("state_changes", {}), dict) else {},
+            }
+            entities_out.append(sanitized)
+
+        relations_out: List[Dict[str, Any]] = []
+        if not isinstance(relations_raw, list):
+            quarantine.append({"kind": "relations", "reason": "not_list", "raw": relations_raw})
+            relations_raw = []
+        for idx, rel in enumerate(relations_raw):
+            if not isinstance(rel, dict):
+                quarantine.append({"kind": "relation", "reason": "not_dict", "index": idx, "raw": rel})
+                continue
+            source = self._to_str(rel.get("source", ""))
+            target = self._to_str(rel.get("target", ""))
+            if not source or not target:
+                quarantine.append({"kind": "relation", "reason": "missing_endpoints", "index": idx, "raw": rel})
+                continue
+            relation = self._to_str(rel.get("relation", "related_to")) or "related_to"
+            context = self._to_str(rel.get("context", ""))
+            relations_out.append({
+                "source": source,
+                "target": target,
+                "relation": relation,
+                "context": context,
+            })
+
+        self.last_quarantine = quarantine
+        if quarantine:
+            logger.warning("[Extractor][sanitize] quarantined=%d", len(quarantine))
+
+        return {"entities": entities_out, "relations": relations_out}
 
     def extract(self, text: str) -> Dict[str, List[Dict[str, Any]]]:
         """从故事文本中提取实体和关系。
@@ -203,23 +267,9 @@ class RelationExtractor:
             ]
             # 调用 LLM API（低温度确保一致性）
             data = llm_client.chat_json(messages, temperature=0.2, max_tokens=512)
-            entities = data.get("entities", [])
-            relations = data.get("relations", [])
-
-            # 标准化实体字段
-            for ent in entities:
-                ent.setdefault("name", "")
-                ent["type"] = _normalize_type(ent.get("type", "unknown"))
-                ent.setdefault("description", "")
-                ent.setdefault("status", {})
-                ent.setdefault("state_changes", {})
-
-            # 标准化关系字段
-            for rel in relations:
-                rel.setdefault("source", "")
-                rel.setdefault("target", "")
-                rel.setdefault("relation", "related_to")
-                rel.setdefault("context", "")
+            normalized = self._sanitize_payload(data if isinstance(data, dict) else {})
+            entities = normalized["entities"]
+            relations = normalized["relations"]
 
             logger.info(
                 "[Extractor][extract] 从文本中提取了 %d 个实体, %d 条关系 (长度=%d)",
@@ -286,23 +336,9 @@ class RelationExtractor:
                 {"role": "user", "content": combined_text},
             ]
             data = llm_client.chat_json(messages, temperature=0.2, max_tokens=512)
-            entities = data.get("entities", [])
-            relations = data.get("relations", [])
-
-            # 标准化实体字段
-            for ent in entities:
-                ent.setdefault("name", "")
-                ent["type"] = _normalize_type(ent.get("type", "unknown"))
-                ent.setdefault("description", "")
-                ent.setdefault("status", {})
-                ent.setdefault("state_changes", {})
-
-            # 标准化关系字段
-            for rel in relations:
-                rel.setdefault("source", "")
-                rel.setdefault("target", "")
-                rel.setdefault("relation", "related_to")
-                rel.setdefault("context", "")
+            normalized = self._sanitize_payload(data if isinstance(data, dict) else {})
+            entities = normalized["entities"]
+            relations = normalized["relations"]
 
             logger.info(
                 "[Extractor][dual_extract] 单次调用提取: %d 个实体, %d 条关系",
@@ -346,23 +382,7 @@ class RelationExtractor:
                 {"role": "user", "content": player_input},
             ]
             data = llm_client.chat_json(messages, temperature=0.1, max_tokens=256)
-            entities = data.get("entities", [])
-            relations = data.get("relations", [])
-
-            # 标准化字段
-            for ent in entities:
-                ent.setdefault("name", "")
-                ent["type"] = _normalize_type(ent.get("type", "unknown"))
-                ent.setdefault("description", "")
-                ent.setdefault("status", {})
-                ent.setdefault("state_changes", {})
-            for rel in relations:
-                rel.setdefault("source", "")
-                rel.setdefault("target", "")
-                rel.setdefault("relation", "related_to")
-                rel.setdefault("context", "")
-
-            return {"entities": entities, "relations": relations}
+            return self._sanitize_payload(data if isinstance(data, dict) else {})
         except Exception as exc:
             logger.warning("[Extractor][_extract_player_input] 提取失败: %s", exc)
             return {"entities": [], "relations": []}
