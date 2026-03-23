@@ -13,13 +13,23 @@
 from __future__ import annotations
 
 import logging
+import importlib
 import re
 from difflib import SequenceMatcher
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 
 from config import settings
 
 logger = logging.getLogger(__name__)
+
+_ENTITY_FUZZY_THRESHOLDS: Dict[str, float] = {
+    "person": 0.90,
+    "location": 0.84,
+    "creature": 0.84,
+    "item": 0.80,
+    "event": 0.88,
+    "unknown": 0.86,
+}
 
 # Map spaCy NER labels to our game types (validated against KG_ENTITY_TYPES)
 _LABEL_MAP_RAW: Dict[str, str] = {
@@ -135,8 +145,8 @@ class EntityExtractor:
     def load(self) -> None:
         """加载 spaCy 模型。如果加载失败，仅使用名词短语提取。"""
         try:
-            import spacy
-            self.nlp = spacy.load(self.spacy_model_name)
+            spacy_module = importlib.import_module("spacy")
+            self.nlp = spacy_module.load(self.spacy_model_name)
             logger.info("spaCy model loaded: %s", self.spacy_model_name)
         except Exception as exc:
             logger.warning("spaCy load failed (%s) – using noun-phrase only.", exc)
@@ -169,7 +179,10 @@ class EntityExtractor:
         if known_entities:
             entities = self._enrich_with_kg_context(entities, known_entities, text)
 
-        return self._deduplicate(entities)
+        deduped = self._deduplicate(entities)
+        for ent in deduped:
+            ent.setdefault("confidence", 0.7)
+        return deduped
 
     # ── spaCy NER ─────────────────────────────────────────
     def _spacy_extract(self, text: str) -> List[Dict[str, object]]:
@@ -185,6 +198,7 @@ class EntityExtractor:
                     "start": ent.start_char,
                     "end": ent.end_char,
                     "source": "spacy",
+                    "confidence": 0.95,
                 })
         return results
 
@@ -213,6 +227,7 @@ class EntityExtractor:
                             "start": chunk.start_char,
                             "end": chunk.start_char + len(possessor),
                             "source": "possessive",
+                            "confidence": 0.82,
                         })
 
                 # Infer type from head word or entire phrase
@@ -228,6 +243,7 @@ class EntityExtractor:
                         "start": chunk.start_char,
                         "end": chunk.end_char,
                         "source": "noun_phrase",
+                        "confidence": 0.78,
                     })
         else:
             # Regex fallback for common patterns
@@ -241,8 +257,33 @@ class EntityExtractor:
                         "start": start,
                         "end": start + len(word),
                         "source": "regex",
+                        "confidence": 0.70,
                     })
+
+            # Proper-noun fallback for alias linking when spaCy is unavailable
+            for match in re.finditer(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b", text):
+                phrase = match.group(1)
+                if phrase.lower() in {"the", "a", "an"}:
+                    continue
+                results.append({
+                    "text": phrase,
+                    "type": "unknown",
+                    "start": match.start(1),
+                    "end": match.end(1),
+                    "source": "regex_proper_noun",
+                    "confidence": 0.66,
+                })
         return results
+
+    @staticmethod
+    def _normalize_alias(text: str) -> str:
+        """Normalize entity mention for robust alias matching."""
+        lowered = re.sub(r"[^a-z0-9\s]", " ", text.lower())
+        lowered = re.sub(r"\b(the|a|an|sir|lady|lord|queen|king|captain)\b", " ", lowered)
+        return re.sub(r"\s+", " ", lowered).strip()
+
+    def _entity_threshold(self, ent_type: str) -> float:
+        return _ENTITY_FUZZY_THRESHOLDS.get(ent_type, _ENTITY_FUZZY_THRESHOLDS["unknown"])
 
     def _infer_type(self, word: str) -> Optional[str]:
         """Infer entity type from a single word."""
@@ -285,17 +326,55 @@ class EntityExtractor:
         # Build set of already extracted names (lowered)
         extracted_names: Set[str] = {str(e["text"]).lower() for e in entities}
         known_lower_map: Dict[str, str] = {k.lower(): k for k in known_entities}
+        known_norm_map: Dict[str, str] = {}
+        for name in known_entities:
+            norm = self._normalize_alias(name)
+            if norm:
+                known_norm_map[norm] = name
 
         # Enrich existing entities via fuzzy matching
         for ent in entities:
             ent_name = str(ent["text"]).lower()
-            best_match = self._fuzzy_match(ent_name, list(known_lower_map.keys()), threshold=0.8)
+            ent_norm = self._normalize_alias(ent_name)
+            ent_type = str(ent.get("type", "unknown"))
+            threshold = self._entity_threshold(ent_type)
+
+            best_match, score = self._fuzzy_match_with_score(
+                ent_norm,
+                list(known_norm_map.keys()),
+                threshold=threshold,
+            )
             if best_match and best_match != ent_name:
-                ent["text"] = known_lower_map[best_match]
+                ent["text"] = known_norm_map[best_match]
                 ent["source"] = str(ent.get("source", "")) + "+kg"
+                ent["confidence"] = max(self._as_float(ent.get("confidence", 0.0)), score)
+
+        text_lower = original_text.lower()
+
+        # Alias mention scan: allow partial known-entity mention in text (e.g., "Gandalf" for "Gandalf the Grey")
+        normalized_text = self._normalize_alias(original_text)
+        text_tokens = set(normalized_text.split())
+        for known_name in known_entities:
+            if known_name.lower() in extracted_names:
+                continue
+            known_norm = self._normalize_alias(known_name)
+            known_tokens = [token for token in known_norm.split() if len(token) >= 4]
+            if not known_tokens:
+                continue
+            overlap = sum(1 for token in known_tokens if token in text_tokens)
+            if overlap >= 1:
+                pos = text_lower.find(known_tokens[0]) if known_tokens[0] in text_lower else -1
+                entities.append({
+                    "text": known_name,
+                    "type": "unknown",
+                    "start": max(pos, 0),
+                    "end": max(pos, 0) + len(known_tokens[0]),
+                    "source": "kg_alias",
+                    "confidence": 0.74,
+                })
+                extracted_names.add(known_name.lower())
 
         # Scan original text for known entities that weren't extracted
-        text_lower = original_text.lower()
         for known_name in known_entities:
             known_lower = known_name.lower()
             if known_lower in text_lower and known_lower not in extracted_names:
@@ -306,23 +385,43 @@ class EntityExtractor:
                     "start": pos,
                     "end": pos + len(known_name),
                     "source": "kg_context",
+                    "confidence": 0.72,
                 })
 
         return entities
 
     @staticmethod
-    def _fuzzy_match(query: str, candidates: List[str], threshold: float = 0.8) -> Optional[str]:
-        """Find the best fuzzy match for query in candidates."""
+    def _fuzzy_match_with_score(
+        query: str,
+        candidates: List[str],
+        threshold: float = 0.8,
+    ) -> Tuple[Optional[str], float]:
+        """Find best fuzzy match and score for query in candidates."""
         if not query or not candidates:
-            return None
+            return None, 0.0
         best_score = 0.0
-        best_match = None
+        best_match: Optional[str] = None
         for candidate in candidates:
             score = SequenceMatcher(None, query, candidate).ratio()
             if score > best_score and score >= threshold:
                 best_score = score
                 best_match = candidate
+        return best_match, best_score
+
+    @staticmethod
+    def _fuzzy_match(query: str, candidates: List[str], threshold: float = 0.8) -> Optional[str]:
+        """Find the best fuzzy match for query in candidates."""
+        best_match, _ = EntityExtractor._fuzzy_match_with_score(query, candidates, threshold)
         return best_match
+
+    @staticmethod
+    def _as_float(value: object, default: float = 0.0) -> float:
+        try:
+            if isinstance(value, (int, float, str)):
+                return float(value)
+            return default
+        except (TypeError, ValueError):
+            return default
 
     # ── dedup ─────────────────────────────────────────────
     @staticmethod
@@ -331,7 +430,7 @@ class EntityExtractor:
         for ent in entities:
             key = str(ent["text"]).lower()
             # prefer spacy source
-            existing_source = seen.get(key, {}).get("source", "")
+            existing_source = str(seen.get(key, {}).get("source", ""))
             new_source = str(ent.get("source", ""))
             if key not in seen or "spacy" in new_source:
                 seen[key] = ent

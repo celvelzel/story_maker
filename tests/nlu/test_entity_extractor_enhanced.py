@@ -90,8 +90,8 @@ class TestKGContextEnrichment:
             "Gandalf attacked.",
             known_entities=["Gandalf the Grey", "Frodo"],
         )
-        # Either the entity name is enriched or it's found via extraction
-        assert isinstance(result, list)
+        names = {str(e["text"]) for e in result}
+        assert "Gandalf the Grey" in names
 
     def test_kg_context_finds_mentions(self, ext):
         # If a known entity is mentioned in text but not extracted by spaCy/noun-phrase,
@@ -103,6 +103,22 @@ class TestKGContextEnrichment:
         names = [str(e["text"]).lower() for e in result]
         # "Frodo" should be found either by spaCy NER or KG context
         assert any("frodo" in n for n in names)
+
+    def test_alias_normalization_title_variant(self, ext):
+        result = ext.extract(
+            "The captain rowan drew a blade.",
+            known_entities=["Rowan", "Frodo"],
+        )
+        names = {str(e["text"]) for e in result}
+        assert "Rowan" in names
+
+    def test_ambiguous_person_match_not_forced_by_high_threshold(self, ext):
+        result = ext.extract(
+            "The captain roland spoke.",
+            known_entities=["Rowan"],
+        )
+        names = {str(e["text"]).lower() for e in result}
+        assert "rowan" not in names
 
 
 class TestPossessiveHandling:
@@ -147,3 +163,23 @@ class TestFuzzyMatch:
     def test_empty_query(self):
         result = EntityExtractor._fuzzy_match("", ["gandalf"], threshold=0.8)
         assert result is None
+
+    def test_return_score_mode(self):
+        best, score = EntityExtractor._fuzzy_match_with_score(
+            "gandalph", ["gandalf", "frodo"], threshold=0.8
+        )
+        assert best == "gandalf"
+        assert score >= 0.8
+
+
+class TestConfidenceOutput:
+    @pytest.fixture
+    def ext(self):
+        return EntityExtractor()
+
+    def test_each_entity_contains_confidence(self, ext):
+        entities = ext.extract("Gandalf took the sword to the cave.", known_entities=["Gandalf"])
+        assert isinstance(entities, list)
+        for ent in entities:
+            assert "confidence" in ent
+            assert isinstance(ent["confidence"], float)
