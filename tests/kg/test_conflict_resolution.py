@@ -54,7 +54,7 @@ class TestConflictDetection:
     @patch("src.utils.api_client.llm_client")
     def test_llm_check_returns_conflicts(self, mock_llm):
         mock_llm.chat_json.return_value = {
-            "conflicts": [{"description": "Hero cannot be in two places"}]
+            "conflicts": [{"description": "Hero cannot be in two places", "confidence": 0.92}]
         }
         kg = KnowledgeGraph()
         kg.add_entity("Hero", "person")
@@ -62,6 +62,18 @@ class TestConflictDetection:
         conflicts = det._llm_check("Hero is in the forest and the cave.")
         assert len(conflicts) == 1
         assert conflicts[0]["type"] == "llm"
+
+    @patch("src.utils.api_client.llm_client")
+    def test_check_all_defers_mid_confidence_llm_conflicts(self, mock_llm):
+        mock_llm.chat_json.return_value = {
+            "conflicts": [{"description": "possible contradiction", "confidence": 0.60}]
+        }
+        kg = KnowledgeGraph()
+        det = ConflictDetector(kg)
+        conflicts = det.check_all("A new story sentence")
+        assert conflicts == []
+        assert len(det.deferred_conflicts) == 1
+        assert det.deferred_conflicts[0]["deferred_reason"] == "confidence_band"
 
     @patch("src.utils.api_client.llm_client")
     def test_llm_check_handles_error(self, mock_llm):
@@ -154,6 +166,30 @@ class TestLLMArbitrateResolver:
         assert "ally_of" not in labels  # removed as older
 
     @patch("src.utils.api_client.llm_client")
+    def test_deterministic_first_resolves_without_llm_for_exclusive(self, mock_llm):
+        kg = KnowledgeGraph()
+        kg.add_relation("hero", "dragon", "ally_of", turn_id=1)
+        kg.add_relation("hero", "dragon", "enemy_of", turn_id=2)
+        det = ConflictDetector(kg)
+        conflicts = det._rule_based_check()
+
+        resolver = LLMArbitrateResolver()
+        unresolved = resolver.resolve(conflicts, kg)
+
+        assert unresolved == []
+        assert mock_llm.chat_json.call_count == 0
+
+    @patch("src.utils.api_client.llm_client")
+    def test_low_confidence_llm_conflict_kept_unresolved(self, mock_llm):
+        kg = KnowledgeGraph()
+        resolver = LLMArbitrateResolver()
+        conflicts = [{"type": "llm", "description": "weak signal", "confidence": "0.50"}]
+        unresolved = resolver.resolve(conflicts, kg)
+        assert len(unresolved) == 1
+        assert unresolved[0]["description"] == "weak signal"
+        assert mock_llm.chat_json.call_count == 0
+
+    @patch("src.utils.api_client.llm_client")
     def test_llm_no_action_considers_resolved(self, mock_llm):
         mock_llm.chat_json.return_value = {
             "resolution": "no_action",
@@ -175,11 +211,7 @@ class TestLLMArbitrateResolver:
     def test_llm_error_returns_unresolved(self, mock_llm):
         mock_llm.chat_json.side_effect = RuntimeError("API down")
         kg = KnowledgeGraph()
-        kg.add_relation("hero", "dragon", "ally_of", turn_id=3)
-        kg.add_relation("hero", "dragon", "enemy_of", turn_id=7)
-
-        det = ConflictDetector(kg)
-        conflicts = det._rule_based_check()
+        conflicts = [{"type": "llm", "description": "strong conflict", "confidence": "0.95"}]
 
         resolver = LLMArbitrateResolver()
         unresolved = resolver.resolve(conflicts, kg)

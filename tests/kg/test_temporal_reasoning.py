@@ -3,6 +3,7 @@ import pytest
 
 from src.knowledge_graph.graph import KnowledgeGraph
 from src.knowledge_graph.conflict_detector import ConflictDetector
+from unittest.mock import patch
 
 
 class TestStatusHistory:
@@ -165,6 +166,17 @@ class TestTemporalConflictDetection:
         det = ConflictDetector(kg)
         conflicts = det._temporal_check()
         assert conflicts == []
+
+    @patch("src.utils.api_client.llm_client")
+    def test_high_impact_temporal_conflict_remains_explicit(self, mock_llm):
+        mock_llm.chat_json.return_value = {"conflicts": []}
+        kg = KnowledgeGraph()
+        kg.add_entity("Hero", "person", status={"status": "dead"}, turn_id=2)
+        kg.add_entity("Relic", "item", turn_id=1)
+        kg.add_relation("Hero", "Relic", "possesses", turn_id=5)
+        det = ConflictDetector(kg)
+        all_conflicts = det.check_all("narrative")
+        assert any(c.get("subtype") == "dead_entity_action" for c in all_conflicts)
 
 
 class TestSummaryStatusHistory:

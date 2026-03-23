@@ -91,6 +91,38 @@ class TestExtractorTypeNormalization:
         assert types["Excalibur"] == "item"
         assert types["Mordor"] == "location"
 
+    @patch("src.utils.api_client.llm_client")
+    def test_extract_drops_entities_missing_name(self, mock_client):
+        mock_client.chat_json.return_value = {
+            "entities": [
+                {"name": "", "type": "npc"},
+                {"type": "weapon"},
+                {"name": "Valid", "type": "quest"},
+            ],
+            "relations": [],
+        }
+        extractor = RelationExtractor(enhanced=True)
+        result = extractor.extract("test")
+        assert len(result["entities"]) == 1
+        assert result["entities"][0]["name"] == "Valid"
+        assert result["entities"][0]["type"] == "event"
+
+    @patch("src.utils.api_client.llm_client")
+    def test_extract_drops_relations_missing_endpoints(self, mock_client):
+        mock_client.chat_json.return_value = {
+            "entities": [{"name": "Hero", "type": "person"}],
+            "relations": [
+                {"source": "", "target": "Dragon", "relation": "enemy_of"},
+                {"source": "Hero", "relation": "enemy_of"},
+                {"source": "Hero", "target": "Dragon", "relation": "enemy_of"},
+            ],
+        }
+        extractor = RelationExtractor(enhanced=True)
+        result = extractor.extract("test")
+        assert len(result["relations"]) == 1
+        assert result["relations"][0]["source"] == "Hero"
+        assert result["relations"][0]["target"] == "Dragon"
+
 
 class TestEntityExtractorLabelMapValidation:
     """Test that EntityExtractor LABEL_MAP values are all valid KG_ENTITY_TYPES."""

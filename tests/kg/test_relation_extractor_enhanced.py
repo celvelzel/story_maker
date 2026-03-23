@@ -96,6 +96,29 @@ class TestRelationExtractorEnhanced:
         assert result == {"entities": [], "relations": []}
 
     @patch("src.utils.api_client.llm_client")
+    def test_extract_quarantines_malformed_records(self, mock_client):
+        mock_client.chat_json.return_value = {
+            "entities": [
+                {"name": "", "type": "person"},
+                "bad-entity",
+                {"name": "Hero", "type": "npc"},
+            ],
+            "relations": [
+                {"source": "Hero", "target": "", "relation": "ally_of"},
+                42,
+                {"source": "Hero", "target": "Sword", "relation": "possesses"},
+            ],
+        }
+        extractor = RelationExtractor(enhanced=True)
+        result = extractor.extract("Malformed payload")
+        assert len(result["entities"]) == 1
+        assert result["entities"][0]["name"] == "Hero"
+        assert result["entities"][0]["type"] == "person"
+        assert len(result["relations"]) == 1
+        assert result["relations"][0]["source"] == "Hero"
+        assert len(extractor.last_quarantine) >= 3
+
+    @patch("src.utils.api_client.llm_client")
     def test_legacy_mode_uses_simple_prompt(self, mock_client):
         mock_client.chat_json.return_value = {
             "entities": [{"name": "Hero", "type": "person"}],
@@ -174,6 +197,14 @@ class TestMergeExtractions:
         }
         merged = extractor._merge_extractions(primary, secondary)
         assert len(merged["relations"]) == 1
+
+
+class TestSanitizePayload:
+    def test_non_list_sections_are_quarantined(self):
+        extractor = RelationExtractor()
+        sanitized = extractor._sanitize_payload({"entities": "oops", "relations": {"x": 1}})
+        assert sanitized == {"entities": [], "relations": []}
+        assert len(extractor.last_quarantine) == 2
 
 
 class TestModuleLevelFunctions:

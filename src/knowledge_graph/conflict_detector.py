@@ -32,6 +32,10 @@ EXCLUSIVE_PAIRS: List[tuple[str, str]] = [
     ("alive", "dead"),        # 存活与死亡互斥
 ]
 
+LLM_CONFLICT_ACCEPT_THRESHOLD = 0.75
+LLM_CONFLICT_DEFER_LOW = 0.45
+LLM_CONFLICT_DEFER_HIGH = 0.74
+
 
 # ══════════════════════════════════════════════════════════
 #  Detection（检测层）
@@ -53,6 +57,7 @@ class ConflictDetector:
             kg: 关联的知识图谱对象
         """
         self.kg = kg  # 关联的知识图谱
+        self.deferred_conflicts: List[Dict[str, str]] = []
 
     # ── public entry point ────────────────────────────────
     def check_all(self, new_text: str = "") -> List[Dict[str, str]]:
@@ -70,16 +75,54 @@ class ConflictDetector:
         conflicts: List[Dict[str, str]] = []
         conflicts.extend(self._rule_based_check())  # 规则层检测
         conflicts.extend(self._temporal_check())   # 时间层检测
+        self.deferred_conflicts = []
         if new_text:
-            conflicts.extend(self._llm_check(new_text))  # LLM 层检测
+            llm_conflicts = self._llm_check(new_text)
+            accepted, deferred = self._partition_llm_conflicts(llm_conflicts)
+            conflicts.extend(accepted)
+            self.deferred_conflicts = deferred
         logger.info(
-            "[ConflictDetector][check_all] 发现 %d 个冲突 (规则=%d, 时间=%d, LLM=%d)",
+            "[ConflictDetector][check_all] 发现 %d 个冲突 (规则=%d, 时间=%d, LLM=%d, defer=%d)",
             len(conflicts),
             len([c for c in conflicts if c.get("type") not in ("llm", "temporal")]),
             len([c for c in conflicts if c.get("type") == "temporal"]),
             len([c for c in conflicts if c.get("type") == "llm"]),
+            len(self.deferred_conflicts),
         )
         return conflicts
+
+    @staticmethod
+    def _parse_confidence(raw: Any) -> float:
+        try:
+            value = float(raw)
+        except (TypeError, ValueError):
+            return 0.5
+        return max(0.0, min(1.0, value))
+
+    def _partition_llm_conflicts(
+        self,
+        llm_conflicts: List[Dict[str, str]],
+    ) -> tuple[List[Dict[str, str]], List[Dict[str, str]]]:
+        """Deterministic-first: accept only high-confidence LLM conflicts, defer confidence-band ones."""
+        accepted: List[Dict[str, str]] = []
+        deferred: List[Dict[str, str]] = []
+        for conflict in llm_conflicts:
+            confidence = self._parse_confidence(conflict.get("confidence", 0.5))
+            payload = dict(conflict)
+            payload["confidence"] = f"{confidence:.2f}"
+            if confidence >= LLM_CONFLICT_ACCEPT_THRESHOLD:
+                accepted.append(payload)
+            elif LLM_CONFLICT_DEFER_LOW <= confidence <= LLM_CONFLICT_DEFER_HIGH:
+                payload["deferred_reason"] = "confidence_band"
+                deferred.append(payload)
+            else:
+                # Drop very-low confidence LLM detections to avoid noisy rewrites.
+                logger.debug(
+                    "[ConflictDetector] 忽略低置信度 LLM 冲突: confidence=%.2f desc=%s",
+                    confidence,
+                    payload.get("description", "")[:80],
+                )
+        return accepted, deferred
 
     # ── layer 1: rule-based ───────────────────────────────
     def _rule_based_check(self) -> List[Dict[str, str]]:
@@ -247,7 +290,21 @@ class ConflictDetector:
             ]
             data = llm_client.chat_json(messages, temperature=0.1, max_tokens=256)
             raw = data.get("conflicts", [])
-            return [{"type": "llm", "description": c.get("description", str(c))} for c in raw]
+            conflicts: List[Dict[str, str]] = []
+            for c in raw:
+                if isinstance(c, dict):
+                    conflicts.append({
+                        "type": "llm",
+                        "description": str(c.get("description", c)),
+                        "confidence": str(self._parse_confidence(c.get("confidence", 0.5))),
+                    })
+                else:
+                    conflicts.append({
+                        "type": "llm",
+                        "description": str(c),
+                        "confidence": "0.50",
+                    })
+            return conflicts
         except Exception as exc:
             logger.warning("[ConflictDetector][_llm_check] LLM检测失败: %s", exc)
             return []
@@ -347,7 +404,8 @@ class KeepLatestResolver(ConflictResolutionStrategy):
 
         g = kg.graph
         if not g.has_edge(src, tgt):
-            return False
+            # Already resolved by previous operation.
+            return True
 
         # 查找两条互斥关系的确认时间
         turn_a, turn_b = -1, -1
@@ -362,6 +420,10 @@ class KeepLatestResolver(ConflictResolutionStrategy):
                 key_b = k
 
         # 删除较旧的关系
+        if key_a is None or key_b is None:
+            # If one side already gone, conflict is effectively resolved.
+            return True
+
         if turn_a >= turn_b and key_b is not None:
             g.remove_edge(src, tgt, key=key_b)
             logger.info(
@@ -419,15 +481,24 @@ class LLMArbitrateResolver(ConflictResolutionStrategy):
             List[Dict[str, str]]: 未能解决的冲突列表
         """
         unresolved: List[Dict[str, str]] = []
+        deterministic = KeepLatestResolver()
 
-        for conflict in conflicts:
-            ctype = conflict.get("type", "")
+        # Deterministic-first pass: resolve what can be resolved without model arbitration.
+        deterministic_conflicts = [
+            c for c in conflicts if c.get("type", "") in ("exclusive_relation", "dead_active")
+        ]
+        unresolved.extend(deterministic.resolve(deterministic_conflicts, kg))
 
-            if ctype in ("exclusive_relation", "dead_active", "llm"):
-                resolved = self._arbitrate_single(conflict, kg)
-                if not resolved:
-                    unresolved.append(conflict)
-            else:
+        # Temporal conflicts are high-impact; keep unresolved for explicit follow-up rather than rewrite.
+        unresolved.extend([c for c in conflicts if c.get("type", "") == "temporal"])
+
+        # LLM conflicts: only arbitrate sufficiently confident ones.
+        for conflict in [c for c in conflicts if c.get("type", "") == "llm"]:
+            confidence = ConflictDetector._parse_confidence(conflict.get("confidence", "0.5"))
+            if confidence < LLM_CONFLICT_ACCEPT_THRESHOLD:
+                unresolved.append(conflict)
+                continue
+            if not self._arbitrate_single(conflict, kg):
                 unresolved.append(conflict)
 
         return unresolved
@@ -543,9 +614,9 @@ class LLMArbitrateResolver(ConflictResolutionStrategy):
 
             # 确定要删除的目标关系
             if remove_newer:
-                target_rel = max(turns, key=turns.get) if turns else None
+                target_rel = max(turns, key=lambda rel_name: turns[rel_name]) if turns else None
             else:
-                target_rel = min(turns, key=turns.get) if turns else None
+                target_rel = min(turns, key=lambda rel_name: turns[rel_name]) if turns else None
 
             if target_rel and target_rel in keys:
                 g.remove_edge(src, tgt, key=keys[target_rel])
