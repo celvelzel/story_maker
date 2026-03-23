@@ -1,0 +1,77 @@
+name: Frontend Smoke Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  frontend-smoke:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest streamlit
+    
+    - name: Run UI smoke tests
+      run: |
+        python -m pytest tests/ui/scenarios/ -v --tb=short
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    
+    - name: Check app.py line count
+      run: |
+        line_count=$(wc -l < app.py)
+        echo "app.py line count: $line_count"
+        if [ $line_count -gt 300 ]; then
+          echo "ERROR: app.py exceeds 300 lines ($line_count lines)"
+          exit 1
+        fi
+    
+    - name: Check for large inline style blocks
+      run: |
+        # Count lines with unsafe_allow_html=True and <style>
+        style_count=$(grep -c "unsafe_allow_html=True" app.py | grep -c "<style>" || true)
+        echo "Inline style blocks found: $style_count"
+        if [ $style_count -gt 2 ]; then
+          echo "WARNING: Found $style_count inline style blocks (expected <= 2)"
+        fi
+    
+    - name: Verify theme token usage
+      run: |
+        # Check that theme tokens are imported
+        if ! grep -q "from src.ui.theme_tokens import" src/ui/style_injector.py; then
+          echo "ERROR: style_injector.py doesn't import theme tokens"
+          exit 1
+        fi
+        
+        # Check that feedback helpers are used
+        if ! grep -q "from src.ui.feedback import" src/ui/layout/*.py src/ui/sections/*.py; then
+          echo "ERROR: No feedback imports found in layout/section modules"
+          exit 1
+        fi
+    
+    - name: Verify session contract usage
+      run: |
+        # Check that session contract is imported in app.py
+        if ! grep -q "from src.ui.session_contract import" app.py; then
+          echo "ERROR: app.py doesn't import session contract"
+          exit 1
+        fi
+        
+        # Check that initialize_session is called
+        if ! grep -q "initialize_session()" app.py; then
+          echo "ERROR: app.py doesn't call initialize_session()"
+          exit 1
+        fi
