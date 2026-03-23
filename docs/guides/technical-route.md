@@ -66,6 +66,43 @@
 1. LLM 抽取异常：跳过当轮 KG 增量并记录 warning。
 2. 可视化异常：不影响主流程，返回空图或上次图。
 
+### 3.5 KG 策略配置（`config.py`）
+
+可运行时切换的策略开关：
+
+| 配置项 | 可选值 | 默认值 | 说明 |
+|--------|--------|--------|------|
+| `KG_CONFLICT_RESOLUTION` | `keep_latest` \| `llm_arbitrate` | `llm_arbitrate` | 冲突解决策略 |
+| `KG_EXTRACTION_MODE` | `story_only` \| `dual_extract` | `dual_extract` | 关系抽取模式 |
+| `KG_IMPORTANCE_MODE` | `degree_only` \| `composite` \| `incremental` | `composite` | 重要性计算模式 |
+| `KG_SUMMARY_MODE` | `flat` \| `layered` | `layered` | KG 摘要输出模式 |
+| `KG_DECAY_CADENCE` | 整数 ≥1 | `1` | 每 N 回合执行一次关系衰减 |
+| `KG_INCREMENTAL_FULL_RECALC_INTERVAL` | 整数 ≥1 | `10` | 增量模式全量重算间隔 |
+
+### 3.6 安全回滚开关
+
+| 配置项 | 默认值 | 回滚说明 |
+|--------|--------|----------|
+| `KG_ENABLE_INCREMENTAL_IMPORTANCE` | `True` | 设为 `False` 强制 composite 全量重算 |
+| `KG_ENABLE_SUMMARY_CACHE` | `True` | 设为 `False` 禁用单回合摘要缓存 |
+
+### 3.7 质量门控（Wave A 基础设施）
+
+自动化评估脚本：`tests/evaluation/quality_runner.py`
+
+```bash
+# 生成基线
+python -m tests.evaluation.quality_runner --mode baseline
+
+# 比对当前代码
+python -m tests.evaluation.quality_runner --mode compare --against baseline
+```
+
+门控策略：
+- Gate-1：已追踪指标无回归 >1pp
+- Gate-2：relation_f1 +3pp、coref_accuracy +5pp、contradiction_rate ≤ 基线 80%
+- Gate-3：连续两次通过才算达标
+
 ## 4. NLG 设计
 
 ### 4.1 目标

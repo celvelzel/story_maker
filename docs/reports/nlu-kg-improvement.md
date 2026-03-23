@@ -515,3 +515,68 @@ history = engine.kg.get_entity_history("hero")
 status = engine.kg.get_entity_status_at_turn("hero", 3)
 # {"health": "full", "mood": "calm"}
 ```
+
+---
+
+## 七、质量优先路线 — 二次迭代（2026-03-23）
+
+### 7.1 迭代目标
+
+在首次改进基础上，以「质量/准确性优先 → 延迟优化其次」路线做系统化加固。
+
+### 7.2 改进项一览
+
+| 波次 | 编号 | 模块 | 改进项 | 测试 |
+|------|------|------|--------|------|
+| A | A1–A4 | 评估基础设施 | 基准 corpus (120 cases)、quality_runner、质量门控 Gate-1/2/3 | 13 tests |
+| B | B1 | NLU coref | 多代词 fallback、引文保护 | 41 passed |
+| B | B2 | NLU entity | 别名归一化、按类型阈值、置信度输出 | 42 passed |
+| B | B3 | KG extractor | `_sanitize_payload` 隔离异常输出、quarantine 计数 | 28 passed |
+| B | B4 | KG conflict | 确定性优先策略、置信度分档延迟队列 | 70 passed |
+| C | C1 | Engine | 单回合摘要缓存 `_turn_cached_summary` | `<=3` call guard |
+| C | C2 | KG graph | 增量重要性模式（`_dirty_nodes` + 周期全量重算） | 138 passed |
+| C | C3 | Engine | 衰减节奏 `KG_DECAY_CADENCE` 可配置 | 16 passed |
+
+### 7.3 新增文件
+
+| 文件 | 说明 |
+|------|------|
+| `tests/evaluation/__init__.py` | 评估子包 |
+| `tests/evaluation/data/nlu_kg_quality_benchmark.jsonl` | 120 条基准 corpus |
+| `tests/evaluation/test_quality_benchmark_schema.py` | schema 校验 (5 tests) |
+| `tests/evaluation/quality_runner.py` | baseline/compare + gate 逻辑 |
+| `tests/evaluation/test_quality_regression.py` | 回归数学验证 (3 tests) |
+| `tests/evaluation/test_quality_gates.py` | 门控断言 (5 tests) |
+| `tests/evaluation/README.md` | corpus schema 与 gate 策略文档 |
+| `tests/performance/test_turn_latency.py` | 摘要缓存调用计数测试 |
+
+### 7.4 新增配置项（`config.py`）
+
+| 配置项 | 类型 | 默认值 |
+|--------|------|--------|
+| `KG_DECAY_CADENCE` | int | 1 |
+| `KG_INCREMENTAL_FULL_RECALC_INTERVAL` | int | 10 |
+| `KG_ENABLE_INCREMENTAL_IMPORTANCE` | bool | True |
+| `KG_ENABLE_SUMMARY_CACHE` | bool | True |
+
+### 7.5 评估流水线
+
+```bash
+# 生成基线
+python -m tests.evaluation.quality_runner --mode baseline
+
+# 比对
+python -m tests.evaluation.quality_runner --mode compare --against baseline
+```
+
+输出 `tests/evaluation/reports/latest_quality.json`，包含 gate_summary。
+
+### 7.6 测试矩阵（本次迭代全部通过）
+
+| 模块 | 测试数 |
+|------|--------|
+| NLU | 42 passed |
+| KG | 138 passed |
+| Engine | 16 passed |
+| Evaluation | 13 passed |
+| Performance | 1 passed |

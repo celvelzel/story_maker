@@ -9,6 +9,7 @@
 
 ### NLU & KG 改进
 - **nlu-kg-improvement.md** - NLU 和知识图谱模块 27 项改进任务报告
+- **nlu-kg-quality-first-wave.md** - 质量优先路线迭代报告（2026-03-23），包含评估基础设施、质量加固、延迟优化
 
 ### 运行时优化
 - **runtime-persistence.md** - 浏览器刷新持久化改造报告
