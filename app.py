@@ -1304,8 +1304,8 @@ def _delta_pct(current: float, previous: dict, key: str) -> str | None:
 
 
 # ── Sidebar ──────────────────────────────────────────────────────────────
-
 with st.sidebar:
+    st.markdown("<div class='section-title'>&#x1F39B;&#xFE0F; Dashboard</div>", unsafe_allow_html=True)
     turn_count = _story_turn_count()
     engine: GameEngine | None = st.session_state.engine
     entity_count = len(engine.kg_entity_names) if engine else 0
@@ -1358,7 +1358,8 @@ with st.sidebar:
         st.line_chart(st.session_state.consistency_history, height=120, use_container_width=True)
     else:
         st.caption("Consistency scores appear after the first action")
-
+    
+    st.markdown("<div class='section-title'>&#x2699; Settings</div>", unsafe_allow_html=True)
     with st.expander("💾 Save / Load", expanded=True):
         save_slots = _list_save_slots(_runtime_save_dir())
         if save_slots:
