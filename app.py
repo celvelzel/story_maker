@@ -865,6 +865,7 @@ _DEFAULTS = {
     "kg_extraction_mode": settings.KG_EXTRACTION_MODE,
     "kg_importance_mode": settings.KG_IMPORTANCE_MODE,
     "kg_summary_mode": settings.KG_SUMMARY_MODE,
+    "processing": False,
 }
 for _k, _v in _DEFAULTS.items():
     if _k not in st.session_state:
@@ -979,8 +980,14 @@ def _register_runtime_cleanup() -> None:
     if _RUNTIME_CLEANUP_REGISTERED or getattr(signal, "_storyweaver_runtime_cleanup_registered", False):
         return
     _RUNTIME_CLEANUP_REGISTERED = True
-    signal._storyweaver_runtime_cleanup_registered = True
+    setattr(signal, "_storyweaver_runtime_cleanup_registered", True)
     atexit.register(_cleanup_runtime_files)
+
+    # signal.signal() can only be called from the main thread.
+    # Streamlit runs the script in a worker thread, so guard against that.
+    import threading
+    if threading.current_thread() is not threading.main_thread():
+        return
 
     previous_handler = signal.getsignal(signal.SIGINT)
 
@@ -1006,35 +1013,48 @@ def _process_action(action: str) -> None:
     处理玩家行动：将玩家输入传递给游戏引擎，更新会话状态。
     包括：处理回合、更新聊天历史、更新知识图谱、跟踪一致性。
     """
+    if st.session_state.processing:
+        return
     engine: GameEngine | None = st.session_state.engine
     if engine is None:
         st.warning("Please start a new game before entering an action.")
         return
 
+    st.session_state.processing = True
     start = time.time()
     st.session_state.history.append({"role": "user", "content": action})
+    try:
+        result: TurnResult = engine.process_turn(action)
 
-    result: TurnResult = engine.process_turn(action)
+        assistant_msg = result.story_text
+        if result.conflicts:
+            assistant_msg += "\n\n*⚠ World-consistency notes:*\n" + "\n".join(
+                f"- {c}" for c in result.conflicts
+            )
+        st.session_state.history.append({"role": "assistant", "content": assistant_msg})
 
-    assistant_msg = result.story_text
-    if result.conflicts:
-        assistant_msg += "\n\n*⚠ World-consistency notes:*\n" + "\n".join(
-            f"- {c}" for c in result.conflicts
+        st.session_state.kg_html = result.kg_html
+        st.session_state.options = result.options
+        if result.nlu_debug:
+            st.session_state.nlu_debug = result.nlu_debug
+
+        # Consistency tracking (1.0 = perfect, decreases with conflicts)
+        n_conflicts = len(result.conflicts)
+        score = 1.0 if n_conflicts == 0 else max(0.0, 1.0 - n_conflicts * 0.2)
+        st.session_state.consistency_history.append(score)
+    except Exception:
+        logger.exception("Failed to process player action")
+        st.error("Action processing failed. Please try again.")
+        st.session_state.history.append(
+            {
+                "role": "assistant",
+                "content": "⚠️ Failed to process this action due to an internal error. Please try again.",
+            }
         )
-    st.session_state.history.append({"role": "assistant", "content": assistant_msg})
-
-    st.session_state.kg_html = result.kg_html
-    st.session_state.options = result.options
-    if result.nlu_debug:
-        st.session_state.nlu_debug = result.nlu_debug
-
-    # Consistency tracking (1.0 = perfect, decreases with conflicts)
-    n_conflicts = len(result.conflicts)
-    score = 1.0 if n_conflicts == 0 else max(0.0, 1.0 - n_conflicts * 0.2)
-    st.session_state.consistency_history.append(score)
-
-    st.session_state.last_elapsed = time.time() - start
-    _persist_runtime_session()
+    finally:
+        st.session_state.last_elapsed = time.time() - start
+        st.session_state.processing = False
+        _persist_runtime_session()
 
 
 def _run_evaluation() -> tuple[str, dict, dict]:
@@ -1287,12 +1307,13 @@ with col_genre:
     )
 with col_btn:
     new_game_clicked = st.button(
-        "🎮 Start New Game", type="primary", use_container_width=True
+        "🎮 Start New Game", type="primary", width="stretch"
     )
 
 if new_game_clicked:
     with st.spinner("Initializing the adventure world…"):
-        intent_model_path = st.session_state.intent_model_path.strip() or None
+        intent_model_path_raw = st.session_state.intent_model_path or ""
+        intent_model_path = intent_model_path_raw.strip() or None
         engine = GameEngine(
             genre=genre or "fantasy",
             intent_model_path=intent_model_path,
@@ -1317,6 +1338,7 @@ if new_game_clicked:
         st.session_state.eval_prev_llm = {}
         st.session_state.eval_at = ""
         st.session_state.last_elapsed = 0.0
+        st.session_state.processing = False
         _persist_runtime_session()
     st.rerun()
 
@@ -1361,11 +1383,10 @@ else:
 if st.session_state.options:
     st.markdown("<div class='section-title'>&#x1F9ED; Branch Options</div>", unsafe_allow_html=True)
     st.caption("You can click an option directly, or type a free-form action below.")
+    _is_busy = st.session_state.processing
     opt_cols = st.columns(len(st.session_state.options))
     for idx, opt in enumerate(st.session_state.options):
         with opt_cols[idx]:
-            #st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
-            #st.caption(f"Intent: {opt.intent_hint} | Risk: {opt.risk_level}")
             st.markdown(
                 f"<div class='option-meta-center'>Intent: {opt.intent_hint} | Risk: {opt.risk_level}</div>",
                 unsafe_allow_html=True,
@@ -1374,22 +1395,24 @@ if st.session_state.options:
             if st.button(
                 f"{idx + 1}. {opt.text}",
                 key=btn_key,
-                use_container_width=True,
+                width="stretch",
+                disabled=_is_busy,
             ):
-                _process_action(opt.text)
+                with st.spinner("Processing your action…"):
+                    _process_action(opt.text)
                 st.rerun()
-            #st.markdown(
-            #    f"<div class='option-meta-center'>Intent: {opt.intent_hint} | Risk: {opt.risk_level}</div>",
-            #    unsafe_allow_html=True,
-            #)
             st.markdown("</div>", unsafe_allow_html=True)
 
 
 # ── Chat input ───────────────────────────────────────────────────────────
 
-user_input = st.chat_input("Enter your action (e.g., investigate the runes in the ruins)…")
+user_input = st.chat_input(
+    "Enter your action (e.g., investigate the runes in the ruins)…",
+    disabled=st.session_state.processing,
+)
 if user_input:
-    _process_action(user_input)
+    with st.spinner("Processing your action…"):
+        _process_action(user_input)
     st.rerun()
 
 
@@ -1406,12 +1429,16 @@ st.markdown("<div class='section-title'>&#x1F4CA; Session Evaluation Panel</div>
 
 col_eval_btn, col_eval_hint = st.columns([1, 2])
 with col_eval_btn:
-    run_eval = st.button("Run Evaluation", use_container_width=True)
+    run_eval = st.button(
+        "Run Evaluation",
+        width="stretch",
+        disabled=st.session_state.processing,
+    )
 with col_eval_hint:
     st.markdown("<div class='muted-note'>Evaluation computes automatic metrics from the current session and calls the LLM Judge for scoring.</div>", unsafe_allow_html=True)
 
 if run_eval:
-    with st.spinner("Calculating evaluation results…"):
+    with st.spinner("⏳ Calculating evaluation results… Please wait."):
         report_md, auto_scores, llm_scores = _run_evaluation()
 
         if st.session_state.eval_auto and st.session_state.eval_llm:
