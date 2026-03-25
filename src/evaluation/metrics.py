@@ -12,6 +12,7 @@ StoryWeaver 轻量级自动评估指标模块。
 """
 from __future__ import annotations
 
+import re
 from collections import Counter
 from typing import Dict, List, Iterable, Set, cast
 
@@ -125,6 +126,105 @@ def consistency_rate(turn_conflict_counts: List[int]) -> float:
     return clean / len(turn_conflict_counts)
 
 
+# ── Reference-free evaluators ───────────────────────────────────────────
+
+
+_TOKEN_PATTERN = re.compile(r"[a-zA-Z]+(?:'[a-zA-Z]+)?")
+_VOWEL_PATTERN = re.compile(r"[aeiouy]+", re.IGNORECASE)
+
+
+def _tokenize_words(text: str) -> List[str]:
+    return [m.group(0).lower() for m in _TOKEN_PATTERN.finditer(text)]
+
+
+def lexical_overlap(text_a: str, text_b: str) -> float:
+    """Jaccard overlap of unique word sets between two texts."""
+    a_set = set(_tokenize_words(text_a))
+    b_set = set(_tokenize_words(text_b))
+    union = a_set | b_set
+    if not union:
+        return 0.0
+    return len(a_set & b_set) / len(union)
+
+
+def type_token_ratio(text: str) -> float:
+    """Vocabulary richness ratio: unique tokens / total tokens."""
+    tokens = _tokenize_words(text)
+    if not tokens:
+        return 0.0
+    return len(set(tokens)) / len(tokens)
+
+
+def _estimate_syllables(word: str) -> int:
+    w = re.sub(r"[^a-z]", "", word.lower())
+    if not w:
+        return 0
+    groups = _VOWEL_PATTERN.findall(w)
+    count = len(groups)
+    if w.endswith("e") and not w.endswith(("le", "ye")) and count > 1:
+        count -= 1
+    return max(1, count)
+
+
+def flesch_reading_ease(text: str) -> float:
+    """Lightweight Flesch Reading Ease score (English heuristic)."""
+    sentence_units = [s.strip() for s in re.split(r"[.!?]+", text) if s.strip()]
+    words = _tokenize_words(text)
+    if not words:
+        return 0.0
+    sentence_count = len(sentence_units) if sentence_units else 1
+    syllable_count = sum(_estimate_syllables(w) for w in words)
+    words_per_sentence = len(words) / sentence_count
+    syllables_per_word = syllable_count / len(words)
+    score = 206.835 - 1.015 * words_per_sentence - 84.6 * syllables_per_word
+    return round(score, 2)
+
+
+# ── Graph density evolution ─────────────────────────────────────────────
+
+
+def _graph_density(node_count: int, edge_count: int) -> float:
+    if node_count < 2:
+        return 0.0
+    denominator = node_count * (node_count - 1)
+    if denominator <= 0:
+        return 0.0
+    return edge_count / denominator
+
+
+def graph_density_evolution(kg_turn_stats: List[Dict[str, int]]) -> Dict[str, float | List[float]]:
+    """Compute density trend from per-turn KG node/edge snapshots.
+
+    Input items expect at least: turn_id, node_count, edge_count.
+    """
+    densities: List[float] = []
+    for row in kg_turn_stats:
+        nodes = int(row.get("node_count", 0))
+        edges = int(row.get("edge_count", 0))
+        densities.append(round(_graph_density(nodes, edges), 6))
+
+    if not densities:
+        return {
+            "density_average": 0.0,
+            "density_delta": 0.0,
+            "density_start": 0.0,
+            "density_end": 0.0,
+            "density_series": [],
+        }
+
+    density_start = densities[0]
+    density_end = densities[-1]
+    density_average = round(sum(densities) / len(densities), 6)
+    density_delta = round(density_end - density_start, 6)
+    return {
+        "density_average": density_average,
+        "density_delta": density_delta,
+        "density_start": density_start,
+        "density_end": density_end,
+        "density_series": densities,
+    }
+
+
 # ── Bundle helper ──────────────────────────────────────────────────────
 
 
@@ -132,6 +232,7 @@ def full_evaluation(
     texts: List[str],
     entity_names: List[str] | None = None,
     turn_conflict_counts: List[int] | None = None,
+    kg_turn_stats: List[Dict[str, int]] | None = None,
 ) -> Dict[str, float]:
     """运行所有轻量级指标评估，返回扁平字典。
 
@@ -159,6 +260,25 @@ def full_evaluation(
         results["entity_coverage"] = entity_coverage(texts, entity_names)
     if turn_conflict_counts is not None:
         results["consistency_rate"] = consistency_rate(turn_conflict_counts)
+    if texts:
+        combined_text = "\n".join(texts)
+        results["type_token_ratio"] = type_token_ratio(combined_text)
+        results["flesch_reading_ease"] = flesch_reading_ease(combined_text)
+        if len(texts) >= 2:
+            overlaps = [lexical_overlap(texts[i - 1], texts[i]) for i in range(1, len(texts))]
+            results["lexical_overlap"] = sum(overlaps) / len(overlaps)
+        else:
+            results["lexical_overlap"] = 0.0
+    else:
+        results["type_token_ratio"] = 0.0
+        results["flesch_reading_ease"] = 0.0
+        results["lexical_overlap"] = 0.0
+    if kg_turn_stats is not None:
+        density_metrics = graph_density_evolution(kg_turn_stats)
+        density_average = density_metrics.get("density_average", 0.0)
+        density_delta = density_metrics.get("density_delta", 0.0)
+        results["graph_density_average"] = float(density_average) if isinstance(density_average, (int, float)) else 0.0
+        results["graph_density_delta"] = float(density_delta) if isinstance(density_delta, (int, float)) else 0.0
     return results
 
 

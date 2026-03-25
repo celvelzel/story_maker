@@ -53,6 +53,7 @@ class GameState:
     genre: str = "fantasy"  # 故事类型
     story_history: List[Dict[str, str]] = field(default_factory=list)  # 故事历史记录
     # 每个条目格式: {"role": "player"|"narrator", "text": "..."}
+    kg_turn_stats: List[Dict[str, int]] = field(default_factory=list)  # 每回合 KG 节点/边快照
 
     def add_player_input(self, text: str) -> None:
         """添加玩家输入到故事历史。"""
@@ -62,6 +63,16 @@ class GameState:
         """添加叙述者回复到故事历史，并递增回合计数器。"""
         self.story_history.append({"role": "narrator", "text": text})
         self.turn_id += 1
+
+    def add_kg_snapshot(self, turn_id: int, node_count: int, edge_count: int) -> None:
+        """记录每回合的 KG 规模快照（仅轻量计数，避免保存整图）。"""
+        self.kg_turn_stats.append(
+            {
+                "turn_id": int(turn_id),
+                "node_count": int(node_count),
+                "edge_count": int(edge_count),
+            }
+        )
 
     
     def recent_history(self, n: int = 6) -> str:

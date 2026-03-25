@@ -51,6 +51,8 @@ class TurnResult:
     nlu_debug: Dict = field(default_factory=dict)  # NLU 调试信息
     kg_html: str = ""  # 知识图谱可视化 HTML
     conflicts: List[str] = field(default_factory=list)  # 冲突描述列表
+    kg_node_count: int = 0  # 回合结束时 KG 节点数
+    kg_edge_count: int = 0  # 回合结束时 KG 边数
 
 
 class GameEngine:
@@ -160,6 +162,11 @@ class GameEngine:
         # Seed the KG from the opening
         self.kg.set_turn(self.state.turn_id)
         self._apply_kg_update(story_text, turn_id=self.state.turn_id)
+        self.state.add_kg_snapshot(
+            turn_id=self.state.turn_id,
+            node_count=self.kg.num_nodes,
+            edge_count=self.kg.num_edges,
+        )
 
         kg_summary = self.kg.to_summary()
         options = self.option_gen.generate(story_text, kg_summary)
@@ -171,6 +178,8 @@ class GameEngine:
             story_text=story_text,
             options=options,
             kg_html=kg_html,
+            kg_node_count=self.kg.num_nodes,
+            kg_edge_count=self.kg.num_edges,
         )
 
     def process_turn(self, player_input: str) -> TurnResult:
@@ -291,6 +300,11 @@ class GameEngine:
         )
         self._turn_cached_summary = None
         _stage_end("kg_update", t0, u0)
+        self.state.add_kg_snapshot(
+            turn_id=current_turn,
+            node_count=self.kg.num_nodes,
+            edge_count=self.kg.num_edges,
+        )
 
         # ========== 6. 冲突检测 + 解决 ==========
         # 检测故事中的逻辑矛盾
@@ -353,6 +367,8 @@ class GameEngine:
             nlu_debug=nlu_debug,
             kg_html=kg_html,
             conflicts=conflict_descriptions,
+            kg_node_count=self.kg.num_nodes,
+            kg_edge_count=self.kg.num_edges,
         )
 
     # ------------------------------------------------------------------
@@ -373,6 +389,11 @@ class GameEngine:
             data.get("name", key)
             for key, data in self.kg.graph.nodes(data=True)
         ]
+
+    @property
+    def kg_density_inputs(self) -> List[Dict[str, int]]:
+        """Return per-turn lightweight KG size snapshots for evaluation metrics."""
+        return list(self.state.kg_turn_stats)
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -586,6 +607,7 @@ class GameEngine:
                 "turn_id": self.state.turn_id,
                 "genre": self.state.genre,
                 "story_history": self.state.story_history,
+                "kg_turn_stats": self.state.kg_turn_stats,
             },
             "kg": self.kg.to_dict(),
             "conflict_resolution": self.conflict_resolution,
@@ -625,6 +647,7 @@ class GameEngine:
         self.state.turn_id = state_data.get("turn_id", 0)
         self.state.genre = state_data.get("genre", self.genre)
         self.state.story_history = state_data.get("story_history", [])
+        self.state.kg_turn_stats = state_data.get("kg_turn_stats", [])
 
         # Restore KG
         kg_data = game_data.get("kg", {})

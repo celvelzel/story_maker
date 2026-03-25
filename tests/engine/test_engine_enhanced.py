@@ -109,9 +109,13 @@ class TestEngineStartGame:
         mock_llm.chat_json.side_effect = _chat_json_router
 
         engine = GameEngine(genre="fantasy", auto_load_nlu=False)
-        engine.start_game()
+        result = engine.start_game()
         # KG should have entities from the opening text
         assert engine.kg.num_nodes >= 0
+        assert result.kg_node_count == engine.kg.num_nodes
+        assert result.kg_edge_count == engine.kg.num_edges
+        assert len(engine.kg_density_inputs) == 1
+        assert engine.kg_density_inputs[0]["turn_id"] == 1
 
 
 # ── Process turn tests ────────────────────────────────────
@@ -149,13 +153,17 @@ class TestEngineProcessTurn:
         mock_llm.chat_json.side_effect = _chat_json_router
 
         engine = GameEngine(auto_load_nlu=False)
-        engine.state.add_narration("Opening.")
+        engine.start_game()
 
         engine.process_turn("action one")
         engine.process_turn("action two")
 
         # 1 opening + 2*(player+narration) = 5
         assert len(engine.state.story_history) == 5
+        assert len(engine.kg_density_inputs) == 3
+        assert [row["turn_id"] for row in engine.kg_density_inputs] == [1, 2, 3]
+        assert all(row["node_count"] >= 0 for row in engine.kg_density_inputs)
+        assert all(row["edge_count"] >= 0 for row in engine.kg_density_inputs)
 
     @patch("src.utils.api_client.llm_client")
     def test_kg_updates_with_rich_entities(self, mock_llm):
