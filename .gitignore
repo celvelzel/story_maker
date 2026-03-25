@@ -76,3 +76,14 @@ saves/
 # Distribution
 *.whl
 *.tar.gz
+
+# Sisyphus temporary state (keep reusable plans)
+.sisyphus/boulder.json
+.sisyphus/notepads/
+
+# Test evaluation reports (generated files)
+tests/evaluation/reports/*.json
+!tests/evaluation/reports/.gitkeep
+
+# Model training checkpoints (nested)
+models/*/checkpoint-*/
