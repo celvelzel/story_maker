@@ -32,6 +32,17 @@ class Settings(BaseSettings):
     OPENAI_TEMPERATURE: float = 0.85  # 温度参数，控制生成随机性（0-1）
     OPENAI_TOP_P: float = 0.95  # Top-p 采样参数
 
+    # ── Evaluation LLM (separate from NLG) ───────────────
+    # 评测专用 LLM 配置（与 NLG 模块解耦）
+    EVAL_LLM_API_KEY: str = Field(default="", description="Evaluation LLM API key")
+    EVAL_LLM_BASE_URL: str = Field(
+        default="https://open.bigmodel.cn/api/paas/v4",
+        description="Evaluation LLM API base URL",
+    )
+    EVAL_LLM_MODEL: str = "glm-5"
+    EVAL_LLM_MAX_TOKENS: int = 256
+    EVAL_LLM_TEMPERATURE: float = 0.3
+
     # ── NLU Config ────────────────────────────────────────
     # 自然语言理解（NLU）配置
     INTENT_MODEL_NAME: str = "distilbert-base-uncased"  # 意图分类模型名称
