@@ -91,7 +91,7 @@ save_game(filepath=new_filename)  ← 使用新名称保存
 
 ## TODOs
 
-- [ ] 1. 创建 `src/engine/naming.py` — LLM摘要生成 + 命名函数
+- [x] 1. 创建 `src/engine/naming.py` — LLM摘要生成 + 命名函数
 
   **What to do**:
   - 实现 `generate_archive_name(story_text: str, model_name: str, genre: str) -> str`
@@ -188,7 +188,7 @@ save_game(filepath=new_filename)  ← 使用新名称保存
 
 ---
 
-- [ ] 2. 修改 `src/engine/game_engine.py` — 集成新命名函数
+- [x] 2. 修改 `src/engine/game_engine.py` — 集成新命名函数
 
   **What to do**:
   - 在 `save_game()` 方法中调用 `generate_archive_name()`
@@ -275,7 +275,7 @@ save_game(filepath=new_filename)  ← 使用新名称保存
 
 ---
 
-- [ ] 3. 更新 `app.py` — 显示新存档名称给用户
+- [x] 3. 更新 `app.py` — 显示新存档名称给用户
 
   **What to do**:
   - 在游戏开始后，显示新生成的存档名称
@@ -361,7 +361,7 @@ save_game(filepath=new_filename)  ← 使用新名称保存
 
 ## 最终验证 Wave (MANDATORY — after all tasks complete)
 
-- [ ] F1. **功能集成验证** — 完整工作流
+- [x] F1. **功能集成验证** — 完整工作流
 
   **What to do**:
   1. 启动Streamlit应用

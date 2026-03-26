@@ -67,6 +67,8 @@ load_layout()
 initialize_state()
 if "show_load_checkpoint_btn" not in st.session_state:
     st.session_state.show_load_checkpoint_btn = True
+if "archive_filename" not in st.session_state:
+    st.session_state.archive_filename = ""
 
 
 def _runtime_save_dir() -> Path:
@@ -260,6 +262,11 @@ if new_game_clicked:
             result: TurnResult = engine.start_game()
 
             status.update(label="🎨 Preparing interface…", state="running")
+            
+            save_path = engine.save_game()
+            archive_filename = Path(save_path).name
+            st.session_state.archive_filename = archive_filename
+            
             st.session_state.history = [
                 {"role": "assistant", "content": result.story_text}
             ]
@@ -284,6 +291,9 @@ if new_game_clicked:
 
 if st.session_state.engine is None:
     st.info("Click \"Start New Game\" above to begin the interactive story.")
+else:
+    if st.session_state.get("archive_filename"):
+        st.info(f"📁 Archive: `{st.session_state.archive_filename}`")
 
 
 # ── Chat history ─────────────────────────────────────────────────────────

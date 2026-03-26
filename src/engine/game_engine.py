@@ -36,6 +36,8 @@ from src.knowledge_graph.conflict_detector import ConflictDetector, get_resolver
 from src.knowledge_graph.visualizer import render_kg_html
 from src.utils.api_client import llm_client
 
+from src.engine.naming import generate_archive_name  # type: ignore[reportMissingImports]
+
 logger = logging.getLogger(__name__)
 
 
@@ -612,7 +614,24 @@ class GameEngine:
         if filepath is None:
             save_dir = Path(settings.KG_SAVE_DIR)
             save_dir.mkdir(parents=True, exist_ok=True)
-            filepath = str(save_dir / f"{self.genre}_latest.json")
+
+            is_new_game = self.state.turn_id == 0 and len(self.state.story_history) == 1
+
+            if is_new_game:
+                try:
+                    first_entry = self.state.story_history[0] if self.state.story_history else {}
+                    excerpt = first_entry.get("text", "")[:500] if isinstance(first_entry, dict) else str(first_entry)[:500]
+                    semantic_name = generate_archive_name(excerpt, settings.OPENAI_MODEL, self.genre)
+                    filepath = str(save_dir / semantic_name)
+                    logger.info("[Engine][save_game] Using semantic naming: %s", semantic_name)
+                except Exception as exc:
+                    logger.warning(
+                        "[Engine][save_game] Semantic naming failed, using fallback: %s",
+                        exc,
+                    )
+                    filepath = str(save_dir / f"{self.genre}_latest.json")
+            else:
+                filepath = str(save_dir / f"{self.genre}_latest.json")
 
         path = Path(filepath)
         path.parent.mkdir(parents=True, exist_ok=True)
