@@ -34,7 +34,7 @@ from src.ui.layout import load_layout
 from src.ui.sections.evaluation import render_evaluation
 from src.ui.sections.sidebar import render_sidebar
 from src.ui.sections.chat import render_chat_history, render_chat_input
-from src.ui.state_manager import initialize_state, restore_runtime_session
+from src.ui.state_manager import initialize_state, restore_runtime_session, cleanup_session_state
 from config import settings
 
 logger = logging.getLogger(__name__)
@@ -147,38 +147,51 @@ def _process_action(action: str) -> None:
     处理玩家行动：将玩家输入传递给游戏引擎，更新会话状态。
     包括：处理回合、更新聊天历史、更新知识图谱、跟踪一致性。
     """
-    if st.session_state.processing:
+    # 双重检查防止竞态条件
+    if st.session_state.get("processing", False):
         return
     engine: GameEngine | None = st.session_state.engine
     if engine is None:
         st.warning("Please start a new game before entering an action.")
         return
 
+    # 使用原子操作设置 processing 状态
     st.session_state.processing = True
     start = time.time()
     st.session_state.history.append({"role": "user", "content": action})
+    
     try:
-        result: TurnResult = engine.process_turn(action)
+        # 使用 st.status 显示分阶段进度（Streamlit >= 1.28）
+        _initial_label = "⏳ Loading NLU models…" if not engine._nlu_loaded else "🔄 Running NLU + NLG pipeline…"
+        with st.status(_initial_label, expanded=False) as status:
+            result: TurnResult = engine.process_turn(action)
 
-        assistant_msg = result.story_text
-        if result.conflicts:
-            assistant_msg += "\n\n*⚠ World-consistency notes:*\n" + "\n".join(
-                f"- {c}" for c in result.conflicts
-            )
-        st.session_state.history.append({"role": "assistant", "content": assistant_msg})
+            # 阶段 2: 更新 UI 状态
+            status.update(label="🎨 Rendering results…", state="running")
 
-        st.session_state.kg_html = result.kg_html
-        st.session_state.options = result.options
-        if result.nlu_debug:
-            st.session_state.nlu_debug = result.nlu_debug
+            assistant_msg = result.story_text
+            if result.conflicts:
+                assistant_msg += "\n\n*⚠ World-consistency notes:*\n" + "\n".join(
+                    f"- {c}" for c in result.conflicts
+                )
+            st.session_state.history.append({"role": "assistant", "content": assistant_msg})
 
-        # Consistency tracking (1.0 = perfect, decreases with conflicts)
-        n_conflicts = len(result.conflicts)
-        score = 1.0 if n_conflicts == 0 else max(0.0, 1.0 - n_conflicts * 0.2)
-        st.session_state.consistency_history.append(score)
-    except Exception:
+            st.session_state.kg_html = result.kg_html
+            st.session_state.options = result.options
+            if result.nlu_debug:
+                st.session_state.nlu_debug = result.nlu_debug
+
+            # Consistency tracking (1.0 = perfect, decreases with conflicts)
+            n_conflicts = len(result.conflicts)
+            score = 1.0 if n_conflicts == 0 else max(0.0, 1.0 - n_conflicts * 0.2)
+            st.session_state.consistency_history.append(score)
+
+            elapsed = time.time() - start
+            status.update(label=f"✅ Done in {elapsed:.1f}s", state="complete")
+        
+    except Exception as e:
         logger.exception("Failed to process player action")
-        st.error("Action processing failed. Please try again.")
+        st.error(f"Action processing failed: {e}")
         st.session_state.history.append(
             {
                 "role": "assistant",
@@ -186,12 +199,10 @@ def _process_action(action: str) -> None:
             }
         )
     finally:
+        # 确保 elapsed 和 processing 状态正确更新
         st.session_state.last_elapsed = time.time() - start
         st.session_state.processing = False
         _persist_runtime_session()
-
-
-render_sidebar()
 
 
 # ── Main area – Game controls ────────────────────────────────────────────
@@ -210,36 +221,45 @@ with col_btn:
     )
 
 if new_game_clicked:
-    with st.spinner("Initializing the adventure world…"):
-        intent_model_path_raw = st.session_state.intent_model_path or ""
-        intent_model_path = intent_model_path_raw.strip() or None
-        engine = GameEngine(
-            genre=genre or "fantasy",
-            intent_model_path=intent_model_path,
-            conflict_resolution=st.session_state.kg_conflict_resolution,
-            extraction_mode=st.session_state.kg_extraction_mode,
-            importance_mode=st.session_state.kg_importance_mode,
-            summary_mode=st.session_state.kg_summary_mode,
-        )
-        st.session_state.engine = engine
-        result: TurnResult = engine.start_game()
-        st.session_state.history = [
-            {"role": "assistant", "content": result.story_text}
-        ]
-        st.session_state.kg_html = result.kg_html
-        st.session_state.options = result.options
-        st.session_state.consistency_history = []
-        st.session_state.nlu_debug = {}
-        st.session_state.eval_result = ""
-        st.session_state.eval_auto = {}
-        st.session_state.eval_llm = {}
-        st.session_state.eval_prev_auto = {}
-        st.session_state.eval_prev_llm = {}
-        st.session_state.eval_at = ""
-        st.session_state.last_elapsed = 0.0
-        st.session_state.processing = False
-        _persist_runtime_session()
-    st.rerun()
+    try:
+        with st.status("🎮 Creating game engine…", expanded=False) as status:
+            intent_model_path_raw = st.session_state.intent_model_path or ""
+            intent_model_path = intent_model_path_raw.strip() or None
+            engine = GameEngine(
+                genre=genre or "fantasy",
+                intent_model_path=intent_model_path,
+                conflict_resolution=st.session_state.kg_conflict_resolution,
+                extraction_mode=st.session_state.kg_extraction_mode,
+                importance_mode=st.session_state.kg_importance_mode,
+                summary_mode=st.session_state.kg_summary_mode,
+            )
+            st.session_state.engine = engine
+
+            status.update(label="📖 Generating opening story + knowledge graph…", state="running")
+            result: TurnResult = engine.start_game()
+
+            status.update(label="🎨 Preparing interface…", state="running")
+            st.session_state.history = [
+                {"role": "assistant", "content": result.story_text}
+            ]
+            st.session_state.kg_html = result.kg_html
+            st.session_state.options = result.options
+            st.session_state.consistency_history = []
+            st.session_state.nlu_debug = {}
+            st.session_state.eval_result = ""
+            st.session_state.eval_auto = {}
+            st.session_state.eval_llm = {}
+            st.session_state.eval_prev_auto = {}
+            st.session_state.eval_prev_llm = {}
+            st.session_state.eval_at = ""
+            st.session_state.last_elapsed = 0.0
+            st.session_state.processing = False
+            # 清理旧的 session state 数据
+            cleanup_session_state()
+            _persist_runtime_session()
+            status.update(label="✅ Game ready!", state="complete")
+    except Exception as e:
+        st.error(f"Failed to start game: {e}")
 
 if st.session_state.engine is None:
     st.info("Click \"Start New Game\" above to begin the interactive story.")
@@ -256,6 +276,11 @@ if st.session_state.options:
     st.markdown("<div class='section-title'>&#x1F9ED; Branch Options</div>", unsafe_allow_html=True)
     st.caption("You can click an option directly, or type a free-form action below.")
     _is_busy = st.session_state.processing
+    
+    # 优化：显示处理进度条，让用户知道正在处理
+    if _is_busy:
+        st.progress(0.5, text="🤖 AI is generating your story...")
+    
     opt_cols = st.columns(len(st.session_state.options))
     for idx, opt in enumerate(st.session_state.options):
         with opt_cols[idx]:
@@ -270,9 +295,7 @@ if st.session_state.options:
                 width="stretch",
                 disabled=_is_busy,
             ):
-                with st.spinner("Processing your action…"):
-                    _process_action(opt.text)
-                st.rerun()
+                _process_action(opt.text)
             st.markdown("</div>", unsafe_allow_html=True)
 
 
@@ -289,3 +312,5 @@ if st.session_state.last_elapsed > 0:
 
 
 render_evaluation()
+
+render_sidebar()
