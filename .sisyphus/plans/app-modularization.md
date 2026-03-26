@@ -22,7 +22,7 @@ Slim down `app.py` (currently 1600+ lines) by extracting CSS, state management, 
 - [x] [app.py: Move state initialization to `src/ui/state_manager.py`] Create `initialize_state()` and move `_DEFAULTS` and `_restore_runtime_session_once` logic — expect cleaner setup phase.
 - [x] [app.py: Move sidebar to `src/ui/sections/sidebar.py`] Extract the sidebar rendering block into a function — expect `app.py` to import `render_sidebar`.
 - [x] [app.py: Move chat history & input to `src/ui/sections/chat.py`] Extract chat rendering and input processing — expect `app.py` to import chat functions.
-- [ ] [app.py: Move evaluation dashboard to `src/ui/sections/evaluation.py`] Extract evaluation UI — expect `app.py` to import `render_evaluation`.
+- [x] [app.py: Move evaluation dashboard to `src/ui/sections/evaluation.py`] Extract evaluation UI — expect `app.py` to import `render_evaluation`.
 - [ ] [app.py: Clean up and test] Verify `app.py` runs without errors — expect `streamlit run app.py` to render the exact same UI as before.
 
 ## Final Verification Wave
