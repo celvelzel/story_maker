@@ -26,7 +26,7 @@ Slim down `app.py` (currently 1600+ lines) by extracting CSS, state management, 
 - [x] [app.py: Clean up and test] Verify `app.py` runs without errors — expect `streamlit run app.py` to render the exact same UI as before.
 
 ## Final Verification Wave
-- [ ] F1: App starts correctly (`streamlit run app.py`).
-- [ ] F2: CSS styles are correctly applied after modularization.
-- [ ] F3: Session state works (chat, actions, eval panel).
-- [ ] F4: Modularization scope respected (no business-logic behavior changes).
+- [x] F1: App starts correctly (`streamlit run app.py`).
+- [x] F2: CSS styles are correctly applied after modularization.
+- [x] F3: Session state works (chat, actions, eval panel).
+- [x] F4: Modularization scope respected (no business-logic behavior changes).
