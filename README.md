@@ -54,7 +54,8 @@ story_maker/
 │   ├── engine/               # Game engine orchestrator
 │   │   ├── game_engine.py    # Main pipeline coordinator (NLU → NLG → KG)
 │   │   ├── runtime_session.py # Session persistence management
-│   │   └── state.py          # Game state & history tracking
+│   │   ├── state.py          # Game state & history tracking
+│   │   └── naming.py         # Character/location naming system
 │   ├── nlu/                  # Natural Language Understanding
 │   │   ├── intent_classifier.py   # DistilBERT + keyword fallback
 │   │   ├── entity_extractor.py    # spaCy NER + regex patterns
@@ -73,30 +74,38 @@ story_maker/
 │   │   ├── metrics.py             # Distinct-n, Self-BLEU, coverage
 │   │   ├── llm_judge.py           # LLM-as-Judge scoring
 │   │   └── consistency_eval.py    # KG consistency evaluation
+│   ├── ui/                   # Streamlit UI components
+│   │   ├── layout/          # Page layout and structure
+│   │   ├── sections/        # UI section modules
+│   │   └── state_manager.py # UI state management
 │   └── utils/                # Shared utilities
 │       └── api_client.py          # Singleton LLM client with retry
-├── data/                     # Data assets and processing
-│   ├── intent_labels.json         # Intent label definitions
-│   ├── raw/                       # Raw datasets (git-ignored)
-│   └── scripts/                   # Data processing scripts
-│       ├── download_data.py       # Dataset download automation
-│       └── preprocess.py          # Data preprocessing pipeline
 ├── training/                 # Model training scripts
 │   ├── train_intent.py            # DistilBERT intent classifier training
 │   ├── train_generator.py         # GPT-2 LoRA fine-tuning (legacy/optional)
-│   └── data_augmenter.py          # Training data augmentation
+│   ├── train_hpc.sh               # HPC cluster training script
+│   ├── data_augmenter.py          # Training data augmentation
+│   └── nlg_dataset/               # NLG training dataset resources
+│       ├── combined_data.jsonl    # Combined training dataset
+│       └── combined_data_generate_prompt.md # Data generation prompt
 ├── tests/                    # Test suite (organized by module)
 │   ├── engine/              # Engine component tests
 │   ├── nlu/                 # NLU module tests
 │   ├── nlg/                 # NLG module tests
 │   ├── kg/                  # Knowledge graph tests
 │   ├── integration/         # Cross-module integration tests
-│   └── training/            # Training pipeline tests
+│   ├── training/            # Training pipeline tests
+│   ├── performance/         # Performance benchmarks
+│   ├── ui/                  # UI component tests
+│   └── utils/               # Utility function tests
 ├── scripts/                  # Utility and deployment scripts
 │   ├── start_project_prod.bat     # Windows production launcher
 │   ├── start_project_prod.sh      # macOS/Linux production launcher
 │   ├── health_check.py            # Pre-deployment health validation
-│   └── generate_dataset.py        # Dataset generation utility
+│   ├── generate_dataset.py        # Dataset generation utility
+│   ├── run_automated_eval.py      # Automated evaluation runner
+│   ├── fix_and_merge.py           # Fix and merge utility
+│   └── validate_and_merge.py      # Validation and merge utility
 ├── docs/                     # Comprehensive documentation
 │   ├── api/                 # API reference documentation
 │   ├── design/              # Architecture and design documents
@@ -185,9 +194,7 @@ All 3 NLU components are **fully initialized**:
 | Entity | spaCy (en_core_web_sm) | ✅ Active |
 | Coref | fastcoref FCoref | ✅ Active* |
 
-\* **Fastcoref compatibility:** A transformers 5.2.0 compatibility patch is applied in `src/nlu/coreference.py` to enable fastcoref 2.x. See [FASTCOREF_PATCH.md](FASTCOREF_PATCH.md) for technical details.
-
-**Verification:** Run `python verify_nlu_load.py` to confirm all modules load successfully.
+\* **Fastcoref compatibility:** A transformers compatibility patch is applied in `src/nlu/coreference.py` to enable fastcoref 2.x.
 
 - **API configuration (recommended):**
   - Edit `.env`
@@ -249,4 +256,5 @@ At runtime, if `models/intent_classifier` is unavailable, the system automatical
 6. `docs/design/nlg-local-model-finetuning.md` - NLG local model fine-tuning plan
 7. `docs/reports/kg-optimization.md` - Knowledge graph optimization report
 8. `docs/reports/nlu-kg-improvement.md` - NLU & KG improvement report
-9. `docs/api/API_REFERENCE.md` - Complete API reference documentation
+9. `docs/reports/runtime-persistence.md` - Runtime session persistence documentation
+10. `docs/api/API_REFERENCE.md` - Complete API reference documentation

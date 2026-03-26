@@ -35,5 +35,8 @@
 
 - [API 参考文档](api/API_REFERENCE.md)
 - [技术路线图](guides/technical-route.md)
-- [部署指南](guides/deployment-windows.md)
+- [部署指南 (Windows)](guides/deployment-windows.md)
+- [部署指南 (macOS)](guides/deployment-macos.md)
 - [知识图谱优化报告](reports/kg-optimization.md)
+- [NLU & KG 改进报告](reports/nlu-kg-improvement.md)
+- [运行时持久化文档](reports/runtime-persistence.md)

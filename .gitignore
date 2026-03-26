@@ -77,9 +77,8 @@ saves/
 *.whl
 *.tar.gz
 
-# Sisyphus temporary state (keep reusable plans)
-.sisyphus/boulder.json
-.sisyphus/notepads/
+# Sisyphus temporary state 
+.sisyphus/
 
 # Test evaluation reports (generated files)
 tests/evaluation/reports/*.json

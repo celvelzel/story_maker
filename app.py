@@ -222,7 +222,7 @@ def _process_action(action: str) -> None:
 
 # ── Main area – Game controls ────────────────────────────────────────────
 
-col_genre, col_btn = st.columns([3, 1])
+col_genre, col_btn = st.columns([2, 1.2])
 with col_genre:
     genre = st.text_input(
         "Genre",
