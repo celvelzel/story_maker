@@ -39,6 +39,7 @@ from src.knowledge_graph.visualizer import render_kg_html
 from src.evaluation.metrics import full_evaluation
 from src.evaluation.llm_judge import judge as llm_judge
 from src.ui.layout import load_layout
+from src.ui.state_manager import initialize_state, restore_runtime_session, _DEFAULTS
 from config import settings
 
 logger = logging.getLogger(__name__)
@@ -61,33 +62,7 @@ load_layout()
 
 # ── Session State initialisation ─────────────────────────────────────────
 
-_DEFAULTS = {
-    "engine": None,
-    "history": [],                # list[dict] with role / content
-    "consistency_history": [],    # float per turn
-    "kg_html": "",
-    "options": [],                # list[StoryOption]
-    "nlu_debug": {},
-    "eval_result": "",
-    "eval_auto": {},
-    "eval_llm": {},
-    "eval_prev_auto": {},
-    "eval_prev_llm": {},
-    "eval_at": "",
-    "chat_fold_mode": False,
-    "last_elapsed": 0.0,
-    "intent_model_path": str(settings.INTENT_MODEL_PATH),
-    # KG strategy settings
-    "kg_conflict_resolution": settings.KG_CONFLICT_RESOLUTION,
-    "kg_extraction_mode": settings.KG_EXTRACTION_MODE,
-    "kg_importance_mode": settings.KG_IMPORTANCE_MODE,
-    "kg_summary_mode": settings.KG_SUMMARY_MODE,
-    "processing": False,
-    "genre_input": "fantasy",
-}
-for _k, _v in _DEFAULTS.items():
-    if _k not in st.session_state:
-        st.session_state[_k] = _v
+initialize_state()
 
 
 def _runtime_save_dir() -> Path:
@@ -255,60 +230,6 @@ def _persist_runtime_session() -> None:
     save_runtime_session(save_dir, payload)
 
 
-def _restore_runtime_session_once() -> None:
-    if st.session_state.engine is not None:
-        return
-
-    data = load_runtime_session(_runtime_save_dir())
-    if not data:
-        return
-
-    engine_file = str(data.get("engine_file", "")).strip()
-    if not engine_file or not Path(engine_file).exists():
-        return
-
-    intent_model_path = str(data.get("intent_model_path", "")).strip() or None
-    engine = GameEngine(
-        genre=str(data.get("genre", "fantasy")) or "fantasy",
-        intent_model_path=intent_model_path,
-        conflict_resolution=str(data.get("kg_conflict_resolution", settings.KG_CONFLICT_RESOLUTION)),
-        extraction_mode=str(data.get("kg_extraction_mode", settings.KG_EXTRACTION_MODE)),
-        importance_mode=str(data.get("kg_importance_mode", settings.KG_IMPORTANCE_MODE)),
-        summary_mode=str(data.get("kg_summary_mode", settings.KG_SUMMARY_MODE)),
-    )
-    engine.load_game(engine_file)
-
-    st.session_state.engine = engine
-    st.session_state.history = data.get("history", []) if isinstance(data.get("history"), list) else []
-    st.session_state.consistency_history = (
-        data.get("consistency_history", [])
-        if isinstance(data.get("consistency_history"), list)
-        else []
-    )
-    st.session_state.kg_html = str(data.get("kg_html", ""))
-    st.session_state.options = deserialize_options(data.get("options", []))
-    st.session_state.nlu_debug = data.get("nlu_debug", {}) if isinstance(data.get("nlu_debug"), dict) else {}
-    st.session_state.chat_fold_mode = bool(data.get("chat_fold_mode", False))
-    st.session_state.last_elapsed = float(data.get("last_elapsed", 0.0))
-    st.session_state.intent_model_path = str(data.get("intent_model_path", st.session_state.intent_model_path))
-    st.session_state.kg_conflict_resolution = str(
-        data.get("kg_conflict_resolution", st.session_state.kg_conflict_resolution)
-    )
-    st.session_state.kg_extraction_mode = str(data.get("kg_extraction_mode", st.session_state.kg_extraction_mode))
-    st.session_state.kg_importance_mode = str(data.get("kg_importance_mode", st.session_state.kg_importance_mode))
-    st.session_state.kg_summary_mode = str(data.get("kg_summary_mode", st.session_state.kg_summary_mode))
-    st.session_state.eval_result = str(data.get("eval_result", ""))
-    st.session_state.eval_auto = data.get("eval_auto", {}) if isinstance(data.get("eval_auto"), dict) else {}
-    st.session_state.eval_llm = data.get("eval_llm", {}) if isinstance(data.get("eval_llm"), dict) else {}
-    st.session_state.eval_prev_auto = (
-        data.get("eval_prev_auto", {}) if isinstance(data.get("eval_prev_auto"), dict) else {}
-    )
-    st.session_state.eval_prev_llm = (
-        data.get("eval_prev_llm", {}) if isinstance(data.get("eval_prev_llm"), dict) else {}
-    )
-    st.session_state.eval_at = str(data.get("eval_at", ""))
-
-
 def _cleanup_runtime_files() -> None:
     global _RUNTIME_CLEANED
     if _RUNTIME_CLEANED:
@@ -346,7 +267,7 @@ def _register_runtime_cleanup() -> None:
 
 
 _register_runtime_cleanup()
-_restore_runtime_session_once()
+restore_runtime_session(_runtime_save_dir())
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────
