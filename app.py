@@ -217,6 +217,8 @@ def _process_action(action: str) -> None:
         st.session_state.processing = False
         _persist_runtime_session()
 
+    st.rerun()
+
 
 # ── Main area – Game controls ────────────────────────────────────────────
 

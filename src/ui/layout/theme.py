@@ -57,11 +57,6 @@ def _theme_tokens(mode: str) -> dict[str, str]:
 
 def load_theme() -> None:
     """Inject CSS theme into Streamlit app (cached per session to avoid re-injection on every rerun)."""
-    # 缓存：同一 session 只注入一次 CSS，避免每次 rerun 重复处理 ~780 行样式
-    _cache_key = "_theme_injected"
-    if st.session_state.get(_cache_key):
-        return
-
     tokens = _theme_tokens(st.session_state.ui_mode)
 
     st.markdown(
@@ -789,5 +784,3 @@ def load_theme() -> None:
         unsafe_allow_html=True,
     )
 
-    # 标记 CSS 已注入，后续 rerun 跳过
-    st.session_state[_cache_key] = True
