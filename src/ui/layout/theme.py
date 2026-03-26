@@ -156,7 +156,7 @@ def load_theme() -> None:
                 rgba(0, 240, 255, 0.03) 39px,
                 rgba(0, 240, 255, 0.03) 40px
             );
-        /* 移除动画：animation: gridMove 8s linear infinite; */
+        animation: gridMove 8s linear infinite;
         pointer-events: none;
         z-index: 0;
     }}
@@ -214,7 +214,7 @@ def load_theme() -> None:
         width: 60%;
         height: 2px;
         background: linear-gradient(90deg, {tokens['neon_cyan']}, {tokens['neon_purple']}, transparent);
-        animation: scanLine 8s ease-in-out infinite; /* 从 4s 改为 8s，减少 CPU 占用 */
+        animation: scanLine 4s ease-in-out infinite;
     }}
 
     .hero h2 {{
@@ -225,7 +225,7 @@ def load_theme() -> None:
         font-weight: 800;
         color: #ffffff;
         letter-spacing: 1.5px;
-        animation: glowText 6s ease-in-out infinite; /* 从 3s 改为 6s，减少 CPU 占用 */
+        animation: glowText 3s ease-in-out infinite;
     }}
 
     .hero p {{
@@ -427,7 +427,7 @@ def load_theme() -> None:
         font-family: 'Orbitron', 'Noto Sans SC', sans-serif;
         font-weight: 700;
         letter-spacing: 1px;
-        animation: neonPulse 6s ease-in-out infinite; /* 从 3s 改为 6s，减少 CPU 占用 */
+        animation: neonPulse 3s ease-in-out infinite;
     }}
     .stButton > button[kind="primary"]:hover {{
         background: linear-gradient(135deg, {tokens['neon_cyan']}33, {tokens['neon_purple']}33) !important;
@@ -466,7 +466,7 @@ def load_theme() -> None:
         padding: 2px;
         background: rgba(0,240,255,0.02);
         box-shadow: 0 0 20px rgba(0,240,255,0.05), inset 0 0 20px rgba(0,240,255,0.02);
-        /* 移除动画：animation: borderPulse 6s ease-in-out infinite; */
+        animation: borderPulse 6s ease-in-out infinite;
     }}
 
     /* ── Progress bars — neon override ────────────────────── */
@@ -557,7 +557,7 @@ def load_theme() -> None:
     .stChatInput {{
         border: 1px solid {tokens['neon_cyan']}35 !important;
         border-radius: 10px !important;
-        animation: chatBreath 8s ease-in-out infinite !important; /* 从 4s 改为 8s */
+        animation: chatBreath 4s ease-in-out infinite !important;
         outline: none !important;
     }}
     /* Kill ALL red/orange focus outlines inside chat input */

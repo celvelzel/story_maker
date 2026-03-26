@@ -130,22 +130,17 @@ def render_evaluation() -> None:
 
     if run_eval:
         with st.spinner("⏳ Calculating evaluation results… Please wait."):
-            try:
-                report_md, auto_scores, llm_scores = _run_evaluation()
+            report_md, auto_scores, llm_scores = _run_evaluation()
 
-                if st.session_state.eval_auto and st.session_state.eval_llm:
-                    st.session_state.eval_prev_auto = st.session_state.eval_auto.copy()
-                    st.session_state.eval_prev_llm = st.session_state.eval_llm.copy()
+            if st.session_state.eval_auto and st.session_state.eval_llm:
+                st.session_state.eval_prev_auto = st.session_state.eval_auto.copy()
+                st.session_state.eval_prev_llm = st.session_state.eval_llm.copy()
 
-                st.session_state.eval_result = report_md
-                st.session_state.eval_auto = auto_scores
-                st.session_state.eval_llm = llm_scores
-                st.session_state.eval_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                _persist_runtime_session()
-                st.success("Evaluation completed successfully!")
-            except Exception as e:
-                st.error(f"Evaluation failed: {e}")
-                logger.exception("Evaluation error")
+            st.session_state.eval_result = report_md
+            st.session_state.eval_auto = auto_scores
+            st.session_state.eval_llm = llm_scores
+            st.session_state.eval_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            _persist_runtime_session()
 
     if st.session_state.eval_result:
         if st.session_state.eval_auto and st.session_state.eval_llm:

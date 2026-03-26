@@ -181,13 +181,8 @@ def _process_action(action: str) -> None:
     st.session_state.history.append({"role": "user", "content": action})
     
     try:
-        # 使用 st.status 显示分阶段进度（Streamlit >= 1.28）
-        _initial_label = "⏳ Loading NLU models…" if not engine._nlu_loaded else "🔄 Running NLU + NLG pipeline…"
-        with st.status(_initial_label, expanded=False) as status:
+        with st.spinner("Processing your action..."):
             result: TurnResult = engine.process_turn(action)
-
-            # 阶段 2: 更新 UI 状态
-            status.update(label="🎨 Rendering results…", state="running")
 
             assistant_msg = result.story_text
             if result.conflicts:
@@ -206,8 +201,6 @@ def _process_action(action: str) -> None:
             score = 1.0 if n_conflicts == 0 else max(0.0, 1.0 - n_conflicts * 0.2)
             st.session_state.consistency_history.append(score)
 
-            elapsed = time.time() - start
-            status.update(label=f"✅ Done in {elapsed:.1f}s", state="complete")
         
     except Exception as e:
         logger.exception("Failed to process player action")
@@ -227,12 +220,18 @@ def _process_action(action: str) -> None:
 
 # ── Main area – Game controls ────────────────────────────────────────────
 
-genre = st.text_input(
-    "Genre",
-    key="genre_input",
-    placeholder="Genre, e.g. fantasy / sci-fi / mystery",
-    label_visibility="collapsed",
-)
+col_genre, col_btn = st.columns([3, 1])
+with col_genre:
+    genre = st.text_input(
+        "Genre",
+        value="fantasy",
+        placeholder="Genre, e.g. fantasy / sci-fi / mystery",
+        label_visibility="collapsed",
+    )
+with col_btn:
+    new_game_clicked = st.button(
+        "🎮 Start New Game", type="primary", width="stretch"
+    )
 
 load_checkpoint_clicked = False
 if st.session_state.show_load_checkpoint_btn and st.session_state.engine is None:
@@ -241,11 +240,9 @@ if st.session_state.show_load_checkpoint_btn and st.session_state.engine is None
         restore_runtime_session(_runtime_save_dir(), auto_restore=False)
         st.session_state.show_load_checkpoint_btn = st.session_state.engine is None
 
-new_game_clicked = st.button("🎮 Start New Game", type="primary", width="stretch")
-
 if new_game_clicked:
     try:
-        with st.status("🎮 Creating game engine…", expanded=False) as status:
+        with st.spinner("Initializing the adventure world…"):
             intent_model_path_raw = st.session_state.intent_model_path or ""
             intent_model_path = intent_model_path_raw.strip() or None
             engine = GameEngine(
@@ -258,11 +255,8 @@ if new_game_clicked:
             )
             st.session_state.engine = engine
 
-            status.update(label="📖 Generating opening story + knowledge graph…", state="running")
             result: TurnResult = engine.start_game()
 
-            status.update(label="🎨 Preparing interface…", state="running")
-            
             save_path = engine.save_game()
             archive_filename = Path(save_path).name
             st.session_state.archive_filename = archive_filename
@@ -285,7 +279,6 @@ if new_game_clicked:
             # 清理旧的 session state 数据
             cleanup_session_state()
             _persist_runtime_session()
-            status.update(label="✅ Game ready!", state="complete")
     except Exception as e:
         st.error(f"Failed to start game: {e}")
 
@@ -307,10 +300,6 @@ if st.session_state.options:
     st.markdown("<div class='section-title'>&#x1F9ED; Branch Options</div>", unsafe_allow_html=True)
     st.caption("You can click an option directly, or type a free-form action below.")
     _is_busy = st.session_state.processing
-    
-    # 优化：显示处理进度条，让用户知道正在处理
-    if _is_busy:
-        st.progress(0.5, text="🤖 AI is generating your story...")
     
     opt_cols = st.columns(len(st.session_state.options))
     for idx, opt in enumerate(st.session_state.options):
