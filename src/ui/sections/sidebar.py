@@ -167,10 +167,15 @@ def render_sidebar() -> None:
         st.markdown("<hr class='neon-divider'>", unsafe_allow_html=True)
 
         st.markdown("<div class='section-title'>&#x1F4CA; Story World Knowledge Graph</div>", unsafe_allow_html=True)
-        if st.session_state.kg_html:
-            st.markdown("<div class='kg-frame'>", unsafe_allow_html=True)
-            components.html(st.session_state.kg_html, height=480, scrolling=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+        # Display KG if either: 1) kg_html exists, or 2) engine is initialized (in case kg_html not yet rendered)
+        if st.session_state.kg_html or engine:
+            if st.session_state.kg_html:
+                st.markdown("<div class='kg-frame'>", unsafe_allow_html=True)
+                components.html(st.session_state.kg_html, height=480, scrolling=True)
+                st.markdown("</div>", unsafe_allow_html=True)
+            elif engine:
+                # Engine exists but kg_html not yet available, show loading state
+                st.info("⏳ Knowledge graph is being generated...")
         else:
             st.info("The knowledge graph will appear after starting a game.")
 
