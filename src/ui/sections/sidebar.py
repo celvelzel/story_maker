@@ -174,8 +174,12 @@ def render_sidebar() -> None:
                 components.html(st.session_state.kg_html, height=480, scrolling=True)
                 st.markdown("</div>", unsafe_allow_html=True)
             elif engine:
-                # Engine exists but kg_html not yet available, show loading state
-                st.info("⏳ Knowledge graph is being generated...")
+                # Engine exists but kg_html not yet cached - render immediately instead of showing loading state
+                kg_html = render_kg_html(engine.kg.graph)
+                st.session_state.kg_html = kg_html  # Cache for next re-run
+                st.markdown("<div class='kg-frame'>", unsafe_allow_html=True)
+                components.html(kg_html, height=480, scrolling=True)
+                st.markdown("</div>", unsafe_allow_html=True)
         else:
             st.info("The knowledge graph will appear after starting a game.")
 
@@ -204,7 +208,7 @@ def render_sidebar() -> None:
             st.caption("Consistency scores appear after the first action")
 
         st.markdown("<div class='section-title'>&#x2699; Settings</div>", unsafe_allow_html=True)
-        with st.expander("💾 Save / Load", expanded=True):
+        with st.expander("💾 Save / Load", expanded=False):
             save_slots = _list_save_slots(_runtime_save_dir())
             if save_slots:
                 selected_idx = st.selectbox(

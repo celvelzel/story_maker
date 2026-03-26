@@ -1,6 +1,6 @@
 {
   "mode": "baseline",
-  "generated_at": "2026-03-25T12:13:37.906053+00:00",
+  "generated_at": "2026-03-26T06:49:42.893270+00:00",
   "benchmark_path": "C:\\Develop\\python_projects\\COMP5423_NLP\\story_maker\\tests\\evaluation\\data\\nlu_kg_quality_benchmark.jsonl",
   "metrics": {
     "case_count": 120,
