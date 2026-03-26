@@ -266,7 +266,7 @@ class RelationExtractor:
                 {"role": "user", "content": text},
             ]
             # 调用 LLM API（低温度确保一致性）
-            data = llm_client.chat_json(messages, temperature=0.2, max_tokens=512)
+            data = llm_client.chat_json(messages, temperature=0.2, max_tokens=1024)
             normalized = self._sanitize_payload(data if isinstance(data, dict) else {})
             entities = normalized["entities"]
             relations = normalized["relations"]
@@ -335,7 +335,7 @@ class RelationExtractor:
                 {"role": "system", "content": _EXTRACTION_SYSTEM_DUAL},
                 {"role": "user", "content": combined_text},
             ]
-            data = llm_client.chat_json(messages, temperature=0.2, max_tokens=512)
+            data = llm_client.chat_json(messages, temperature=0.2, max_tokens=1024)
             normalized = self._sanitize_payload(data if isinstance(data, dict) else {})
             entities = normalized["entities"]
             relations = normalized["relations"]
@@ -381,7 +381,7 @@ class RelationExtractor:
                 {"role": "system", "content": system},
                 {"role": "user", "content": player_input},
             ]
-            data = llm_client.chat_json(messages, temperature=0.1, max_tokens=256)
+            data = llm_client.chat_json(messages, temperature=0.1, max_tokens=512)
             return self._sanitize_payload(data if isinstance(data, dict) else {})
         except Exception as exc:
             logger.warning("[Extractor][_extract_player_input] 提取失败: %s", exc)

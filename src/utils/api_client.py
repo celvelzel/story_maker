@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 import logging
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -188,10 +188,170 @@ class LLMClient:
             Dict[str, Any]: 解析后的 JSON 响应字典
 
         异常：
-            json.JSONDecodeError: 如果响应不是有效 JSON
+            json.JSONDecodeError: 如果响应在修复与严格重试后仍不是有效 JSON
         """
         raw = self.chat(messages, temperature=temperature, max_tokens=max_tokens, json_mode=True)
-        return json.loads(raw)
+        parsed, last_error = self._parse_json_with_repair(raw)
+        if parsed is not None:
+            return parsed
+
+        strict_instruction = (
+            "Return a strictly valid JSON object only. "
+            "Do not include markdown fences, commentary, or trailing commas."
+        )
+        strict_messages = list(messages) + [{"role": "user", "content": strict_instruction}]
+        retry_tokens = max(max_tokens or 0, self._settings.OPENAI_MAX_TOKENS)
+        strict_raw = self.chat(
+            strict_messages,
+            temperature=0.0,
+            max_tokens=retry_tokens,
+            json_mode=True,
+        )
+        strict_parsed, strict_error = self._parse_json_with_repair(strict_raw)
+        if strict_parsed is not None:
+            return strict_parsed
+
+        logger.error("JSON parse failed after strict retry. Initial raw:\n%s\nStrict raw:\n%s", raw, strict_raw)
+        if strict_error is not None:
+            raise strict_error
+        if last_error is not None:
+            raise last_error
+        raise json.JSONDecodeError("Expecting value", strict_raw, 0)
+
+    @staticmethod
+    def _strip_markdown_fence(text: str) -> str:
+        stripped = text.strip()
+        if not stripped.startswith("```"):
+            return stripped
+
+        lines = stripped.splitlines()
+        if not lines:
+            return stripped
+
+        # Remove opening fence (``` or ```json)
+        lines = lines[1:]
+        # Remove closing fence when present
+        if lines and lines[-1].strip().startswith("```"):
+            lines = lines[:-1]
+        return "\n".join(lines).strip()
+
+    @staticmethod
+    def _extract_balanced_json_objects(text: str) -> List[str]:
+        objects: List[str] = []
+        depth = 0
+        start_idx: Optional[int] = None
+        in_string = False
+        escape = False
+
+        for idx, ch in enumerate(text):
+            if in_string:
+                if escape:
+                    escape = False
+                elif ch == "\\":
+                    escape = True
+                elif ch == '"':
+                    in_string = False
+                continue
+
+            if ch == '"':
+                in_string = True
+                continue
+
+            if ch == "{":
+                if depth == 0:
+                    start_idx = idx
+                depth += 1
+                continue
+
+            if ch == "}" and depth > 0:
+                depth -= 1
+                if depth == 0 and start_idx is not None:
+                    objects.append(text[start_idx : idx + 1])
+                    start_idx = None
+
+        return objects
+
+    @staticmethod
+    def _remove_trailing_commas(text: str) -> str:
+        result: List[str] = []
+        in_string = False
+        escape = False
+        idx = 0
+        length = len(text)
+
+        while idx < length:
+            ch = text[idx]
+
+            if in_string:
+                result.append(ch)
+                if escape:
+                    escape = False
+                elif ch == "\\":
+                    escape = True
+                elif ch == '"':
+                    in_string = False
+                idx += 1
+                continue
+
+            if ch == '"':
+                in_string = True
+                result.append(ch)
+                idx += 1
+                continue
+
+            if ch == ",":
+                lookahead = idx + 1
+                while lookahead < length and text[lookahead].isspace():
+                    lookahead += 1
+                if lookahead < length and text[lookahead] in "}]":
+                    idx += 1
+                    continue
+
+            result.append(ch)
+            idx += 1
+
+        return "".join(result)
+
+    def _parse_json_with_repair(self, raw: str) -> Tuple[Optional[Dict[str, Any]], Optional[json.JSONDecodeError]]:
+        candidates: List[str] = []
+        seen: set[str] = set()
+
+        def _push(candidate: str) -> None:
+            value = candidate.strip()
+            if value and value not in seen:
+                seen.add(value)
+                candidates.append(value)
+
+        _push(raw)
+        _push(self._strip_markdown_fence(raw))
+
+        for base in list(candidates):
+            for obj in self._extract_balanced_json_objects(base):
+                _push(obj)
+
+        expanded: List[str] = []
+        expanded_seen: set[str] = set()
+        for candidate in candidates:
+            if candidate not in expanded_seen:
+                expanded_seen.add(candidate)
+                expanded.append(candidate)
+
+            repaired = self._remove_trailing_commas(candidate)
+            if repaired and repaired not in expanded_seen:
+                expanded_seen.add(repaired)
+                expanded.append(repaired)
+
+        last_error: Optional[json.JSONDecodeError] = None
+        for candidate in expanded:
+            try:
+                parsed = json.loads(candidate)
+                if isinstance(parsed, dict):
+                    return parsed, last_error
+                last_error = json.JSONDecodeError("Top-level JSON is not an object", candidate, 0)
+            except json.JSONDecodeError as exc:
+                last_error = exc
+
+        return None, last_error
 
     # ── usage tracking ────────────────────────────────────
     @property
