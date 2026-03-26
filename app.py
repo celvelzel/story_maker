@@ -7,6 +7,7 @@ StoryWeaver Streamlit 前端界面。
     侧边栏:    知识图谱可视化 · 一致性趋势 · 调试信息 · 下载功能
     主区域:    控制面板 · 故事聊天 · 选项按钮 · 评估仪表板
 """
+# pyright: reportMissingImports=false
 from __future__ import annotations
 
 import os
@@ -37,6 +38,7 @@ from src.evaluation.llm_judge import judge as llm_judge
 from src.knowledge_graph.visualizer import render_kg_html
 from src.ui.layout import load_layout
 from src.ui.sections.sidebar import render_sidebar
+from src.ui.sections.chat import render_chat_history, render_chat_input
 from src.ui.state_manager import initialize_state, restore_runtime_session
 from config import settings
 
@@ -245,39 +247,6 @@ def _run_evaluation() -> tuple[str, dict, dict]:
     return "\n".join(lines), auto, llm_scores
 
 
-def _build_turn_pairs(history: list[dict]) -> tuple[str, list[tuple[int, str, str]]]:
-    """Return opening narration and user-assistant turn pairs.
-    
-    构建回合配对：从聊天历史中提取开场白和用户-助手对话配对。
-    返回 (开场白, [(回合号, 用户输入, 助手回复), ...])
-    """
-    opening = ""
-    pairs: list[tuple[int, str, str]] = []
-    i = 0
-
-    if history and history[0]["role"] == "assistant":
-        opening = history[0]["content"]
-        i = 1
-
-    turn = 1
-    while i < len(history):
-        user_text = ""
-        ai_text = ""
-
-        if i < len(history) and history[i]["role"] == "user":
-            user_text = history[i]["content"]
-            i += 1
-        if i < len(history) and history[i]["role"] == "assistant":
-            ai_text = history[i]["content"]
-            i += 1
-
-        if user_text or ai_text:
-            pairs.append((turn, user_text, ai_text))
-            turn += 1
-
-    return opening, pairs
-
-
 def _delta_str(current: float, previous: dict, key: str, fmt: str = ".4f") -> str | None:
     """Format metric delta string for st.metric.
     
@@ -358,34 +327,7 @@ if st.session_state.engine is None:
 
 # ── Chat history ─────────────────────────────────────────────────────────
 
-chat_fold_mode = st.toggle(
-    "Fold history by turn",
-    value=st.session_state.chat_fold_mode,
-    help="When enabled, each turn is folded as \"user input + system response\" for easier long-session reading.",
-)
-st.session_state.chat_fold_mode = chat_fold_mode
-
-if chat_fold_mode:
-    opening, turn_pairs = _build_turn_pairs(st.session_state.history)
-    if opening:
-        with st.chat_message("assistant"):
-            st.markdown(opening)
-
-    for turn, user_text, ai_text in turn_pairs:
-        preview = user_text[:28] + ("..." if len(user_text) > 28 else "")
-        title = f"Turn {turn} | {preview or '(empty input)'}"
-        with st.expander(title, expanded=(turn == len(turn_pairs))):
-            if user_text:
-                st.markdown("**You:**")
-                st.markdown(user_text)
-            if ai_text:
-                st.markdown("**System:**")
-                st.markdown(ai_text)
-else:
-    for msg in st.session_state.history:
-        role = "user" if msg["role"] == "user" else "assistant"
-        with st.chat_message(role):
-            st.markdown(msg["content"])
+render_chat_history()
 
 
 # ── Option buttons ───────────────────────────────────────────────────────
@@ -416,14 +358,8 @@ if st.session_state.options:
 
 # ── Chat input ───────────────────────────────────────────────────────────
 
-user_input = st.chat_input(
-    "Enter your action (e.g., investigate the runes in the ruins)…",
-    disabled=st.session_state.processing,
-)
-if user_input:
-    with st.spinner("Processing your action…"):
-        _process_action(user_input)
-    st.rerun()
+st.session_state.process_action = _process_action
+render_chat_input()
 
 
 # ── Performance footer ──────────────────────────────────────────────────
