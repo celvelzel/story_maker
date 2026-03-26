@@ -150,35 +150,54 @@ def render_sidebar() -> None:
         st.markdown("<div class='section-title'>&#x1F39B;&#xFE0F; Dashboard</div>", unsafe_allow_html=True)
         turn_count = _story_turn_count()
         engine: GameEngine | None = st.session_state.engine
-        entity_count = len(engine.kg_entity_names) if engine else 0
-        conflict_total = sum(engine.turn_conflict_counts) if engine else 0
+        
+        # 安全访问 engine 属性：使用 getattr 和 try-except 防止 AttributeError
+        try:
+            entity_count = len(getattr(engine, 'kg_entity_names', [])) if engine else 0
+        except (AttributeError, TypeError):
+            entity_count = 0
+        try:
+            conflict_total = sum(getattr(engine, 'turn_conflict_counts', [])) if engine else 0
+        except (AttributeError, TypeError):
+            conflict_total = 0
 
         c1, c2, c3 = st.columns(3)
         c1.metric("Turns", turn_count)
         c2.metric("Entities", entity_count)
         c3.metric("Conflicts", conflict_total)
 
+        # 安全获取 engine 配置信息
         if engine:
-            st.caption(
-                f"Strategy: {engine.conflict_resolution} | {engine.extraction_mode} | "
-                f"{engine.summary_mode} | {engine.importance_mode}"
-            )
+            try:
+                conflict_resolution = getattr(engine, 'conflict_resolution', 'unknown')
+                extraction_mode = getattr(engine, 'extraction_mode', 'unknown')
+                summary_mode = getattr(engine, 'summary_mode', 'unknown')
+                importance_mode = getattr(engine, 'importance_mode', 'unknown')
+                st.caption(
+                    f"Strategy: {conflict_resolution} | {extraction_mode} | "
+                    f"{summary_mode} | {importance_mode}"
+                )
+            except (AttributeError, TypeError):
+                st.caption("Strategy: loading...")
 
         st.markdown("<hr class='neon-divider'>", unsafe_allow_html=True)
 
         st.markdown("<div class='section-title'>&#x1F4CA; Story World Knowledge Graph</div>", unsafe_allow_html=True)
         # Display KG if either: 1) kg_html exists, or 2) engine is initialized (in case kg_html not yet rendered)
-        if st.session_state.kg_html or engine:
-            if st.session_state.kg_html:
-                st.markdown("<div class='kg-frame'>", unsafe_allow_html=True)
-                components.html(st.session_state.kg_html, height=480, scrolling=True)
-                st.markdown("</div>", unsafe_allow_html=True)
-            elif engine:
-                # Engine exists but kg_html not yet cached - render immediately instead of showing loading state
+        # 优化：优先使用缓存的 kg_html，避免每次 rerun 重新渲染；只在必要时生成新图谱
+        # KG 高度自适应：根据节点数量动态调整
+        _kg_height = min(700, max(350, 300 + entity_count * 8)) if engine else 480
+        if st.session_state.kg_html:
+            st.markdown("<div class='kg-frame'>", unsafe_allow_html=True)
+            components.html(st.session_state.kg_html, height=_kg_height, scrolling=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+        elif engine:
+            # Engine exists but kg_html not yet cached - render immediately
+            with st.spinner("Generating knowledge graph..."):
                 kg_html = render_kg_html(engine.kg.graph)
                 st.session_state.kg_html = kg_html  # Cache for next re-run
                 st.markdown("<div class='kg-frame'>", unsafe_allow_html=True)
-                components.html(kg_html, height=480, scrolling=True)
+                components.html(kg_html, height=_kg_height, scrolling=True)
                 st.markdown("</div>", unsafe_allow_html=True)
         else:
             st.info("The knowledge graph will appear after starting a game.")
@@ -223,7 +242,7 @@ def render_sidebar() -> None:
                         ok, message = _restore_from_save_file(save_slots[selected_idx]["path"])
                     if ok:
                         st.success(message)
-                        st.rerun()
+                        # 优化：移除 st.rerun()，session_state 已更新会自动重新渲染
                     else:
                         st.error(message)
             else:

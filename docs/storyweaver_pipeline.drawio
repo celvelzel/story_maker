@@ -1,0 +1,77 @@
+<mxfile host="app.diagrams.net" modified="2026-03-26T00:00:00.000Z" agent="copilot" version="24.7.17" type="device">
+  <diagram id="storyweaver-pipeline" name="StoryWeaver Pipeline">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1080" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="ui" value="Player Input / Streamlit UI" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="280" width="220" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="coref" value="Coreference Resolution&#10;(fastcoref)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="320" y="80" width="220" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="intent" value="Intent Classification&#10;(DistilBERT + fallback)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="320" y="180" width="220" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="entity" value="Entity Extraction&#10;(spaCy + heuristics)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="320" y="280" width="220" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="engine" value="Game Engine Orchestrator" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="620" y="180" width="260" height="90" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="story" value="Story Generation&#10;(LLM API)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="960" y="120" width="230" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="kg" value="Knowledge Graph Update&#10;+ Conflict Detection" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="960" y="230" width="230" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="option" value="Option Generation&#10;(3 player choices)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="960" y="350" width="230" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="output" value="Story + Options Returned to UI" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1280" y="270" width="260" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e1" style="endArrow=block;endFill=1;html=1;strokeWidth=2;" edge="1" parent="1" source="ui" target="coref">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e2" style="endArrow=block;endFill=1;html=1;strokeWidth=2;" edge="1" parent="1" source="coref" target="intent">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e3" style="endArrow=block;endFill=1;html=1;strokeWidth=2;" edge="1" parent="1" source="intent" target="entity">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e4" style="endArrow=block;endFill=1;html=1;strokeWidth=2;" edge="1" parent="1" source="entity" target="engine">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e5" style="endArrow=block;endFill=1;html=1;strokeWidth=2;" edge="1" parent="1" source="engine" target="story">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e6" value="relations" style="endArrow=block;endFill=1;html=1;strokeWidth=2;" edge="1" parent="1" source="engine" target="kg">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e7" style="endArrow=block;endFill=1;html=1;strokeWidth=2;" edge="1" parent="1" source="engine" target="option">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e8" style="endArrow=block;endFill=1;html=1;strokeWidth=2;" edge="1" parent="1" source="story" target="output">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e9" style="endArrow=block;endFill=1;html=1;strokeWidth=2;" edge="1" parent="1" source="option" target="output">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e10" value="state feedback" style="endArrow=block;endFill=1;html=1;dashed=1;strokeWidth=2;" edge="1" parent="1" source="kg" target="engine">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

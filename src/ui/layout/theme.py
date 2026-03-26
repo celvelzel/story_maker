@@ -56,7 +56,12 @@ def _theme_tokens(mode: str) -> dict[str, str]:
 
 
 def load_theme() -> None:
-    """Inject CSS theme into Streamlit app."""
+    """Inject CSS theme into Streamlit app (cached per session to avoid re-injection on every rerun)."""
+    # 缓存：同一 session 只注入一次 CSS，避免每次 rerun 重复处理 ~780 行样式
+    _cache_key = "_theme_injected"
+    if st.session_state.get(_cache_key):
+        return
+
     tokens = _theme_tokens(st.session_state.ui_mode)
 
     st.markdown(
@@ -65,6 +70,7 @@ def load_theme() -> None:
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;800;900&family=Rajdhani:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700;800&display=swap');
 
     /* ── Keyframe Animations ─────────────────────────────── */
+    /* 优化：减少无限循环动画的频率以降低 CPU 占用 */
     @keyframes gradientShift {{
         0%   {{ background-position: 0% 50%; }}
         50%  {{ background-position: 100% 50%; }}
@@ -105,11 +111,11 @@ def load_theme() -> None:
     @keyframes chatBreath {{
         0%, 100% {{
             border-color: {tokens['neon_cyan']}66;
-            box-shadow: 0 0 12px {tokens['neon_cyan']}40, 0 0 32px {tokens['neon_cyan']}18, inset 0 0 14px {tokens['neon_cyan']}10;
+            box-shadow: 0 0 8px {tokens['neon_cyan']}30, 0 0 16px {tokens['neon_cyan']}10;
         }}
         50% {{
-            border-color: {tokens['neon_cyan']}cc;
-            box-shadow: 0 0 22px {tokens['neon_cyan']}66, 0 0 56px {tokens['neon_purple']}30, inset 0 0 24px {tokens['neon_cyan']}18;
+            border-color: {tokens['neon_cyan']}aa;
+            box-shadow: 0 0 12px {tokens['neon_cyan']}50, 0 0 24px {tokens['neon_purple']}20;
         }}
     }}
     @keyframes particleDrift {{
@@ -130,7 +136,7 @@ def load_theme() -> None:
         color: {tokens['text']};
     }}
 
-    /* Grid overlay on main area */
+    /* Grid overlay on main area - 优化：静态网格，不使用动画以减少 CPU 占用 */
     .stApp::before {{
         content: '';
         position: fixed;
@@ -150,7 +156,7 @@ def load_theme() -> None:
                 rgba(0, 240, 255, 0.03) 39px,
                 rgba(0, 240, 255, 0.03) 40px
             );
-        animation: gridMove 8s linear infinite;
+        /* 移除动画：animation: gridMove 8s linear infinite; */
         pointer-events: none;
         z-index: 0;
     }}
@@ -208,7 +214,7 @@ def load_theme() -> None:
         width: 60%;
         height: 2px;
         background: linear-gradient(90deg, {tokens['neon_cyan']}, {tokens['neon_purple']}, transparent);
-        animation: scanLine 4s ease-in-out infinite;
+        animation: scanLine 8s ease-in-out infinite; /* 从 4s 改为 8s，减少 CPU 占用 */
     }}
 
     .hero h2 {{
@@ -219,7 +225,7 @@ def load_theme() -> None:
         font-weight: 800;
         color: #ffffff;
         letter-spacing: 1.5px;
-        animation: glowText 3s ease-in-out infinite;
+        animation: glowText 6s ease-in-out infinite; /* 从 3s 改为 6s，减少 CPU 占用 */
     }}
 
     .hero p {{
@@ -421,7 +427,7 @@ def load_theme() -> None:
         font-family: 'Orbitron', 'Noto Sans SC', sans-serif;
         font-weight: 700;
         letter-spacing: 1px;
-        animation: neonPulse 3s ease-in-out infinite;
+        animation: neonPulse 6s ease-in-out infinite; /* 从 3s 改为 6s，减少 CPU 占用 */
     }}
     .stButton > button[kind="primary"]:hover {{
         background: linear-gradient(135deg, {tokens['neon_cyan']}33, {tokens['neon_purple']}33) !important;
@@ -453,13 +459,14 @@ def load_theme() -> None:
     }}
 
     /* ── KG Visualization Frame ───────────────────────────── */
+    /* 优化：移除无限动画，改为静态样式以减少 CPU 占用 */
     .kg-frame {{
         border: 1px solid {tokens['neon_cyan']}22;
         border-radius: 12px;
         padding: 2px;
         background: rgba(0,240,255,0.02);
         box-shadow: 0 0 20px rgba(0,240,255,0.05), inset 0 0 20px rgba(0,240,255,0.02);
-        animation: borderPulse 6s ease-in-out infinite;
+        /* 移除动画：animation: borderPulse 6s ease-in-out infinite; */
     }}
 
     /* ── Progress bars — neon override ────────────────────── */
@@ -545,12 +552,12 @@ def load_theme() -> None:
         background: transparent !important;
         background-color: transparent !important;
     }}
-    /* Neon breathing border — always visible */
+    /* Neon breathing border — always visible - 优化：延长动画周期减少 CPU 占用 */
     [data-testid="stChatInput"],
     .stChatInput {{
         border: 1px solid {tokens['neon_cyan']}35 !important;
         border-radius: 10px !important;
-        animation: chatBreath 4s ease-in-out infinite !important;
+        animation: chatBreath 8s ease-in-out infinite !important; /* 从 4s 改为 8s */
         outline: none !important;
     }}
     /* Kill ALL red/orange focus outlines inside chat input */
@@ -781,3 +788,6 @@ def load_theme() -> None:
 """,
         unsafe_allow_html=True,
     )
+
+    # 标记 CSS 已注入，后续 rerun 跳过
+    st.session_state[_cache_key] = True

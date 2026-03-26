@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from pathlib import Path
 
@@ -12,13 +13,25 @@ from src.evaluation.llm_judge import judge as llm_judge
 from src.evaluation.metrics import full_evaluation
 from src.engine.runtime_session import runtime_engine_path, save_runtime_session, serialize_options
 
+logger = logging.getLogger(__name__)
+
 __all__ = ["render_evaluation"]
 
 
 def _persist_runtime_session() -> None:
+    """保存运行时会话（与 app.py 中的版本保持一致）。
+    
+    注意：此函数与 app.py._persist_runtime_session 功能重复，
+    但因 Streamlit 的模块导入限制无法直接复用。
+    两处修改需同步维护。
+    """
     engine = st.session_state.engine
     if engine is None:
         return
+
+    save_dir = Path(settings.KG_SAVE_DIR)
+    engine_file = runtime_engine_path(save_dir)
+    engine.save_game(str(engine_file))
 
     payload = {
         "version": 1,
@@ -41,9 +54,9 @@ def _persist_runtime_session() -> None:
         "eval_prev_auto": st.session_state.eval_prev_auto,
         "eval_prev_llm": st.session_state.eval_prev_llm,
         "eval_at": st.session_state.eval_at,
-        "engine_file": str(runtime_engine_path(Path(settings.KG_SAVE_DIR))),
+        "engine_file": str(engine_file),
     }
-    save_runtime_session(settings.KG_SAVE_DIR, payload)
+    save_runtime_session(save_dir, payload)
 
 
 def _run_evaluation() -> tuple[str, dict, dict]:
@@ -117,17 +130,22 @@ def render_evaluation() -> None:
 
     if run_eval:
         with st.spinner("⏳ Calculating evaluation results… Please wait."):
-            report_md, auto_scores, llm_scores = _run_evaluation()
+            try:
+                report_md, auto_scores, llm_scores = _run_evaluation()
 
-            if st.session_state.eval_auto and st.session_state.eval_llm:
-                st.session_state.eval_prev_auto = st.session_state.eval_auto.copy()
-                st.session_state.eval_prev_llm = st.session_state.eval_llm.copy()
+                if st.session_state.eval_auto and st.session_state.eval_llm:
+                    st.session_state.eval_prev_auto = st.session_state.eval_auto.copy()
+                    st.session_state.eval_prev_llm = st.session_state.eval_llm.copy()
 
-            st.session_state.eval_result = report_md
-            st.session_state.eval_auto = auto_scores
-            st.session_state.eval_llm = llm_scores
-            st.session_state.eval_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            _persist_runtime_session()
+                st.session_state.eval_result = report_md
+                st.session_state.eval_auto = auto_scores
+                st.session_state.eval_llm = llm_scores
+                st.session_state.eval_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                _persist_runtime_session()
+                st.success("Evaluation completed successfully!")
+            except Exception as e:
+                st.error(f"Evaluation failed: {e}")
+                logger.exception("Evaluation error")
 
     if st.session_state.eval_result:
         if st.session_state.eval_auto and st.session_state.eval_llm:

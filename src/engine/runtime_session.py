@@ -52,10 +52,14 @@ def deserialize_options(raw_options: Iterable[Dict[str, Any]]) -> List[StoryOpti
     return options
 
 
-def save_runtime_session(save_dir: str | Path, payload: Dict[str, Any]) -> str:
+def save_runtime_session(
+    save_dir: str | Path, payload: Dict[str, Any], is_active: bool = True
+) -> str:
     """Persist runtime session metadata JSON and return file path."""
     path = runtime_session_path(save_dir)
     path.parent.mkdir(parents=True, exist_ok=True)
+    payload = dict(payload)
+    payload["is_active"] = is_active
     with open(path, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
     return str(path)
@@ -73,7 +77,27 @@ def load_runtime_session(save_dir: str | Path) -> Dict[str, Any] | None:
         return None
     if not isinstance(data, dict):
         return None
+    data.setdefault("is_active", False)
     return data
+
+
+def mark_session_inactive(save_dir: str | Path) -> str | None:
+    """Mark an existing runtime session as inactive if it exists."""
+    path = runtime_session_path(save_dir)
+    if not path.exists():
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        return None
+    if not isinstance(data, dict):
+        return None
+    data["is_active"] = False
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    return str(path)
 
 
 def remove_runtime_files(save_dir: str | Path) -> List[str]:

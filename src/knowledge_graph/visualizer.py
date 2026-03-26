@@ -129,7 +129,7 @@ def _gradient_svg_data_uri(base_color: str) -> str:
     return "data:image/svg+xml;charset=utf-8," + quote(svg)
 
 
-def render_kg_html(graph: nx.MultiDiGraph, output_path: str = "kg_vis.html") -> str:
+def render_kg_html(graph: nx.MultiDiGraph, output_path: str = "") -> str:
     """生成交互式 PyVis 可视化的 HTML 字符串。
 
     将知识图谱渲染为可交互的 HTML 可视化图形，支持拖拽、缩放等操作。
@@ -137,7 +137,7 @@ def render_kg_html(graph: nx.MultiDiGraph, output_path: str = "kg_vis.html") -> 
 
     参数：
         graph: NetworkX MultiDiGraph 知识图谱对象
-        output_path: 临时 HTML 文件保存路径
+        output_path: 临时 HTML 文件保存路径（空字符串则使用 tempfile，推荐）
 
     返回：
         str: HTML 文档字符串
@@ -151,16 +151,32 @@ def render_kg_html(graph: nx.MultiDiGraph, output_path: str = "kg_vis.html") -> 
         # PyVis 不可用，使用 HTML 表格降级方案
         return _fallback_html(graph)
 
+    import tempfile
+    import os
+
     # 创建 PyVis 网络对象，配置深色主题
     net = Network(height="480px", width="100%", directed=True,
                   bgcolor="#06080f", font_color="#e0e8ff")
-    # 配置物理引擎：使用 ForceAtlas2 算法进行布局
-    net.set_options("""
-    {"physics": {"forceAtlas2Based": {"gravitationalConstant": -50,
-      "centralGravity": 0.01, "springLength": 100, "springConstant": 0.08},
-      "solver": "forceAtlas2Based", "stabilization": {"iterations": 100}},
-     "edges": {"arrows": {"to": {"enabled": true}}, "smooth": {"type": "curvedCW", "roundness": 0.2}}}
-    """)
+    
+    # 配置物理引擎：根据节点数量自适应配置
+    # 优化：小图禁用物理模拟，大图减少迭代次数，避免渲染卡顿
+    node_count = graph.number_of_nodes()
+    if node_count <= 10:
+        # 小图：禁用物理引擎，立即稳定，避免不必要的计算
+        physics_config = """
+        {"physics": {"enabled": false},
+         "edges": {"arrows": {"to": {"enabled": true}}, "smooth": {"type": "curvedCW", "roundness": 0.2}}}
+        """
+    else:
+        # 大图：使用轻量级物理引擎配置
+        physics_config = """
+        {"physics": {"enabled": true, "forceAtlas2Based": {"gravitationalConstant": -30,
+          "centralGravity": 0.01, "springLength": 80, "springConstant": 0.08},
+          "solver": "forceAtlas2Based", 
+          "stabilization": {"iterations": 30, "updateInterval": 50}},
+         "edges": {"arrows": {"to": {"enabled": true}}, "smooth": {"type": "curvedCW", "roundness": 0.2}}}
+        """
+    net.set_options(physics_config)
 
     # 添加所有节点
     for node, data in graph.nodes(data=True):
@@ -185,9 +201,25 @@ def render_kg_html(graph: nx.MultiDiGraph, output_path: str = "kg_vis.html") -> 
 
     # 尝试保存并读取 HTML 文件
     try:
-        net.save_graph(output_path)
-        with open(output_path, "r", encoding="utf-8") as fh:
-            return fh.read()
+        if output_path:
+            # 指定了输出路径，直接保存到该路径
+            net.save_graph(output_path)
+            with open(output_path, "r", encoding="utf-8") as fh:
+                return fh.read()
+        else:
+            # 使用临时文件，避免固定文件名竞争
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".html", delete=False, encoding="utf-8") as tmp:
+                tmp_path = tmp.name
+            try:
+                net.save_graph(tmp_path)
+                with open(tmp_path, "r", encoding="utf-8") as fh:
+                    return fh.read()
+            finally:
+                # 清理临时文件
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
     except Exception:
         # 保存失败，降级为 HTML 表格
         return _fallback_html(graph)

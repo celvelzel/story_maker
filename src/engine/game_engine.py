@@ -66,7 +66,7 @@ class GameEngine:
         self,
         genre: str = "fantasy",
         intent_model_path: Optional[str] = None,
-        auto_load_nlu: bool = True,
+        auto_load_nlu: bool = False,
         conflict_resolution: Optional[str] = None,
         extraction_mode: Optional[str] = None,
         importance_mode: Optional[str] = None,
@@ -78,7 +78,7 @@ class GameEngine:
         参数:
             genre: 故事类型（如 "fantasy", "sci-fi"）
             intent_model_path: 意图分类模型路径（可选）
-            auto_load_nlu: 是否自动加载 NLU 组件
+            auto_load_nlu: 是否自动加载 NLU 组件（默认懒加载，首次 process_turn 时加载）
             conflict_resolution: 冲突解决策略（可选，使用配置默认值）
             extraction_mode: 关系提取模式（可选）
             importance_mode: 重要性计算模式（可选）
@@ -87,6 +87,7 @@ class GameEngine:
         self.genre = genre
         self.state = GameState()
         self.kg = KnowledgeGraph()
+        self._intent_model_path = intent_model_path
 
         # Strategy configuration (fallback to settings defaults)
         self.conflict_resolution = conflict_resolution or settings.KG_CONFLICT_RESOLUTION
@@ -103,7 +104,7 @@ class GameEngine:
         # Evaluation tracking（评估追踪）
         self.turn_conflict_counts: List[int] = []  # 记录每回合检测到的冲突数量
 
-        # NLU 组件初始化
+        # NLU 组件初始化（懒加载：首次 process_turn 时才加载模型）
         self.coref = CoreferenceResolver()  # 共指消解器
         self.intent_clf = IntentClassifier(model_path=intent_model_path)  # 意图分类器
         self.entity_ext = EntityExtractor()  # 实体提取器
@@ -116,11 +117,13 @@ class GameEngine:
             "entity_model_loaded": False,
             "sentiment_loaded": False,
         }
+        self._nlu_loaded: bool = False  # 懒加载标志
 
         if auto_load_nlu:
             self._load_nlu_components()
+            self._nlu_loaded = True
         else:
-            logger.info("NLU auto-load disabled. Engine will run with lazy/fallback behavior.")
+            logger.info("NLU auto-load disabled. Will lazy-load on first process_turn().")
 
         # NLG 组件初始化
         self.story_gen = StoryGenerator()  # 故事生成器
@@ -138,6 +141,18 @@ class GameEngine:
         if self._turn_cached_summary is None:
             self._turn_cached_summary = self.kg.to_summary()
         return self._turn_cached_summary
+
+    def _ensure_nlu_loaded(self) -> None:
+        """确保 NLU 组件已加载（懒加载支持）。
+
+        首次调用时加载所有 NLU 子模块，后续调用直接返回。
+        用于延迟 NLU 模型加载到首次 process_turn() 时，加快 start_game() 响应速度。
+        """
+        if self._nlu_loaded:
+            return
+        logger.info("[Engine][lazy_load] NLU components not loaded yet — loading now...")
+        self._load_nlu_components()
+        self._nlu_loaded = True
 
     # ------------------------------------------------------------------
     # Public API
@@ -209,6 +224,9 @@ class GameEngine:
         )
         self._turn_cached_summary = None
 
+        # 懒加载：首次 process_turn 时加载 NLU 模型
+        self._ensure_nlu_loaded()
+
         stage_metrics: Dict[str, Dict[str, float]] = {}
 
         def _stage_begin() -> tuple[float, Dict[str, float | int]]:
@@ -222,7 +240,6 @@ class GameEngine:
                 "elapsed_ms": elapsed_ms,
                 "input_tokens": usage_delta["input_tokens"],
                 "output_tokens": usage_delta["output_tokens"],
-                "cost_usd": usage_delta["cost_usd"],
             }
 
         # ========== 1. 共指消解 ==========

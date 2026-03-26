@@ -25,8 +25,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src.engine.game_engine import GameEngine, TurnResult
 from src.engine.runtime_session import (
+    mark_session_inactive,
     remove_runtime_files,
     runtime_engine_path,
+    runtime_session_path,
     save_runtime_session,
     serialize_options,
 )
@@ -34,7 +36,12 @@ from src.ui.layout import load_layout
 from src.ui.sections.evaluation import render_evaluation
 from src.ui.sections.sidebar import render_sidebar
 from src.ui.sections.chat import render_chat_history, render_chat_input
-from src.ui.state_manager import initialize_state, restore_runtime_session, cleanup_session_state
+from src.ui.state_manager import (
+    cleanup_session_state,
+    initialize_state,
+    is_runtime_session_active,
+    restore_runtime_session,
+)
 from config import settings
 
 logger = logging.getLogger(__name__)
@@ -58,6 +65,8 @@ load_layout()
 # ── Session State initialisation ─────────────────────────────────────────
 
 initialize_state()
+if "show_load_checkpoint_btn" not in st.session_state:
+    st.session_state.show_load_checkpoint_btn = True
 
 
 def _runtime_save_dir() -> Path:
@@ -104,6 +113,7 @@ def _cleanup_runtime_files() -> None:
     if _RUNTIME_CLEANED:
         return
     try:
+        mark_session_inactive(_runtime_save_dir())
         remove_runtime_files(_runtime_save_dir())
     finally:
         _RUNTIME_CLEANED = True
@@ -136,7 +146,15 @@ def _register_runtime_cleanup() -> None:
 
 
 _register_runtime_cleanup()
-restore_runtime_session(_runtime_save_dir())
+# 默认不自动恢复存档，只有点击"加载存档"按钮时才恢复
+restore_runtime_session(_runtime_save_dir(), auto_restore=True)
+
+_runtime_save_path = runtime_session_path(_runtime_save_dir())
+st.session_state.show_load_checkpoint_btn = (
+    st.session_state.engine is None
+    and _runtime_save_path.exists()
+    and not is_runtime_session_active(_runtime_save_dir())
+)
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────
@@ -207,18 +225,21 @@ def _process_action(action: str) -> None:
 
 # ── Main area – Game controls ────────────────────────────────────────────
 
-col_genre, col_btn = st.columns([2, 1.2])
-with col_genre:
-    genre = st.text_input(
-        "Genre",
-        key="genre_input",
-        placeholder="Genre, e.g. fantasy / sci-fi / mystery",
-        label_visibility="collapsed",
-    )
-with col_btn:
-    new_game_clicked = st.button(
-        "🎮 Start New Game", type="primary", width="stretch"
-    )
+genre = st.text_input(
+    "Genre",
+    key="genre_input",
+    placeholder="Genre, e.g. fantasy / sci-fi / mystery",
+    label_visibility="collapsed",
+)
+
+load_checkpoint_clicked = False
+if st.session_state.show_load_checkpoint_btn and st.session_state.engine is None:
+    load_checkpoint_clicked = st.button("📦 Load Checkpoint", width="stretch")
+    if load_checkpoint_clicked:
+        restore_runtime_session(_runtime_save_dir(), auto_restore=False)
+        st.session_state.show_load_checkpoint_btn = st.session_state.engine is None
+
+new_game_clicked = st.button("🎮 Start New Game", type="primary", width="stretch")
 
 if new_game_clicked:
     try:

@@ -116,7 +116,7 @@ Task 1: Modify sidebar.py KG rendering logic
 
 ## TODOs
 
-- [ ] 1. 修改 `sidebar.py` 中的 KG 渲染逻辑
+- [x] 1. 修改 `sidebar.py` 中的 KG 渲染逻辑
 
   **What to do**:
   - 打开 `src/ui/sections/sidebar.py` 第169-180 行 KG 渲染部分
@@ -297,21 +297,21 @@ Task 1: Modify sidebar.py KG rendering logic
 
 ## Final Verification Wave (after implementation)
 
-- [ ] F1. Code quality check
+- [x] F1. Code quality check
   - Verify no syntax errors: `python -m py_compile src/ui/sections/sidebar.py`
   - Check for unused imports (if any removed)
   - Verify indentation and style consistency
 
-- [ ] F2. Integration check
-  - Verify Streamlit app starts without errors: startup logs clean
-  - No warnings related to sidebar rendering in console
+- [x] F2. Integration check
+   - Verify Streamlit app starts without errors: startup logs clean
+   - No warnings related to sidebar rendering in console
 
-- [ ] F3. Manual UI verification (via QA scenarios above)
-  - All 4 scenarios pass (Start new game, Perform action, Load save, No game)
-  - Screenshots show KG and Dashboard rendering as expected
-  - No visual regressions
+- [x] F3. Manual UI verification (via QA scenarios above)
+   - All 4 scenarios pass (Start new game, Perform action, Load save, No game)
+   - Screenshots show KG and Dashboard rendering as expected
+   - No visual regressions
 
-- [ ] F4. Edge case verification
+- [x] F4. Edge case verification
   - Empty history scenario (no story yet)
   - Multiple save/load cycles
   - Fast consecutive actions (doesn't break KG rendering)
