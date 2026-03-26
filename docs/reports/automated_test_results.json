@@ -1,0 +1,162 @@
+{
+  "generated_at": "2026-03-26T16:09:19",
+  "config": {
+    "max_turns": 10,
+    "warmup": 0,
+    "genres": [
+      "fantasy",
+      "sci-fi",
+      "mystery"
+    ],
+    "policy": "always_pick_first_option"
+  },
+  "sessions": [
+    {
+      "session_id": 1,
+      "genre": "fantasy",
+      "turns_executed": 10,
+      "response_mean_s": 18.935956083144994,
+      "response_p50_s": 18.705622249748558,
+      "response_p90_s": 22.2734710120596,
+      "response_p95_s": 23.308559943130238,
+      "response_std_s": 3.063172017921572,
+      "response_min_s": 15.621575249359012,
+      "response_max_s": 24.34364887420088,
+      "auto_metrics": {
+        "distinct_1": 0.36992840095465396,
+        "distinct_2": 0.7150882825040128,
+        "distinct_3": 0.8898785425101214,
+        "self_bleu": 0.24268991393092917,
+        "entity_coverage": 1.0,
+        "consistency_rate": 1.0,
+        "type_token_ratio": 0.3333333333333333,
+        "flesch_reading_ease": 60.55,
+        "lexical_overlap": 0.28113332724051715,
+        "graph_density_average": 0.092244,
+        "graph_density_delta": 0.011111
+      },
+      "llm_judge": {
+        "narrative_quality": 8,
+        "consistency": 5,
+        "player_agency": 7,
+        "creativity": 6,
+        "pacing": 8,
+        "option_relevance": 7,
+        "causal_link": 5,
+        "local_coherence": 6,
+        "average": 6.5
+      },
+      "error": ""
+    },
+    {
+      "session_id": 2,
+      "genre": "sci-fi",
+      "turns_executed": 10,
+      "response_mean_s": 19.69296917524189,
+      "response_p50_s": 19.286413916386664,
+      "response_p90_s": 23.371848346479236,
+      "response_p95_s": 24.122083715070037,
+      "response_std_s": 3.0941192420562365,
+      "response_min_s": 15.912936749868095,
+      "response_max_s": 24.87231908366084,
+      "auto_metrics": {
+        "distinct_1": 0.3388182498130142,
+        "distinct_2": 0.700603318250377,
+        "distinct_3": 0.8859315589353612,
+        "self_bleu": 0.25044353020873084,
+        "entity_coverage": 1.0,
+        "consistency_rate": 1.0,
+        "type_token_ratio": 0.2962686567164179,
+        "flesch_reading_ease": 43.13,
+        "lexical_overlap": 0.2824772295012473,
+        "graph_density_average": 0.156818,
+        "graph_density_delta": 0.041667
+      },
+      "llm_judge": {
+        "narrative_quality": 8,
+        "consistency": 6,
+        "player_agency": 7,
+        "creativity": 6,
+        "pacing": 8,
+        "option_relevance": 7,
+        "causal_link": 6,
+        "local_coherence": 5,
+        "average": 6.62
+      },
+      "error": ""
+    },
+    {
+      "session_id": 3,
+      "genre": "mystery",
+      "turns_executed": 10,
+      "response_mean_s": 20.648184008244424,
+      "response_p50_s": 20.341448021121323,
+      "response_p90_s": 22.716833345592022,
+      "response_p95_s": 22.815641776658595,
+      "response_std_s": 1.4706093319857694,
+      "response_min_s": 18.778108124621212,
+      "response_max_s": 22.914450207725167,
+      "auto_metrics": {
+        "distinct_1": 0.33915022761760244,
+        "distinct_2": 0.7092578423871462,
+        "distinct_3": 0.9004629629629629,
+        "self_bleu": 0.22628204691859308,
+        "entity_coverage": 0.8888888888888888,
+        "consistency_rate": 1.0,
+        "type_token_ratio": 0.2882882882882883,
+        "flesch_reading_ease": 57.08,
+        "lexical_overlap": 0.28151437010879976,
+        "graph_density_average": 0.07612,
+        "graph_density_delta": 0.019608
+      },
+      "llm_judge": {
+        "narrative_quality": 8,
+        "consistency": 9,
+        "player_agency": 6,
+        "creativity": 7,
+        "pacing": 8,
+        "option_relevance": 8,
+        "causal_link": 8,
+        "local_coherence": 7,
+        "average": 7.62
+      },
+      "error": ""
+    }
+  ],
+  "aggregate": {
+    "sessions": 3,
+    "turns_total": 30,
+    "response_mean_s": 19.759036422210436,
+    "response_p50_s": 19.69296917524189,
+    "response_p90_s": 20.45714104164392,
+    "response_p95_s": 20.55266252494417,
+    "response_std_s": 0.8580237629075766,
+    "response_min_s": 18.935956083144994,
+    "response_max_s": 20.648184008244424,
+    "auto_metrics": {
+      "distinct_1": 0.3492989594617569,
+      "distinct_2": 0.7083164810471786,
+      "distinct_3": 0.8920910214694819,
+      "self_bleu": 0.23980516368608437,
+      "entity_coverage": 0.9629629629629629,
+      "consistency_rate": 1.0,
+      "type_token_ratio": 0.30596342611267985,
+      "flesch_reading_ease": 53.586666666666666,
+      "lexical_overlap": 0.2817083089501881,
+      "graph_density_average": 0.108394,
+      "graph_density_delta": 0.02412866666666667
+    },
+    "llm_judge": {
+      "narrative_quality": 8.0,
+      "consistency": 6.666666666666667,
+      "player_agency": 6.666666666666667,
+      "creativity": 6.333333333333333,
+      "pacing": 8.0,
+      "option_relevance": 7.333333333333333,
+      "causal_link": 6.333333333333333,
+      "local_coherence": 6.0,
+      "average": 6.913333333333334
+    },
+    "error_sessions": 0
+  }
+}
