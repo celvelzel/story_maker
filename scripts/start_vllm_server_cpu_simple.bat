@@ -1,8 +1,8 @@
 @echo off
 setlocal enabledelayedexpansion
 
-REM Simple Windows batch launcher for vLLM CPU server
-REM No Git Bash dependency required
+REM Windows-Compatible vLLM CPU Server Launcher
+REM Uses Python uvloop monkey-patch to work around Windows incompatibility
 
 cd /d "%~dp0.."
 
@@ -15,24 +15,14 @@ if not exist ".venv" (
 REM Activate virtual environment
 call .venv\Scripts\activate.bat
 
-REM Install vLLM and all dependencies
-echo Installing vLLM and dependencies...
-pip install -q --upgrade pip
-pip install -q vllm uvloop
+REM Install vLLM
+echo Installing vLLM...
+pip install -q --upgrade pip 2>nul
+pip install -q vllm 2>nul
 
-REM Start vLLM server
+REM Run Python launcher with uvloop monkey-patch
 echo.
-echo Starting vLLM server on http://localhost:8000/v1
-echo Model: @models\nlg\qwen_2.5_3B
-echo Press Ctrl+C to stop
-echo.
-
-python -m vllm.entrypoints.openai.api_server ^
-    --model @models\nlg\qwen_2.5_3B ^
-    --quantization int4 ^
-    --cpu-offload-gb 10 ^
-    --tensor-parallel-size 1 ^
-    --max-model-len 2048 ^
-    --port 8000
+echo Starting vLLM server...
+python scripts/start_vllm_server_cpu_windows.py
 
 pause
