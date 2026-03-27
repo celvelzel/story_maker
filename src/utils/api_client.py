@@ -69,8 +69,9 @@ class LLMClient:
         self._client: Any = None  # OpenAI 客户端实例（懒加载）
         self._total_input_tokens: int = 0  # 累计输入 token 数
         self._total_output_tokens: int = 0  # 累计输出 token 数
-        # 默认请求超时（秒）：连接 10s + 读取 60s
-        self._timeout: float = 60.0
+        # 使用配置的超时设置
+        import httpx
+        self._timeout = httpx.Timeout(self._settings.OPENAI_TIMEOUT_CONNECT, read=self._settings.OPENAI_TIMEOUT_READ)
         self._initialised = True
 
     # ── lazy OpenAI client ────────────────────────────────
@@ -134,6 +135,18 @@ class LLMClient:
         temperature = temperature if temperature is not None else self._settings.OPENAI_TEMPERATURE
         max_tokens = max_tokens or self._settings.OPENAI_MAX_TOKENS
 
+        # === 演示模式日志：请求接收 ===
+        print(f"\n{'='*50}")
+        print(f"[LLM] RECEIVED request")
+        print(f"{'='*50}")
+        for msg in messages:
+            role = msg.get("role", "unknown")
+            content = msg.get("content", "")
+            # 截断显示
+            preview = content[:100] + "..." if len(content) > 100 else content
+            print(f"  [{role}]: {preview}")
+        print(f"{'='*50}")
+
         # 构建 API 请求参数
         kwargs: Dict[str, Any] = {
             "model": self._settings.OPENAI_MODEL,
@@ -145,22 +158,32 @@ class LLMClient:
         if json_mode:
             kwargs["response_format"] = {"type": "json_object"}
 
+        print(f"[LLM] PROCESSING (model={self._settings.OPENAI_MODEL}, temp={temperature}, max_tokens={max_tokens})")
+
         # 重试循环：最多 3 次，快速退避（1s, 2s, 3s）
         last_exc: Optional[Exception] = None
         for attempt in range(1, 4):
             try:
+                start_time = time.time()
                 response = self.client.chat.completions.create(**kwargs)
+                elapsed = time.time() - start_time
+
                 # 追踪 token 使用量
                 usage = response.usage
                 if usage:
                     self._total_input_tokens += usage.prompt_tokens
                     self._total_output_tokens += usage.completion_tokens
+                    print(f"[LLM] DONE (elapsed: {elapsed:.1f}s, input: {usage.prompt_tokens} tokens, output: {usage.completion_tokens} tokens)")
+                else:
+                    print(f"[LLM] DONE (elapsed: {elapsed:.1f}s)")
+
                 # 返回助手的回复内容
                 return response.choices[0].message.content or ""
             except Exception as exc:
                 last_exc = exc
                 # 快速退避：等待 attempt 秒（1, 2, 3）
                 wait = attempt
+                print(f"[LLM] WARNING: attempt {attempt} failed ({exc}). retry in {wait}s...")
                 logger.warning("LLM 调用第 %d 次失败 (%s)。%d 秒后重试…", attempt, exc, wait)
                 time.sleep(wait)
 
