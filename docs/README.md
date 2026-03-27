@@ -31,12 +31,29 @@
 ### 项目文档 (`project/`)
 包含项目规范、实现计划和提示词模板。
 
-## 快速导航
+## ⭐ 快速导航
 
-- [API 参考文档](api/API_REFERENCE.md)
+### 🚀 首次部署（强烈推荐）
+- **[从零部署指南](guides/zero-to-hero-deployment.md)** - 完整的多平台部署指南，包含 llama.cpp 本地模型推理
+- **[本地模型启动指南](guides/local-model-startup.md)** - llama.cpp 服务器快速启动
+
+### 基础文档
 - [技术路线图](guides/technical-route.md)
+- [API 参考文档](api/API_REFERENCE.md)
+
+### 按系统部署
 - [部署指南 (Windows)](guides/deployment-windows.md)
 - [部署指南 (macOS)](guides/deployment-macos.md)
+
+### 备选推理方案
+- [vLLM 集成指南](../VLLM_INTEGRATION.md) - 本地 GPU 推理
+- [CPU 推理指南](../CPU_INFERENCE.md) - 旧版 CPU 推理
+
+### 知识图谱相关
 - [知识图谱优化报告](reports/kg-optimization.md)
 - [NLU & KG 改进报告](reports/nlu-kg-improvement.md)
 - [运行时持久化文档](reports/runtime-persistence.md)
+
+### 本地模型集成
+- [本地模型推理集成报告](reports/本地模型推理集成_2026-03-27_21-07.md)
+- [本地模型调优报告](reports/local-model-tuning_2026-03-27.md)

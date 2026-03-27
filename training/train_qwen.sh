@@ -19,9 +19,9 @@ on_error() {
 
 trap 'on_error' ERR
 
-MODEL="microsoft/Phi-3-mini-4k-instruct"
+MODEL="Qwen/Qwen3-4B-Instruct-2507"
 DATASET="data/combined_data.jsonl"
-OUTPUT_DIR="output/Phi-3_$(date +%Y%m%d_%H%M)"
+OUTPUT_DIR="output/Qwen3-4B-Instruct-2507_$(date +%Y%m%d_%H%M)"
 CUDA_DEVICE="0"
 
 log "[1/4] 初始化环境..."
@@ -46,18 +46,19 @@ CUDA_VISIBLE_DEVICES=$CUDA_DEVICE swift sft \
     --dataset "$DATASET" \
     --tuner_type lora \
     --output_dir "$OUTPUT_DIR" \
-    --num_train_epochs 3 \
+    --use_hf true\
+    --num_train_epochs 1 \
     --per_device_train_batch_size 2 \
-    --gradient_accumulation_steps 4 \
-    --learning_rate 2e-4 \
-    --lora_rank 16 \
-    --lora_alpha 16 \
+    --gradient_accumulation_steps 16 \
+    --learning_rate 1e-4 \
+    --lora_rank 8 \
+    --lora_alpha 32 \
     --target_modules all-linear \
     --max_length 2048 \
     --torch_dtype bfloat16 \
     --save_steps 100 \
     --logging_steps 5 \
-    --save_total_limit 3 \
+    --save_total_limit 2 \
     --seed 42 \
     --report_to none
 

@@ -83,7 +83,8 @@ story_maker/
 ├── training/                 # 模型训练脚本
 │   ├── train_intent.py            # DistilBERT 意图分类器训练
 │   ├── train_generator.py         # GPT-2 LoRA 微调 (遗留/可选)
-│   ├── train_hpc.sh               # HPC 集群训练脚本
+│   ├── train_llama.sh             # Llama.cpp 模型训练脚本
+│   ├── train_qwen.sh              # Qwen 模型训练脚本
 │   ├── data_augmenter.py          # 训练数据增强
 │   └── nlg_dataset/               # NLG 训练数据集资源
 │       ├── combined_data.jsonl    # 合并训练数据集
@@ -101,11 +102,14 @@ story_maker/
 ├── scripts/                  # 工具和部署脚本
 │   ├── start_project_prod.bat     # Windows 生产启动器
 │   ├── start_project_prod.sh      # macOS/Linux 生产启动器
+│   ├── start_llama_server.bat     # Windows llama.cpp 服务器启动器
+│   ├── quantize_gguf.bat          # GGUF 模型量化脚本
 │   ├── health_check.py            # 部署前健康检查
 │   ├── generate_dataset.py        # 数据集生成工具
 │   ├── run_automated_eval.py      # 自动化评估运行器
 │   ├── fix_and_merge.py           # 修复和合并工具
-│   └── validate_and_merge.py      # 验证和合并工具
+│   ├── validate_and_merge.py      # 验证和合并工具
+│   └── test_openai_api.py         # OpenAI API 连接测试
 ├── docs/                     # 全面文档
 │   ├── api/                 # API 参考文档
 │   ├── design/              # 架构和设计文档
@@ -114,7 +118,9 @@ story_maker/
 │   ├── reports/             # 优化和改进报告
 │   └── project/             # 项目规范和计划
 ├── models/                   # 训练模型文件 (git-ignored)
-│   └── intent_classifier/   # 微调 DistilBERT 检查点
+│   ├── intent_classifier/   # 微调 DistilBERT 检查点
+│   ├── nlg/                 # 微调 NLG 模型检查点
+│   └── qwen-gguf/           # 量化 Qwen GGUF 模型
 ├── lib/                      # 第三方前端库
 │   ├── vis-9.1.2/           # Vis.js 网络可视化
 │   ├── tom-select/          # 增强选择组件
@@ -242,7 +248,9 @@ python training/train_intent.py --output_dir models/intent_classifier --model_na
 4. `docs/guides/deployment-macos.md` - macOS 高可用性部署指南
 5. `docs/design/entity-importance.md` - 实体重要性评分策略
 6. `docs/design/nlg-local-model-finetuning.md` - NLG 模块本地大模型微调方案
-7. `docs/reports/kg-optimization.md` - 知识图谱优化报告
-8. `docs/reports/nlu-kg-improvement.md` - NLU & KG 模块改进报告
-9. `docs/reports/runtime-persistence.md` - 运行时会话持久化文档
-10. `docs/api/API_REFERENCE.md` - 完整 API 参考文档
+7. `docs/VLLM_INTEGRATION.md` - vLLM 本地推理集成指南
+8. `docs/CPU_INFERENCE.md` - CPU 推理优化指南
+9. `docs/reports/kg-optimization.md` - 知识图谱优化报告
+10. `docs/reports/nlu-kg-improvement.md` - NLU & KG 模块改进报告
+11. `docs/reports/runtime-persistence.md` - 运行时会话持久化文档
+12. `docs/api/API_REFERENCE.md` - 完整 API 参考文档

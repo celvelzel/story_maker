@@ -20,6 +20,12 @@ This directory contains the Wave-A quality benchmark foundation for NLU + KG qua
   - Deterministic regression harness tests.
 - `test_quality_gates.py`
   - Executable policy checks for Gate-1/2/3.
+- `test_llm_judge.py`
+  - Unit tests for LLM-as-Judge scoring module.
+- `test_metrics_extended.py`
+  - Extended metrics tests including Distinct-n, Self-BLEU, coverage.
+- `reports/`
+  - Evaluation output reports and test results.
 
 ## Benchmark Case Contract
 
