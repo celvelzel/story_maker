@@ -5,21 +5,18 @@
 set -e
 
 # =============================================================================
-# CONFIGURATION - Edit these paths as needed
+# CONFIGURATION - Adjust paths as needed
 # =============================================================================
 
-# Project root (adjust if needed)
-PROJECT_ROOT="/home/$(whoami)/story_maker"
-
 # Model directories
-MODEL_DIR_1="${PROJECT_ROOT}/models/nlg/qwen_2.5_3B"
-MODEL_DIR_2="${PROJECT_ROOT}/models/nlg/Qwen3-4B-Instruct-2507"
+MODEL_DIR_1="/puhome/25116696g/NLP/merged_model_qwen_2.5_3B"
+MODEL_DIR_2="/puhome/25116696g/NLP/merged_model_Qwen3-4B-Instruct-2507"
 
 # Output directory
-OUTPUT_DIR="${PROJECT_ROOT}/models/qwen-gguf"
+OUTPUT_DIR="/puhome/25116696g/NLP/qwen-gguf"
 
-# Where to clone/download llama.cpp
-LLAMA_CPP_DIR="${PROJECT_ROOT}/llama.cpp"
+# Where to download llama.cpp
+LLAMA_CPP_DIR="/puhome/25116696g/NLP/llama.cpp"
 
 # =============================================================================
 
@@ -31,10 +28,14 @@ echo ""
 # Create output directory
 mkdir -p "${OUTPUT_DIR}"
 
-# Clone llama.cpp (if not exists)
+# Download llama.cpp (using wget - no git required)
 if [ ! -d "${LLAMA_CPP_DIR}" ]; then
-    echo "[1/5] Cloning llama.cpp..."
-    git clone https://github.com/ggerganov/llama.cpp.git "${LLAMA_CPP_DIR}"
+    echo "[1/5] Downloading llama.cpp..."
+    wget -q https://github.com/ggerganov/llama.cpp/archive/refs/heads/master.zip -O llama.cpp.zip
+    unzip -q llama.cpp.zip
+    mv llama.cpp-master "${LLAMA_CPP_DIR}"
+    rm llama.cpp.zip
+    echo "Download complete!"
 else
     echo "[1/5] llama.cpp already exists, skipping..."
 fi
