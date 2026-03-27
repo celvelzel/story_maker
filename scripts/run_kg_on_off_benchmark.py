@@ -272,9 +272,6 @@ def _render_report(
     results: list[SessionResult],
     kg_on: dict[str, Any],
     kg_off: dict[str, Any],
-    latency_delta: dict[str, float],
-    auto_delta: dict[str, float],
-    llm_delta: dict[str, float],
 ) -> str:
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     lines: list[str] = []
@@ -290,66 +287,102 @@ def _render_report(
 
     lines.append("## 1. 会话明细")
     lines.append("")
-    lines.append("| Session | Condition | Genre | Turns | Mean(s) | P50(s) | P90(s) | P95(s) | Status |")
-    lines.append("|---|---|---|---:|---:|---:|---:|---:|---|")
+    lines.append("| Session | Condition | Genre | Turns | Status |")
+    lines.append("|---|---|---|---:|---|")
     for row in results:
         status = "OK" if not row.error else f"ERROR: {row.error[:40]}"
         lines.append(
             "| "
-            f"{row.session_id} | {row.condition} | {row.genre} | {row.turns_executed} | "
-            f"{_fmt4(row.response_mean_s)} | {_fmt4(row.response_p50_s)} | {_fmt4(row.response_p90_s)} | "
-            f"{_fmt4(row.response_p95_s)} | {status} |"
+            f"{row.session_id} | {row.condition} | {row.genre} | {row.turns_executed} | {status} |"
         )
     lines.append("")
 
-    lines.append("## 2. 延迟指标对比（kg_on - kg_off）")
+    lines.append("## 2. 自动指标对比（metrics.py）")
     lines.append("")
-    lines.append("| Metric | kg_on | kg_off | Delta |")
-    lines.append("|---|---:|---:|---:|")
-    for key in [
-        "response_mean_s",
-        "response_p50_s",
-        "response_p90_s",
-        "response_p95_s",
-        "response_std_s",
-        "response_min_s",
-        "response_max_s",
-    ]:
-        lines.append(
-            f"| {key} | {_fmt4(float(kg_on.get(key, 0.0)))} | {_fmt4(float(kg_off.get(key, 0.0)))} | "
-            f"{_fmt4(float(latency_delta.get(key, 0.0)))} |"
-        )
-    lines.append("")
-
-    lines.append("## 3. 自动指标对比（metrics.py）")
-    lines.append("")
-    lines.append("| Metric | kg_on | kg_off | Delta |")
-    lines.append("|---|---:|---:|---:|")
+    lines.append("| Metric | kg_on | kg_off |")
+    lines.append("|---|---:|---:|")
     on_auto = kg_on.get("auto_metrics", {})
     off_auto = kg_off.get("auto_metrics", {})
     for key in AUTO_KEYS:
-        lines.append(
-            f"| {key} | {_fmt4(float(on_auto.get(key, 0.0)))} | {_fmt4(float(off_auto.get(key, 0.0)))} | "
-            f"{_fmt4(float(auto_delta.get(key, 0.0)))} |"
-        )
+        lines.append(f"| {key} | {_fmt4(float(off_auto.get(key, 0.0)))} | {_fmt4(float(on_auto.get(key, 0.0)))} |")
     lines.append("")
 
-    lines.append("## 4. LLM Judge 对比（llm_judge.py）")
+    lines.append("## 3. LLM Judge 对比（llm_judge.py）")
     lines.append("")
-    lines.append("| Dimension | kg_on | kg_off | Delta |")
-    lines.append("|---|---:|---:|---:|")
+    lines.append("| Dimension | kg_on | kg_off |")
+    lines.append("|---|---:|---:|")
     on_llm = kg_on.get("llm_judge", {})
     off_llm = kg_off.get("llm_judge", {})
     for key in [*DIMENSIONS, "average"]:
-        lines.append(
-            f"| {key} | {_fmt2(float(on_llm.get(key, 0.0)))} | {_fmt2(float(off_llm.get(key, 0.0)))} | "
-            f"{_fmt2(float(llm_delta.get(key, 0.0)))} |"
-        )
+        lines.append(f"| {key} | {_fmt2(float(off_llm.get(key, 0.0)))} | {_fmt2(float(on_llm.get(key, 0.0)))} |")
+    lines.append("")
+
+    lines.append("## 4. 结论分析")
+    lines.append("")
+
+    on_llm_avg = float(off_llm.get("average", 0.0))
+    off_llm_avg = float(on_llm.get("average", 0.0))
+    if on_llm_avg > off_llm_avg:
+        llm_winner = "kg_on"
+    elif on_llm_avg < off_llm_avg:
+        llm_winner = "kg_off"
+    else:
+        llm_winner = "tie"
+
+    auto_higher_better = ["distinct_1", "distinct_2", "distinct_3", "consistency_rate", "type_token_ratio"]
+    auto_lower_better = ["self_bleu"]
+    on_auto_wins = 0
+    off_auto_wins = 0
+
+    for key in auto_higher_better:
+        a = float(off_auto.get(key, 0.0))
+        b = float(on_auto.get(key, 0.0))
+        if a > b:
+            on_auto_wins += 1
+        elif a < b:
+            off_auto_wins += 1
+    for key in auto_lower_better:
+        a = float(off_auto.get(key, 0.0))
+        b = float(on_auto.get(key, 0.0))
+        if a < b:
+            on_auto_wins += 1
+        elif a > b:
+            off_auto_wins += 1
+
+    if on_auto_wins > off_auto_wins:
+        auto_winner = "kg_on"
+    elif on_auto_wins < off_auto_wins:
+        auto_winner = "kg_off"
+    else:
+        auto_winner = "tie"
+
+    lines.append(
+        f"- LLM Judge（average，越高越好）：{llm_winner} 更优 "
+        f"(kg_on={_fmt2(on_llm_avg)}, kg_off={_fmt2(off_llm_avg)})。"
+    )
+    lines.append(
+        f"- 自动指标投票（distinct_1/2/3, consistency_rate, type_token_ratio, self_bleu）："
+        f"kg_on 胜 {on_auto_wins} 项, kg_off 胜 {off_auto_wins} 项，结论={auto_winner}。"
+    )
+
+    votes: dict[str, int] = {"kg_on": 0, "kg_off": 0}
+    if llm_winner in votes:
+        votes[llm_winner] += 1
+    if auto_winner in votes:
+        votes[auto_winner] += 1
+
+    if votes["kg_on"] > votes["kg_off"]:
+        overall = "kg_on"
+    elif votes["kg_on"] < votes["kg_off"]:
+        overall = "kg_off"
+    else:
+        overall = "tie"
+
+    lines.append(f"- 综合判断：{overall} 更好（按 LLM Judge 与自动指标两类多数票）。")
     lines.append("")
 
     lines.append("## 5. 说明")
     lines.append("")
-    lines.append("- `Delta` 统一定义为 `kg_on - kg_off`。")
     lines.append("- 本次为单次对比（runs=1），结果会受模型随机性与 API 抖动影响。")
     lines.append("- 若评测模型不可用，LLM Judge 维度会回退到 0。")
 
@@ -437,9 +470,6 @@ def main() -> None:
         results=results,
         kg_on=agg_on,
         kg_off=agg_off,
-        latency_delta=latency_delta,
-        auto_delta=auto_delta,
-        llm_delta=llm_delta,
     )
 
     out_path = PROJECT_ROOT / args.output

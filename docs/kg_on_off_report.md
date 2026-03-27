@@ -1,62 +1,55 @@
 # KG 开关工况对比报告
 
-- 生成时间: 2026-03-26 16:33:25
+- 生成时间: 2026-03-27 16:16:49
 - Genre: fantasy
 - 每工况运行次数: 1
-- 每次最大轮次: 5
+- 每次最大轮次: 10
 - 动作策略: 每回合固定选择第一个选项
 
 ## 1. 会话明细
 
-| Session | Condition | Genre | Turns | Mean(s) | P50(s) | P90(s) | P95(s) | Status |
-|---|---|---|---:|---:|---:|---:|---:|---|
-| 1 | kg_on | fantasy | 5 | 20.0308 | 19.7709 | 24.7825 | 26.0786 | OK |
-| 2 | kg_off | fantasy | 5 | 5.1654 | 4.6301 | 6.4566 | 6.9737 | OK |
+| Session | Condition | Genre | Turns | Status |
+|---|---|---|---:|---|
+| 1 | kg_on | fantasy | 10 | OK |
+| 2 | kg_off | fantasy | 10 | OK |
 
-## 2. 延迟指标对比（kg_on - kg_off）
+## 2. 自动指标对比（metrics.py）
 
-| Metric | kg_on | kg_off | Delta |
-|---|---:|---:|---:|
-| response_mean_s | 20.0308 | 5.1654 | 14.8654 |
-| response_p50_s | 20.0308 | 5.1654 | 14.8654 |
-| response_p90_s | 20.0308 | 5.1654 | 14.8654 |
-| response_p95_s | 20.0308 | 5.1654 | 14.8654 |
-| response_std_s | 0.0000 | 0.0000 | 0.0000 |
-| response_min_s | 20.0308 | 5.1654 | 14.8654 |
-| response_max_s | 20.0308 | 5.1654 | 14.8654 |
+| Metric | kg_on | kg_off |
+|---|---:|---:|
+| distinct_1 | 0.3652 | 0.3165 |
+| distinct_2 | 0.7423 | 0.6448 |
+| distinct_3 | 0.9059 | 0.8145 |
+| self_bleu | 0.2200 | 0.3582 |
+| entity_coverage | 1.0000 | 0.7917 |
+| consistency_rate | 1.0000 | 0.0000 |
+| type_token_ratio | 0.3137 | 0.2690 |
+| flesch_reading_ease | 54.8500 | 61.1600 |
+| lexical_overlap | 0.2745 | 0.3801 |
+| graph_density_average | 0.0000 | 0.1575 |
+| graph_density_delta | 0.0000 | -0.2123 |
 
-## 3. 自动指标对比（metrics.py）
+## 3. LLM Judge 对比（llm_judge.py）
 
-| Metric | kg_on | kg_off | Delta |
-|---|---:|---:|---:|
-| distinct_1 | 0.4417 | 0.4123 | 0.0294 |
-| distinct_2 | 0.8283 | 0.7742 | 0.0541 |
-| distinct_3 | 0.9574 | 0.8999 | 0.0575 |
-| self_bleu | 0.1271 | 0.2514 | -0.1243 |
-| entity_coverage | 0.6250 | 1.0000 | -0.3750 |
-| consistency_rate | 1.0000 | 1.0000 | 0.0000 |
-| type_token_ratio | 0.3938 | 0.3760 | 0.0179 |
-| flesch_reading_ease | 53.9900 | 50.9700 | 3.0200 |
-| lexical_overlap | 0.2764 | 0.2976 | -0.0212 |
-| graph_density_average | 0.0814 | 0.0000 | 0.0814 |
-| graph_density_delta | 0.0893 | 0.0000 | 0.0893 |
+| Dimension | kg_on | kg_off |
+|---|---:|---:|
+| narrative_quality | 9.00 | 8.00 |
+| consistency | 10.00 | 9.00 |
+| player_agency | 8.00 | 6.00 |
+| creativity | 8.00 | 6.00 |
+| pacing | 9.00 | 7.00 |
+| option_relevance | 9.00 | 7.00 |
+| causal_link | 10.00 | 8.00 |
+| local_coherence | 10.00 | 9.00 |
+| average | 9.12 | 7.50 |
 
-## 4. LLM Judge 对比（llm_judge.py）
+## 4. 结论分析
 
-| Dimension | kg_on | kg_off | Delta |
-|---|---:|---:|---:|
-| narrative_quality | 9.00 | 9.00 | 0.00 |
-| consistency | 10.00 | 10.00 | 0.00 |
-| player_agency | 8.00 | 8.00 | 0.00 |
-| creativity | 8.00 | 7.00 | 1.00 |
-| pacing | 9.00 | 9.00 | 0.00 |
-| option_relevance | 9.00 | 9.00 | 0.00 |
-| causal_link | 9.00 | 9.00 | 0.00 |
-| local_coherence | 10.00 | 10.00 | 0.00 |
-| average | 9.00 | 8.88 | 0.12 |
+- LLM Judge（average，越高越好）：kg_on 更优 (kg_on=9.12, kg_off=7.50)。
+- 自动指标投票（distinct_1/2/3, consistency_rate, type_token_ratio, self_bleu）：kg_on 胜 6 项, kg_off 胜 0 项，结论=kg_on。
+- 综合判断：kg_on 更好（按 LLM Judge 与自动指标两类多数票）。
 
 ## 5. 说明
 
-- `Delta` 统一定义为 `kg_on - kg_off`。
 - 本次为单次对比（runs=1），结果会受模型随机性与 API 抖动影响。
 - 若评测模型不可用，LLM Judge 维度会回退到 0。
