@@ -12,6 +12,10 @@
 - **deployment-macos.md** - macOS 系统高可用部署指南
 - **deployment-windows.md** - Windows 系统高可用部署指南
 
+### 推理配置
+- **../VLLM_INTEGRATION.md** - vLLM 本地推理集成指南
+- **../CPU_INFERENCE.md** - CPU 推理优化指南
+
 ## 快速开始
 
 1. **新开发者** - 阅读 [技术路线图](technical-route.md) 了解整体架构

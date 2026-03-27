@@ -11,6 +11,7 @@
 
 ### 其他修复
 - **fastcoref-fix.md** - FastCoref 与 transformers 5.2.0 不兼容性修复方案
+- **llm-json-truncation-fix.md** - LLM JSON 输出截断问题修复方案
 
 ## 修复模式
 

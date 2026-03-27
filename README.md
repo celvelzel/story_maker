@@ -83,7 +83,8 @@ story_maker/
 ├── training/                 # Model training scripts
 │   ├── train_intent.py            # DistilBERT intent classifier training
 │   ├── train_generator.py         # GPT-2 LoRA fine-tuning (legacy/optional)
-│   ├── train_hpc.sh               # HPC cluster training script
+│   ├── train_llama.sh             # Llama.cpp model training script
+│   ├── train_qwen.sh              # Qwen model training script
 │   ├── data_augmenter.py          # Training data augmentation
 │   └── nlg_dataset/               # NLG training dataset resources
 │       ├── combined_data.jsonl    # Combined training dataset
@@ -101,11 +102,14 @@ story_maker/
 ├── scripts/                  # Utility and deployment scripts
 │   ├── start_project_prod.bat     # Windows production launcher
 │   ├── start_project_prod.sh      # macOS/Linux production launcher
+│   ├── start_llama_server.bat     # Windows llama.cpp server launcher
+│   ├── quantize_gguf.bat          # GGUF model quantization script
 │   ├── health_check.py            # Pre-deployment health validation
 │   ├── generate_dataset.py        # Dataset generation utility
 │   ├── run_automated_eval.py      # Automated evaluation runner
 │   ├── fix_and_merge.py           # Fix and merge utility
-│   └── validate_and_merge.py      # Validation and merge utility
+│   ├── validate_and_merge.py      # Validation and merge utility
+│   └── test_openai_api.py         # OpenAI API connectivity test
 ├── docs/                     # Comprehensive documentation
 │   ├── api/                 # API reference documentation
 │   ├── design/              # Architecture and design documents
@@ -114,7 +118,9 @@ story_maker/
 │   ├── reports/             # Optimization and improvement reports
 │   └── project/             # Project specifications and plans
 ├── models/                   # Trained model artifacts (git-ignored)
-│   └── intent_classifier/   # Fine-tuned DistilBERT checkpoints
+│   ├── intent_classifier/   # Fine-tuned DistilBERT checkpoints
+│   ├── nlg/                 # Fine-tuned NLG model checkpoints
+│   └── qwen-gguf/           # Quantized Qwen GGUF models
 ├── lib/                      # Third-party frontend libraries
 │   ├── vis-9.1.2/           # Vis.js network visualization
 │   ├── tom-select/          # Enhanced select component
@@ -254,7 +260,9 @@ At runtime, if `models/intent_classifier` is unavailable, the system automatical
 4. `docs/guides/deployment-macos.md` - macOS high-availability deployment guide
 5. `docs/design/entity-importance.md` - Entity importance scoring strategy
 6. `docs/design/nlg-local-model-finetuning.md` - NLG local model fine-tuning plan
-7. `docs/reports/kg-optimization.md` - Knowledge graph optimization report
-8. `docs/reports/nlu-kg-improvement.md` - NLU & KG improvement report
-9. `docs/reports/runtime-persistence.md` - Runtime session persistence documentation
-10. `docs/api/API_REFERENCE.md` - Complete API reference documentation
+7. `docs/VLLM_INTEGRATION.md` - vLLM local inference integration guide
+8. `docs/CPU_INFERENCE.md` - CPU inference optimization guide
+9. `docs/reports/kg-optimization.md` - Knowledge graph optimization report
+10. `docs/reports/nlu-kg-improvement.md` - NLU & KG improvement report
+11. `docs/reports/runtime-persistence.md` - Runtime session persistence documentation
+12. `docs/api/API_REFERENCE.md` - Complete API reference documentation
