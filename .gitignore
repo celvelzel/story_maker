@@ -87,3 +87,8 @@ tests/evaluation/reports/*.json
 
 # Model training checkpoints (nested)
 models/*/checkpoint-*/
+models/*/*.gguf
+
+# llama.cpp artifacts
+*.gguf
+llama.cpp-bin/*
