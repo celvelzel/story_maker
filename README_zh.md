@@ -54,7 +54,8 @@ story_maker/
 │   ├── engine/               # 游戏引擎控制器
 │   │   ├── game_engine.py    # 主管道协调器 (NLU → NLG → KG)
 │   │   ├── runtime_session.py # 会话持久化管理
-│   │   └── state.py          # 游戏状态和历史追踪
+│   │   ├── state.py          # 游戏状态和历史追踪
+│   │   └── naming.py         # 角色/地点命名系统
 │   ├── nlu/                  # 自然语言理解
 │   │   ├── intent_classifier.py   # DistilBERT + 关键字回退
 │   │   ├── entity_extractor.py    # spaCy NER + 正则表达式
@@ -73,30 +74,38 @@ story_maker/
 │   │   ├── metrics.py             # Distinct-n, Self-BLEU, 覆盖率
 │   │   ├── llm_judge.py           # LLM 作为评判者评分
 │   │   └── consistency_eval.py    # 知识图一致性评估
+│   ├── ui/                   # Streamlit UI 组件
+│   │   ├── layout/          # 页面布局和结构
+│   │   ├── sections/        # UI 部分模块
+│   │   └── state_manager.py # UI 状态管理
 │   └── utils/                # 共享工具
 │       └── api_client.py          # 单例 LLM 客户端（含重试）
-├── data/                     # 数据资产和处理
-│   ├── intent_labels.json         # 意图标签定义
-│   ├── raw/                       # 原始数据集 (git-ignored)
-│   └── scripts/                   # 数据处理脚本
-│       ├── download_data.py       # 数据集下载自动化
-│       └── preprocess.py          # 数据预处理管道
 ├── training/                 # 模型训练脚本
 │   ├── train_intent.py            # DistilBERT 意图分类器训练
 │   ├── train_generator.py         # GPT-2 LoRA 微调 (遗留/可选)
-│   └── data_augmenter.py          # 训练数据增强
+│   ├── train_hpc.sh               # HPC 集群训练脚本
+│   ├── data_augmenter.py          # 训练数据增强
+│   └── nlg_dataset/               # NLG 训练数据集资源
+│       ├── combined_data.jsonl    # 合并训练数据集
+│       └── combined_data_generate_prompt.md # 数据生成提示词
 ├── tests/                    # 测试套件 (按模块组织)
 │   ├── engine/              # 引擎组件测试
 │   ├── nlu/                 # NLU 模块测试
 │   ├── nlg/                 # NLG 模块测试
 │   ├── kg/                  # 知识图谱测试
 │   ├── integration/         # 跨模块集成测试
-│   └── training/            # 训练管道测试
+│   ├── training/            # 训练管道测试
+│   ├── performance/         # 性能基准测试
+│   ├── ui/                  # UI 组件测试
+│   └── utils/               # 工具函数测试
 ├── scripts/                  # 工具和部署脚本
 │   ├── start_project_prod.bat     # Windows 生产启动器
 │   ├── start_project_prod.sh      # macOS/Linux 生产启动器
 │   ├── health_check.py            # 部署前健康检查
-│   └── generate_dataset.py        # 数据集生成工具
+│   ├── generate_dataset.py        # 数据集生成工具
+│   ├── run_automated_eval.py      # 自动化评估运行器
+│   ├── fix_and_merge.py           # 修复和合并工具
+│   └── validate_and_merge.py      # 验证和合并工具
 ├── docs/                     # 全面文档
 │   ├── api/                 # API 参考文档
 │   ├── design/              # 架构和设计文档
@@ -235,3 +244,5 @@ python training/train_intent.py --output_dir models/intent_classifier --model_na
 6. `docs/design/nlg-local-model-finetuning.md` - NLG 模块本地大模型微调方案
 7. `docs/reports/kg-optimization.md` - 知识图谱优化报告
 8. `docs/reports/nlu-kg-improvement.md` - NLU & KG 模块改进报告
+9. `docs/reports/runtime-persistence.md` - 运行时会话持久化文档
+10. `docs/api/API_REFERENCE.md` - 完整 API 参考文档

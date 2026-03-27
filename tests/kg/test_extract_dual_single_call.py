@@ -48,6 +48,7 @@ class TestExtractDualSingleCall:
         assert "The dragon roars in fury." in user_msg
         assert "PLAYER INPUT" in user_msg
         assert "STORY TEXT" in user_msg
+        assert call_args.kwargs["max_tokens"] == 1024
 
     @patch("src.utils.api_client.llm_client")
     def test_empty_story_falls_back_to_player_only(self, mock_client):
@@ -64,6 +65,8 @@ class TestExtractDualSingleCall:
 
         # Should have called _extract_player_input, not the dual prompt
         assert len(result["entities"]) == 1
+        call_args = mock_client.chat_json.call_args
+        assert call_args.kwargs["max_tokens"] == 512
 
     @patch("src.utils.api_client.llm_client")
     def test_existing_entities_hint_included(self, mock_client):

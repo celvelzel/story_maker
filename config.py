@@ -27,10 +27,9 @@ class Settings(BaseSettings):
     # OpenAI / LLM API 配置
     OPENAI_API_KEY: str = Field(default="", description="OpenAI API key")  # API 密钥
     OPENAI_BASE_URL: str = Field(default="", description="OpenAI-compatible API base URL (e.g. https://your-server.com/v1)")  # API 基础 URL，支持兼容 OpenAI 的第三方服务
-    OPENAI_MODEL: str = "gpt-4o-mini"  # 使用的模型名称
+    OPENAI_MODEL: str = "mimo-v2-flash"  # 使用的模型名称
     OPENAI_MAX_TOKENS: int = 1024  # 最大生成 token 数
     OPENAI_TEMPERATURE: float = 0.85  # 温度参数，控制生成随机性（0-1）
-    OPENAI_TOP_P: float = 0.95  # Top-p 采样参数
 
     # ── Evaluation LLM (separate from NLG) ───────────────
     # 评测专用 LLM 配置（与 NLG 模块解耦）

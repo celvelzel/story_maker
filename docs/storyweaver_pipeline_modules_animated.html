@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>StoryWeaver Module Pipeline (Animated)</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --accent: #0f766e;
+      --line: #0369a1;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Noto Sans", sans-serif;
+      background: radial-gradient(circle at 20% 10%, #e0f2fe 0%, var(--bg) 40%, #eef2ff 100%);
+      color: var(--text);
+    }
+
+    .wrap {
+      max-width: 1400px;
+      margin: 24px auto;
+      padding: 16px;
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid #dbeafe;
+      border-radius: 14px;
+      box-shadow: 0 14px 40px rgba(2, 132, 199, 0.08);
+      padding: 16px;
+    }
+
+    h1 {
+      margin: 4px 0 10px;
+      font-size: 24px;
+      color: #0c4a6e;
+    }
+
+    p {
+      margin: 0 0 12px;
+      color: #334155;
+      font-size: 14px;
+    }
+
+    #graph {
+      overflow-x: auto;
+    }
+
+    /* Mermaid SVG animations */
+    #graph svg .edgePath path {
+      stroke-dasharray: 8 8;
+      animation: flow 18s linear infinite;
+    }
+
+    #graph svg .node rect,
+    #graph svg .node polygon,
+    #graph svg .node circle {
+      animation: pulse 3s ease-in-out infinite;
+      transform-origin: center;
+      transform-box: fill-box;
+    }
+
+    #graph svg .node:nth-of-type(odd) rect,
+    #graph svg .node:nth-of-type(odd) polygon,
+    #graph svg .node:nth-of-type(odd) circle {
+      animation-delay: 0.35s;
+    }
+
+    @keyframes flow {
+      to {
+        stroke-dashoffset: -400;
+      }
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        filter: drop-shadow(0 0 0 rgba(15, 118, 110, 0));
+      }
+      50% {
+        filter: drop-shadow(0 0 6px rgba(15, 118, 110, 0.45));
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="panel">
+      <h1>StoryWeaver Detailed Pipeline (Animated)</h1>
+      <p>Module-level flow with animated edges and pulsing nodes for demo playback.</p>
+      <div id="graph" class="mermaid">
+flowchart LR
+  UI[app.py\nStreamlit UI] --> ENG[src/engine/game_engine.py\nOrchestrator]
+  ENG --> STATE[src/engine/state.py]
+  ENG --> SESSION[src/engine/runtime_session.py]
+
+  ENG --> COREF[src/nlu/coreference.py]
+  ENG --> INTENT[src/nlu/intent_classifier.py]
+  ENG --> ENTITY[src/nlu/entity_extractor.py]
+  ENG --> SENT[src/nlu/sentiment_analyzer.py]
+
+  ENG --> PROMPT[src/nlg/prompt_templates.py]
+  PROMPT --> STORY[src/nlg/story_generator.py]
+  PROMPT --> OPT[src/nlg/option_generator.py]
+
+  ENG --> RE[src/knowledge_graph/relation_extractor.py]
+  RE --> GRAPH[src/knowledge_graph/graph.py]
+  GRAPH --> CONFLICT[src/knowledge_graph/conflict_detector.py]
+  GRAPH --> VIS[src/knowledge_graph/visualizer.py]
+  CONFLICT -. feedback .-> ENG
+
+  CFG[config.py + .env] --> API[src/utils/api_client.py]
+  API --> STORY
+  API --> OPT
+  API --> RE
+
+  STORY --> JUDGE[src/evaluation/llm_judge.py]
+  OPT --> MET[src/evaluation/metrics.py]
+  GRAPH --> CONS[src/evaluation/consistency_eval.py]
+
+  STORY --> OUT[UI Output: Story + Options + KG Visual]
+  OPT --> OUT
+  VIS --> OUT
+
+  classDef ui fill:#dae8fc,stroke:#6c8ebf,color:#0f172a,stroke-width:2px;
+  classDef eng fill:#f8cecc,stroke:#b85450,color:#111827,stroke-width:2px;
+  classDef nlu fill:#fff2cc,stroke:#d6b656,color:#111827;
+  classDef nlg fill:#d5e8d4,stroke:#82b366,color:#111827;
+  classDef kg fill:#e1d5e7,stroke:#9673a6,color:#111827;
+  classDef util fill:#ffe6cc,stroke:#d79b00,color:#111827;
+  classDef eval fill:#f5f5f5,stroke:#666666,color:#111827;
+
+  class UI,OUT ui;
+  class ENG,STATE,SESSION eng;
+  class COREF,INTENT,ENTITY,SENT nlu;
+  class PROMPT,STORY,OPT nlg;
+  class RE,GRAPH,CONFLICT,VIS kg;
+  class CFG,API util;
+  class JUDGE,MET,CONS eval;
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, securityLevel: "loose", theme: "base" });
+  </script>
+</body>
+</html>

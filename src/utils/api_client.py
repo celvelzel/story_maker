@@ -1,4 +1,4 @@
-"""Singleton OpenAI wrapper with retry, JSON mode, and cost tracking.
+"""Singleton OpenAI wrapper with retry, JSON mode, and usage tracking.
 
 OpenAI API 单例封装器模块。
 
@@ -6,7 +6,7 @@ OpenAI API 单例封装器模块。
 - ``chat()``：发送聊天补全请求，返回纯文本响应
 - ``chat_json()``：发送聊天补全请求，返回 JSON 模式解析后的字典
 - 自动重试机制：遇到临时性错误时自动重试最多 3 次（指数退避策略）
-- 会话级用量追踪：记录输入/输出 token 数量和 USD 成本
+- 会话级用量追踪：记录输入/输出 token 数量
 
 使用单例模式确保整个应用共享同一个 API 客户端实例。
 """
@@ -15,14 +15,9 @@ from __future__ import annotations
 import json
 import logging
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
-
-# Pricing per 1 M tokens for gpt-4o-mini (as of 2025-06)
-_PRICING: Dict[str, Dict[str, float]] = {
-    "gpt-4o-mini": {"input": 0.15, "output": 0.60},
-}
 
 
 class LLMClient:
@@ -32,7 +27,7 @@ class LLMClient:
     - ``chat()``：发送聊天补全请求，返回纯文本响应
     - ``chat_json()``：发送聊天补全请求，返回 JSON 模式解析后的字典
     - 自动重试机制：遇到临时性错误时自动重试最多 3 次（指数退避策略）
-    - 会话级用量追踪：记录输入/输出 token 数量和 USD 成本
+    - 会话级用量追踪：记录输入/输出 token 数量
 
     使用单例模式确保整个应用共享同一个 API 客户端实例。
     采用懒加载方式初始化 OpenAI 客户端，只在首次使用时创建。
@@ -74,6 +69,8 @@ class LLMClient:
         self._client: Any = None  # OpenAI 客户端实例（懒加载）
         self._total_input_tokens: int = 0  # 累计输入 token 数
         self._total_output_tokens: int = 0  # 累计输出 token 数
+        # 默认请求超时（秒）：连接 10s + 读取 60s
+        self._timeout: float = 60.0
         self._initialised = True
 
     # ── lazy OpenAI client ────────────────────────────────
@@ -94,7 +91,10 @@ class LLMClient:
             try:
                 from openai import OpenAI
                 # 构建客户端参数
-                kwargs: Dict[str, Any] = {"api_key": self._settings.OPENAI_API_KEY}
+                kwargs: Dict[str, Any] = {
+                    "api_key": self._settings.OPENAI_API_KEY,
+                    "timeout": self._timeout,  # 防止无限阻塞
+                }
                 # 如果配置了自定义 base_url，使用它（支持第三方 OpenAI 兼容服务）
                 if self._settings.OPENAI_BASE_URL:
                     kwargs["base_url"] = self._settings.OPENAI_BASE_URL
@@ -145,7 +145,7 @@ class LLMClient:
         if json_mode:
             kwargs["response_format"] = {"type": "json_object"}
 
-        # 重试循环：最多 3 次，指数退避
+        # 重试循环：最多 3 次，快速退避（1s, 2s, 3s）
         last_exc: Optional[Exception] = None
         for attempt in range(1, 4):
             try:
@@ -159,8 +159,8 @@ class LLMClient:
                 return response.choices[0].message.content or ""
             except Exception as exc:
                 last_exc = exc
-                # 指数退避：等待 2^attempt 秒
-                wait = 2 ** attempt
+                # 快速退避：等待 attempt 秒（1, 2, 3）
+                wait = attempt
                 logger.warning("LLM 调用第 %d 次失败 (%s)。%d 秒后重试…", attempt, exc, wait)
                 time.sleep(wait)
 
@@ -188,12 +188,172 @@ class LLMClient:
             Dict[str, Any]: 解析后的 JSON 响应字典
 
         异常：
-            json.JSONDecodeError: 如果响应不是有效 JSON
+            json.JSONDecodeError: 如果响应在修复与严格重试后仍不是有效 JSON
         """
         raw = self.chat(messages, temperature=temperature, max_tokens=max_tokens, json_mode=True)
-        return json.loads(raw)
+        parsed, last_error = self._parse_json_with_repair(raw)
+        if parsed is not None:
+            return parsed
 
-    # ── cost tracking ─────────────────────────────────────
+        strict_instruction = (
+            "Return a strictly valid JSON object only. "
+            "Do not include markdown fences, commentary, or trailing commas."
+        )
+        strict_messages = list(messages) + [{"role": "user", "content": strict_instruction}]
+        retry_tokens = max(max_tokens or 0, self._settings.OPENAI_MAX_TOKENS)
+        strict_raw = self.chat(
+            strict_messages,
+            temperature=0.0,
+            max_tokens=retry_tokens,
+            json_mode=True,
+        )
+        strict_parsed, strict_error = self._parse_json_with_repair(strict_raw)
+        if strict_parsed is not None:
+            return strict_parsed
+
+        logger.error("JSON parse failed after strict retry. Initial raw:\n%s\nStrict raw:\n%s", raw, strict_raw)
+        if strict_error is not None:
+            raise strict_error
+        if last_error is not None:
+            raise last_error
+        raise json.JSONDecodeError("Expecting value", strict_raw, 0)
+
+    @staticmethod
+    def _strip_markdown_fence(text: str) -> str:
+        stripped = text.strip()
+        if not stripped.startswith("```"):
+            return stripped
+
+        lines = stripped.splitlines()
+        if not lines:
+            return stripped
+
+        # Remove opening fence (``` or ```json)
+        lines = lines[1:]
+        # Remove closing fence when present
+        if lines and lines[-1].strip().startswith("```"):
+            lines = lines[:-1]
+        return "\n".join(lines).strip()
+
+    @staticmethod
+    def _extract_balanced_json_objects(text: str) -> List[str]:
+        objects: List[str] = []
+        depth = 0
+        start_idx: Optional[int] = None
+        in_string = False
+        escape = False
+
+        for idx, ch in enumerate(text):
+            if in_string:
+                if escape:
+                    escape = False
+                elif ch == "\\":
+                    escape = True
+                elif ch == '"':
+                    in_string = False
+                continue
+
+            if ch == '"':
+                in_string = True
+                continue
+
+            if ch == "{":
+                if depth == 0:
+                    start_idx = idx
+                depth += 1
+                continue
+
+            if ch == "}" and depth > 0:
+                depth -= 1
+                if depth == 0 and start_idx is not None:
+                    objects.append(text[start_idx : idx + 1])
+                    start_idx = None
+
+        return objects
+
+    @staticmethod
+    def _remove_trailing_commas(text: str) -> str:
+        result: List[str] = []
+        in_string = False
+        escape = False
+        idx = 0
+        length = len(text)
+
+        while idx < length:
+            ch = text[idx]
+
+            if in_string:
+                result.append(ch)
+                if escape:
+                    escape = False
+                elif ch == "\\":
+                    escape = True
+                elif ch == '"':
+                    in_string = False
+                idx += 1
+                continue
+
+            if ch == '"':
+                in_string = True
+                result.append(ch)
+                idx += 1
+                continue
+
+            if ch == ",":
+                lookahead = idx + 1
+                while lookahead < length and text[lookahead].isspace():
+                    lookahead += 1
+                if lookahead < length and text[lookahead] in "}]":
+                    idx += 1
+                    continue
+
+            result.append(ch)
+            idx += 1
+
+        return "".join(result)
+
+    def _parse_json_with_repair(self, raw: str) -> Tuple[Optional[Dict[str, Any]], Optional[json.JSONDecodeError]]:
+        candidates: List[str] = []
+        seen: set[str] = set()
+
+        def _push(candidate: str) -> None:
+            value = candidate.strip()
+            if value and value not in seen:
+                seen.add(value)
+                candidates.append(value)
+
+        _push(raw)
+        _push(self._strip_markdown_fence(raw))
+
+        for base in list(candidates):
+            for obj in self._extract_balanced_json_objects(base):
+                _push(obj)
+
+        expanded: List[str] = []
+        expanded_seen: set[str] = set()
+        for candidate in candidates:
+            if candidate not in expanded_seen:
+                expanded_seen.add(candidate)
+                expanded.append(candidate)
+
+            repaired = self._remove_trailing_commas(candidate)
+            if repaired and repaired not in expanded_seen:
+                expanded_seen.add(repaired)
+                expanded.append(repaired)
+
+        last_error: Optional[json.JSONDecodeError] = None
+        for candidate in expanded:
+            try:
+                parsed = json.loads(candidate)
+                if isinstance(parsed, dict):
+                    return parsed, last_error
+                last_error = json.JSONDecodeError("Top-level JSON is not an object", candidate, 0)
+            except json.JSONDecodeError as exc:
+                last_error = exc
+
+        return None, last_error
+
+    # ── usage tracking ────────────────────────────────────
     @property
     def total_input_tokens(self) -> int:
         """获取会话内累计输入 token 数量。
@@ -212,42 +372,15 @@ class LLMClient:
         """
         return self._total_output_tokens
 
-    @property
-    def total_cost_usd(self) -> float:
-        """计算会话内累计 API 调用成本（USD）。
-
-        基于配置的模型价格和实际使用的 token 数量计算成本。
-        默认使用 gpt-4o-mini 的定价。
-
-        返回：
-            float: 累计成本（美元）
-        """
-        # 获取当前模型的价格表，默认使用 gpt-4o-mini
-        pricing = _PRICING.get(self._settings.OPENAI_MODEL, _PRICING["gpt-4o-mini"])
-        # 计算总成本：输入 token 费用 + 输出 token 费用
-        return (
-            self._total_input_tokens * pricing["input"] / 1_000_000
-            + self._total_output_tokens * pricing["output"] / 1_000_000
-        )
-
-    def reset_cost(self) -> None:
-        """重置 token 计数器和成本追踪。
-
-        将输入/输出 token 计数归零，用于开始新的计费周期。
-        """
-        self._total_input_tokens = 0
-        self._total_output_tokens = 0
-
     def usage_snapshot(self) -> Dict[str, float | int]:
-        """Capture current aggregate usage counters.
+        """Capture current aggregate token usage counters.
 
         Returns:
-            Dict[str, float | int]: snapshot containing input/output tokens and USD cost.
+            Dict[str, float | int]: snapshot containing input/output tokens.
         """
         return {
             "input_tokens": self._total_input_tokens,
             "output_tokens": self._total_output_tokens,
-            "cost_usd": self.total_cost_usd,
         }
 
     def usage_delta(
@@ -259,7 +392,6 @@ class LLMClient:
         return {
             "input_tokens": float(after.get("input_tokens", 0)) - float(before.get("input_tokens", 0)),
             "output_tokens": float(after.get("output_tokens", 0)) - float(before.get("output_tokens", 0)),
-            "cost_usd": float(after.get("cost_usd", 0.0)) - float(before.get("cost_usd", 0.0)),
         }
 
 
