@@ -1,4 +1,5 @@
 import os
+import time
 
 from openai import OpenAI
 
@@ -13,6 +14,7 @@ client = OpenAI(base_url=BASE_URL, api_key=API_KEY)
 
 def test_standard_completion() -> None:
     print("=== Standard completion ===")
+    start_time = time.time()
     response = client.chat.completions.create(
         model=MODEL_NAME,
         messages=[
@@ -21,13 +23,16 @@ def test_standard_completion() -> None:
         ],
         temperature=0.2,
     )
+    elapsed = time.time() - start_time
     content = response.choices[0].message.content or ""
     print(content)
+    print(f"⏱️  Inference time: {elapsed:.2f}s")
     print()
 
 
 def test_streaming_completion() -> None:
     print("=== Streaming completion ===")
+    start_time = time.time()
     stream = client.chat.completions.create(
         model=MODEL_NAME,
         messages=[
@@ -43,7 +48,9 @@ def test_streaming_completion() -> None:
         delta = chunk.choices[0].delta.content or ""
         if delta:
             print(delta, end="", flush=True)
+    elapsed = time.time() - start_time
     print()
+    print(f"⏱️  Streaming time: {elapsed:.2f}s")
     print()
 
 
