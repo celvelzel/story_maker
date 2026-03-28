@@ -35,7 +35,7 @@
 
 ### 🚀 首次部署（强烈推荐）
 - **[从零部署指南](guides/zero-to-hero-deployment.md)** - 完整的多平台部署指南，包含 llama.cpp 本地模型推理
-- **[本地模型启动指南](guides/local-model-startup.md)** - llama.cpp 服务器快速启动
+- **[本地模型启动指南](guides/local-model-startup.md)** - 本地推理服务快速启动（含 KoboldCpp Vulkan + llama.cpp 两种方案）
 
 ### 基础文档
 - [技术路线图](guides/technical-route.md)
