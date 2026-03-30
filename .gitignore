@@ -44,6 +44,7 @@ nul
 *.onnx
 *.safetensors
 models/checkpoint-*/
+models/nlg/*/
 
 # Data (keep scripts, ignore large datasets)
 data/*.csv
@@ -86,3 +87,8 @@ tests/evaluation/reports/*.json
 
 # Model training checkpoints (nested)
 models/*/checkpoint-*/
+models/*/*.gguf
+
+# llama.cpp artifacts
+*.gguf
+llama.cpp-bin/*

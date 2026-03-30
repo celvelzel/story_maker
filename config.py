@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = "mimo-v2-flash"  # 使用的模型名称
     OPENAI_MAX_TOKENS: int = 1024  # 最大生成 token 数
     OPENAI_TEMPERATURE: float = 0.85  # 温度参数，控制生成随机性（0-1）
+    
+    # ── Timeout Config ─────────────────────────────────────
+    # 超时配置（秒）
+    OPENAI_TIMEOUT_CONNECT: float = Field(default=10.0, description="连接超时（秒）")  # 连接超时
+    OPENAI_TIMEOUT_READ: float = Field(default=60.0, description="读取超时（秒）")  # 读取超时
 
     # ── Evaluation LLM (separate from NLG) ───────────────
     # 评测专用 LLM 配置（与 NLG 模块解耦）
