@@ -15,6 +15,10 @@ import logging
 import json
 from typing import Dict
 
+from openai import OpenAI
+
+from config import settings
+
 logger = logging.getLogger(__name__)
 
 # LLM 评判者系统提示：定义评判者角色和评分标准
@@ -101,7 +105,9 @@ def _normalize_score(raw_value: object) -> int:
         value = int(float(str(raw_value).strip()))
     except Exception:
         return 0
-    return max(1, min(10, value))
+    if value < 1:
+        return 0
+    return min(10, value)
 
 
 def judge(transcript: str) -> Dict[str, int | float]:
@@ -118,19 +124,31 @@ def judge(transcript: str) -> Dict[str, int | float]:
             每个维度为 1-10 的整数，额外包含 "average" 平均分（浮点数）
             评估失败时所有分数为 0
     """
-    from src.utils.api_client import llm_client
-
     messages = [
         {"role": "system", "content": _JUDGE_SYSTEM},
         {"role": "user", "content": _JUDGE_USER.format(transcript=transcript[:6000])},
     ]
     try:
-        # 调用 LLM API 获取评分（适度温度以保持一致性）
-        raw_data = llm_client.chat_json(messages, temperature=0.3, max_tokens=256)
+        api_key = settings.EVAL_LLM_API_KEY or settings.OPENAI_API_KEY
+        if not api_key:
+            raise RuntimeError("EVAL_LLM_API_KEY 未配置")
+
+        client = OpenAI(api_key=api_key, base_url=settings.EVAL_LLM_BASE_URL)
+        response = client.chat.completions.create(
+            model=settings.EVAL_LLM_MODEL,
+            messages=messages,
+            temperature=settings.EVAL_LLM_TEMPERATURE,
+            max_tokens=settings.EVAL_LLM_MAX_TOKENS,
+            response_format={"type": "json_object"},
+            extra_body={"thinking": {"type": "disabled"}},
+        )
+        raw_data = response.choices[0].message.content or "{}"
         data = _extract_json_object(raw_data)
+        if not any(dim in data for dim in DIMENSIONS):
+            raise RuntimeError("LLM judge returned no valid dimension scores")
         scores: Dict[str, int | float] = {}
         for dim in DIMENSIONS:
-            val = data.get(dim, 0)
+            val = data.get(dim)
             scores[dim] = _normalize_score(val)
         # 计算平均分
         scores["average"] = round(sum(scores[d] for d in DIMENSIONS) / len(DIMENSIONS), 2)

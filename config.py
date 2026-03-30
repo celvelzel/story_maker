@@ -36,6 +36,17 @@ class Settings(BaseSettings):
     OPENAI_TIMEOUT_CONNECT: float = Field(default=10.0, description="连接超时（秒）")  # 连接超时
     OPENAI_TIMEOUT_READ: float = Field(default=60.0, description="读取超时（秒）")  # 读取超时
 
+    # ── Evaluation LLM (separate from NLG) ───────────────
+    # 评测专用 LLM 配置（与 NLG 模块解耦）
+    EVAL_LLM_API_KEY: str = Field(default="", description="Evaluation LLM API key")
+    EVAL_LLM_BASE_URL: str = Field(
+        default="https://open.bigmodel.cn/api/paas/v4",
+        description="Evaluation LLM API base URL",
+    )
+    EVAL_LLM_MODEL: str = "glm-5"
+    EVAL_LLM_MAX_TOKENS: int = 256
+    EVAL_LLM_TEMPERATURE: float = 0.3
+
     # ── NLU Config ────────────────────────────────────────
     # 自然语言理解（NLU）配置
     INTENT_MODEL_NAME: str = "distilbert-base-uncased"  # 意图分类模型名称
