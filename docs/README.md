@@ -49,7 +49,7 @@
 - [CPU 推理指南](guides/CPU_INFERENCE.md) - CPU 推理优化指南
 
 ### 🛠️ 自动化与测试
-- **[自动化测试报告](reports/automated_test_report.md)** - 全模块自动化测试结果
+- **[自动化测试报告](reports/test-results/automated_test_report.md)** - 全模块自动化测试结果
 - **[知识图谱开关测试报告](kg_on_off_report.md)** - KG 对生成质量影响的对比测试
 
 ### 🔧 故障排除与修复
@@ -60,14 +60,14 @@
 - [DistilBERT 故障排查指南](fixes/distilbert-troubleshooting.md)
 
 ### 📈 知识图谱相关
-- [知识图谱优化报告](reports/kg-optimization.md)
-- [NLU & KG 改进报告](reports/nlu-kg-improvement.md)
-- [运行时持久化文档](reports/runtime-persistence.md)
+- [知识图谱优化报告](reports/optimization/kg-optimization.md)
+- [NLU & KG 改进报告](reports/optimization/nlu-kg-improvement.md)
+- [运行时持久化文档](reports/optimization/runtime-persistence.md)
 - [实体重要性评分设计](design/entity-importance.md)
 
 ### 🤖 本地模型集成
-- [本地模型推理集成报告](reports/本地模型推理集成_2026-03-27_21-07.md)
-- [本地模型调优报告](reports/local-model-tuning_2026-03-27.md)
+- [本地模型推理集成报告](reports/local-model/本地模型推理集成_2026-03-27_21-07.md)
+- [本地模型调优报告](reports/local-model/local-model-tuning_2026-03-27.md)
 - [NLG 本地模型微调方案](design/nlg-local-model-finetuning.md)
 
 ### 📝 提示词工程
