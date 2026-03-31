@@ -49,11 +49,31 @@
 - [vLLM 集成指南](../VLLM_INTEGRATION.md) - 本地 GPU 推理
 - [CPU 推理指南](../CPU_INFERENCE.md) - 旧版 CPU 推理
 
-### 知识图谱相关
+### 🛠️ 自动化与测试
+- **[自动化测试报告](reports/automated_test_report.md)** - 全模块自动化测试结果
+- **[知识图谱开关测试报告](kg_on_off_report.md)** - KG 对生成质量影响的对比测试
+
+### 🔧 故障排除与修复
+- [DistilBERT 分词器修复](fixes/distilbert-tokenizer-fix.md)
+- [LLM JSON 截断修复](fixes/llm-json-truncation-fix.md)
+- [Fastcoref 内存优化](fixes/fastcoref-fix.md)
+- [DistilBERT 兼容性修复](fixes/distilbert-compatibility-fix.md)
+- [DistilBERT 故障排查指南](fixes/distilbert-troubleshooting.md)
+
+### 📈 知识图谱相关
 - [知识图谱优化报告](reports/kg-optimization.md)
 - [NLU & KG 改进报告](reports/nlu-kg-improvement.md)
 - [运行时持久化文档](reports/runtime-persistence.md)
+- [实体重要性评分设计](design/entity-importance.md)
 
-### 本地模型集成
+### 🤖 本地模型集成
 - [本地模型推理集成报告](reports/本地模型推理集成_2026-03-27_21-07.md)
 - [本地模型调优报告](reports/local-model-tuning_2026-03-27.md)
+- [NLG 本地模型微调方案](design/nlg-local-model-finetuning.md)
+
+### 📝 提示词工程
+- [提示词重建计划](project/rebuilt_prompt.md)
+- [智能体提示词设计](project/agent_prompt.md)
+- [开场白提示词模板](design/prompts/story_opening.md)
+- [剧情延续提示词模板](design/prompts/story_continuation.md)
+- [选项生成提示词模板](design/prompts/option_generation.md)
