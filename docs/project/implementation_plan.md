@@ -99,15 +99,19 @@ story_maker/
 │   │   ├── __init__.py
 │   │   ├── game_engine.py        # Game loop orchestration
 │   │   ├── runtime_session.py    # Persistence and session management
-│   │   └── state.py              # GameState data classes
+│   │   ├── state.py              # GameState data classes
+│   │   └── naming.py             # Entity naming and ID generation
 │   │
 │   ├── ui/                       # Streamlit UI modules
+│   │   ├── __init__.py
+│   │   ├── state_manager.py      # UI state management
 │   │   ├── layout/               # Theme and styling
 │   │   └── sections/             # Chat, sidebar, evaluation UI
 │   │
 │   └── evaluation/
 │       ├── __init__.py
 │       ├── metrics.py            # Distinct-n, Self-BLEU, etc.
+│       ├── consistency_eval.py   # Consistency evaluation metrics
 │       └── llm_judge.py          # LLM-as-Judge evaluation
 │
 ├── tests/                        # Comprehensive test suite
