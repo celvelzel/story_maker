@@ -13,7 +13,6 @@ OpenAI API 单例封装器模块。支持混合模式（hybrid）：
 
 使用单例模式确保整个应用共享同一个 API 客户端实例。
 """
-from __future__ import annotations
 
 import json
 import logging
