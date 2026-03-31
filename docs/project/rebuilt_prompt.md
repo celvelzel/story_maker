@@ -1,4 +1,6 @@
-## Plan: BERT意图替换与全套文档部署交付
+## Plan: BERT / DistilBERT 意图替换与文档交付
+
+**目标**：在不破坏现有流水线与回退机制的前提下，先将意图识别替换为 CPU 友好的 `distilbert-base-uncased`，并修复 NLU 模型加载生命周期；随后补齐中文技术文档与高可用部署文档，同时新增 production 一键脚本并保留现有脚本。
 
 在不破坏现有流水线与回退机制的前提下，先将意图识别替换为 CPU 友好的 `distilbert-base-uncased`，并修复 NLU 模型加载生命周期（确保实际启用模型而非长期 fallback）；随后补齐中文技术文档（NLU/KG/NLG + 模块间数据传递）与 Windows/macOS 高可用部署文档，同时新增 production 一键脚本并保留现有脚本。
 

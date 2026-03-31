@@ -4,24 +4,22 @@
 **Base URL:** https://api.xiaomimimo.com/v1
 
 ## ⏱️ Performance
-- **Story generation latency:** 16.37s
-- **JSON generation latency:** 1.02s
-- **Average turn latency:** 3.00s
+- **Story generation latency:** 29.24s
+- **JSON generation latency:** 1.11s
+- **Average turn latency:** 3.78s
 
 ## 📊 Quality Metrics
-- **Distinct-1:** 0.6667
-- **Distinct-2:** 0.9548
-- **Type-Token Ratio:** 0.6604
-- **Flesch Reading Ease:** 76.10
+- **Distinct-1:** 0.7391
+- **Distinct-2:** 0.9825
+- **Type-Token Ratio:** 0.7328
+- **Flesch Reading Ease:** 75.63
 
 ## ✅ Functionality
 - **JSON parsing:** PASS
 
 ## 📖 Sample Generated Story
 ```
-You wake to the smell of pine resin and cold iron, your cloak stiff with last night's frost. The campfire is dead, the village below swallowed by mist, and the amulet around your neck hums like a trapped moth. A message is scratched in the dirt—Not the mountain. The river remembers—and the path to the river is a ribbon of mud and footprints too small to belong to any human.
+You wake to the chill of the riverbank, mist coiling across the water and the sky still bruised with night. A silver feather drifts onto your chest, humming faintly like a distant bell. When your fingers close around it, the bell becomes a voice: Choose, and the world will answer.
 
-Wind carries a faint chime, and the trees part as if invited. At the river's edge, a pale stag stands with arrow-feather eyes, its antlers draped in riverweed and starlight. It lowers its head toward the water, where the surface holds not your reflection but a door of silver threads, trembling open.
-
-You reach for the hilt at your belt and feel the world tilt toward the current. Do you follow the stag into the mirrored threshold, or step into the river where the door waits?
+A path of pale stones raises itself from the mud, leading toward a copse of trees that bend like listening ears. On the other side, a fox with ember-tipped fur trots from the reeds, tail writing a question mark in the air. Between them, the river parts just enough to reveal a submerged stair, each step etched with a rune that glows when you breathe.
 ```

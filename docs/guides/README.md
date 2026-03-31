@@ -18,7 +18,7 @@
 
 ### 推理配置（备选方案）
 - **../VLLM_INTEGRATION.md** - vLLM 本地 GPU 推理集成指南（需要 NVIDIA GPU）
-- **../CPU_INFERENCE.md** - 旧版 CPU 推理优化指南（使用 vLLM）
+- **../CPU_INFERENCE.md** - 旧版 CPU 推理优化指南（使用 vLLM，已弃用，推荐使用 llama.cpp）
 
 ## 快速开始
 
@@ -31,12 +31,12 @@
 
 项目支持两种运行模式：
 - **开发模式** - 快速迭代，使用 `start_project.sh` 或 `start_project.bat`
-- **生产模式** - 高可用部署，使用 `start_project_prod.sh` 或 `start_project_prod.bat`
+- **生产模式** - 高可用部署，使用 `scripts/start_project_prod.sh` 或 `scripts/start_project_prod.bat`
 
 ## 推理后端选择
 
 | 后端 | 硬件要求 | 推荐场景 |
 |------|---------|---------|
-| **llama.cpp (本地)** | CPU 即可 | ⭐ 推荐，无需 GPU，适合演示 |
+| **llama.cpp (本地)** | CPU 即可 | ⭐ 推荐，无需 GPU，支持 Metal/CUDA 加速 |
 | **vLLM (本地)** | NVIDIA GPU | 高性能部署，需要 GPU |
 | **远程 API** | 无 | 快速测试，质量最高 |

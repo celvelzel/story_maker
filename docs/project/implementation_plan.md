@@ -1,8 +1,10 @@
 # StoryWeaver 混合架构实现计划
 
-> **项目**: COMP5423 NLP — Interactive Text Adventure Story Generator  
-> **架构**: 混合方案 (本地 NLU + API NLG)  
-> **最后更新**: 2026-02-27
+> **项目**：COMP5423 NLP — Interactive Text Adventure Story Generator
+> **架构**：混合方案（本地 NLU + API NLG）
+> **最后更新**：2026-03-31
+
+> **说明**：本文档为项目级实现规划，部分路径和实现示例保留为设计草案；当前仓库的最新运行说明以根目录 `README.md` 为准。
 
 ---
 
@@ -54,14 +56,15 @@
 ```
 story_maker/
 ├── .env                          # API keys (git-ignored)
-├── .env.example                  # 示例环境变量
+├── config/
+│   └── .env.example              # 示例环境变量
 ├── .gitignore
 ├── config.py                     # 全局配置 (Pydantic Settings)
-├── app.py                        # Gradio 前端入口
+├── app.py                        # Streamlit 前端入口
 ├── requirements.txt              # 依赖清单
 ├── README.md
 │
-├── info/                         # 项目文档
+├── docs/project/                 # 项目文档
 │   ├── implementation_plan.md    # 本文件
 │   ├── agent_prompt.md           # Agent 提示词
 │   └── *.pdf                     # 课程项目说明
@@ -121,6 +124,8 @@ story_maker/
 ---
 
 ## 三、模块详细设计
+
+> 注：以下代码片段用于说明设计意图；若与当前实现细节不一致，以仓库代码为准。
 
 ### 3.1 config.py — 全局配置
 
@@ -1118,11 +1123,11 @@ class LLMJudge:
 
 ---
 
-### 3.8 app.py — Gradio 前端
+### 3.8 app.py — Streamlit 前端
 
 ```python
-"""Gradio UI for StoryWeaver interactive text adventure."""
-import gradio as gr
+"""Streamlit UI for StoryWeaver interactive text adventure."""
+import streamlit as st
 from src.engine.game_engine import GameEngine
 
 engine: GameEngine = None
@@ -1172,35 +1177,16 @@ def player_action(message, chat_history, selected_option):
     )
 
 def build_ui():
-    with gr.Blocks(title="StoryWeaver", theme=gr.themes.Soft()) as demo:
-        gr.Markdown("# 🏰 StoryWeaver — Interactive Text Adventure")
-        
-        with gr.Row():
-            with gr.Column(scale=3):
-                chatbot = gr.Chatbot(type="messages", height=500, label="Story")
-                
-                with gr.Row():
-                    msg_input = gr.Textbox(placeholder="Type your action...", scale=4, label="Your Action")
-                    send_btn = gr.Button("Send", scale=1, variant="primary")
-                
-                option_radio = gr.Radio(choices=[], label="Quick Actions", visible=False)
-                start_btn = gr.Button("🎮 New Game", variant="secondary")
-            
-            with gr.Column(scale=2):
-                kg_display = gr.HTML(label="Knowledge Graph")
-                nlu_debug = gr.Textbox(label="NLU Debug", lines=8, interactive=False)
-        
-        # Event bindings
-        start_btn.click(start_new_game, outputs=[chatbot, kg_display, nlu_debug, option_radio])
-        send_btn.click(player_action, inputs=[msg_input, chatbot, option_radio], outputs=[chatbot, kg_display, nlu_debug, option_radio])
-        msg_input.submit(player_action, inputs=[msg_input, chatbot, option_radio], outputs=[chatbot, kg_display, nlu_debug, option_radio])
-        option_radio.change(player_action, inputs=[gr.Textbox(value="", visible=False), chatbot, option_radio], outputs=[chatbot, kg_display, nlu_debug, option_radio])
-    
-    return demo
+    st.title("🏰 StoryWeaver — Interactive Text Adventure")
+    st.session_state.setdefault("chat_history", [])
+    st.session_state.setdefault("engine", None)
+
+    # The Streamlit implementation should expose the same gameplay flow:
+    # start game -> show story + options -> accept typed input or quick actions.
+    return st
 
 if __name__ == "__main__":
-    demo = build_ui()
-    demo.launch(server_port=7860, share=False)
+    build_ui()
 ```
 
 ---
@@ -1246,7 +1232,7 @@ pytest>=7.0
 | A - NLU 工程师 | intent_classifier, entity_extractor, coreference, train_intent |
 | B - KG 工程师 | graph, relation_extractor, conflict_detector, visualizer |
 | C - NLG 工程师 | api_client, prompt_templates, story_generator, option_generator |
-| D - 引擎 & UI | game_engine, state, app.py (Gradio) |
+| D - 引擎 & UI | game_engine, state, app.py (Streamlit) |
 | E - 评估 & 测试 | metrics, llm_judge, all tests, evaluation pipeline |
 | F - 基础设施 & 文档 | config, CI, .env, README, report, demo |
 
@@ -1254,9 +1240,9 @@ pytest>=7.0
 
 | 周 | 里程碑 | 交付物 |
 |----|--------|--------|
-| **W1** | 基础搭建 | config.py, api_client.py, graph.py 骨架, 单元测试框架, .env.example |
+| **W1** | 基础搭建 | config.py, api_client.py, graph.py 骨架, 单元测试框架, config/.env.example |
 | **W2** | 核心模块 | NLU 三件套完成, KG CRUD + 关系抽取, NLG prompt 模板 + story_gen + option_gen |
-| **W3** | 集成联调 | game_engine 串联, Gradio UI, 冲突检测, KG 可视化, 端到端测试 |
+| **W3** | 集成联调 | game_engine 串联, Streamlit UI, 冲突检测, KG 可视化, 端到端测试 |
 | **W4** | 评估打磨 | LLM-as-Judge, 自动评估跑分, Bug 修复, README, 最终报告, Demo 录制 |
 
 ### 每周详细任务
@@ -1332,10 +1318,10 @@ pytest>=7.0
 ## 七、硬件与环境要求
 
 ### 最低配置
-- **GPU**: 不需要 (所有生成通过 API)
-- **RAM**: 8GB (NLU 模型约 1.5GB)
-- **存储**: 10GB (模型权重 + 依赖)
-- **网络**: 稳定的互联网连接 (API 调用)
+- **GPU**: 不需要（所有生成通过 API）
+- **RAM**: 8GB（NLU 模型约 1.5GB）
+- **存储**: 10GB（模型权重 + 依赖）
+- **网络**: 稳定的互联网连接（API 调用）
 
 ### 推荐配置
 - **RAM**: 16GB
@@ -1343,10 +1329,10 @@ pytest>=7.0
 - **OS**: Windows/macOS/Linux
 
 ### 费用估算
-- gpt-4o-mini: $0.15/1M input, $0.60/1M output
-- 每回合约: ~$0.0003
-- 每局 (30 回合): ~$0.009
-- 项目全程 (开发+测试+评估): < $20
+- gpt-4o-mini：$0.15/1M input, $0.60/1M output
+- 每回合约：~$0.0003
+- 每局（30 回合）：~$0.009
+- 项目全程（开发 + 测试 + 评估）：< $20
 
 ---
 

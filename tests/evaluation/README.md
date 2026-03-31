@@ -1,6 +1,6 @@
 # Quality Benchmark & Regression Harness
 
-This directory contains the Wave-A quality benchmark foundation for NLU + KG quality-first development.
+This directory contains the quality benchmark foundation for NLU + KG regression gating.
 
 ## Files
 

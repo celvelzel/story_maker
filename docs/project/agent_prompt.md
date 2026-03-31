@@ -4,23 +4,24 @@
 You are a senior software engineer implementing "StoryWeaver" — an interactive text adventure game engine for an NLP course project (COMP5423). The architecture is a hybrid design: local NLU + API-based NLG.
 
 ## Project Location
-c:\Develop\python_projects\COMP5423_NLP\story_maker\
+/hpc/puhome/25116696g/NLP/story_maker/
 
 ## Architecture
 - NLU (local): RoBERTa intent classification, spaCy NER, fastcoref coreference resolution
-- Knowledge Graph (local): NetworkX MultiDiGraph with entity/relation management
-- NLG (API): OpenAI gpt-4o-mini for story generation, option generation, relation extraction
-- UI: Gradio Blocks with chat, option buttons, KG visualization (PyVis)
+- Knowledge Graph (local): NetworkX MultiDiGraph with entity/relation management and relation extraction
+- NLG (API): OpenAI gpt-4o-mini for story generation and option generation
+- UI: Streamlit app with chat, option buttons, KG visualization (PyVis)
 - Evaluation: Distinct-n, Self-BLEU, Consistency Rate, Entity Coverage, LLM-as-Judge
 
 ## Complete File Structure
 ```
 story_maker/
 ├── .env                          # OPENAI_API_KEY=sk-... (git-ignored)
-├── .env.example                  # Template
+├── config/
+│   └── .env.example              # Template
 ├── .gitignore
 ├── config.py                     # Pydantic Settings, reads .env
-├── app.py                        # Gradio frontend
+├── app.py                        # Streamlit frontend
 ├── requirements.txt
 ├── README.md
 ├── src/
@@ -36,7 +37,7 @@ story_maker/
 │   ├── knowledge_graph/
 │   │   ├── __init__.py
 │   │   ├── graph.py              # KnowledgeGraph: MultiDiGraph, add/get/remove, to_summary()
-│   │   ├── relation_extractor.py # LLM-based entity+relation extraction from story text
+│   │   ├── relation_extractor.py # LLM-based entity + relation extraction from story text
 │   │   ├── conflict_detector.py  # Rule layer (exclusive pairs, attr conflicts) + LLM layer
 │   │   └── visualizer.py         # PyVis HTML, entity type colors/shapes
 │   ├── nlg/
@@ -135,9 +136,9 @@ story_maker/
 - `process_turn(player_input)`: full 7-step pipeline as described above
 - `_apply_extraction(extraction)`: iterate entities/relations and add to KG
 
-### app.py — Gradio UI
-- `gr.Blocks` with `gr.themes.Soft()`
-- Layout: Left column (3/5) = Chatbot + TextInput + Radio options + buttons; Right column (2/5) = KG HTML + NLU debug
+### app.py — Streamlit UI
+- Streamlit-based single-page app
+- Layout: main chat area + quick actions + knowledge graph + NLU debug
 - `start_new_game()`: creates GameEngine, calls start_game()
 - `player_action()`: uses typed message or selected radio option
 - Chatbot type="messages" (OpenAI-style message format)
@@ -191,7 +192,7 @@ python app.py
 ```
 
 ## Current State
-There is existing scaffold code from a pure-local architecture. You need to REPLACE the existing files to implement the hybrid architecture as specified above. Key changes:
+There is existing scaffold code from a pure-local architecture. Replace the existing files to implement the hybrid architecture as specified above. Key changes:
 - config.py: Add API settings, use pydantic-settings
 - NEW: src/utils/api_client.py
 - NEW: src/knowledge_graph/relation_extractor.py
@@ -210,7 +211,7 @@ Please implement all files in order: config → api_client → NLU modules → K
 
 ## 使用说明
 
-1. 将上方 ` ``` ` 中的全部内容复制
+1. 将上方代码块中的全部内容复制
 2. 作为 System Prompt 或 User Prompt 提供给 Coding Agent (如 GitHub Copilot Agent, Cursor, Windsurf 等)
 3. Agent 将按照指定顺序自动创建/重写所有文件
 4. 实现完成后运行 `python -m pytest tests/ -v` 验证

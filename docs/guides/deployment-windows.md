@@ -9,7 +9,7 @@
 
 新增脚本：
 
-1. `start_project_prod.bat`：生产模式启动（推荐）
+1. `scripts/start_project_prod.bat`：生产模式启动（推荐）
 
 ## 2. 开发模式 vs 生产模式
 
@@ -17,7 +17,7 @@
    - 命令：`start_project.bat`
    - 目标：快速迭代
 2. 生产模式：
-   - 命令：`start_project_prod.bat`
+   - 命令：`scripts/start_project_prod.bat`
    - 增强：端口检测、安全重启、环境变量校验、日志落盘、明确退出码
 
 ## 3. 首次部署

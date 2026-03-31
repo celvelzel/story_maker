@@ -2,6 +2,12 @@
 
 本文档介绍如何在本地启动 llama.cpp 服务器并运行 StoryWeaver 应用。
 
+## Prerequisites
+
+- [llama.cpp](https://github.com/ggerganov/llama.cpp) binaries (placed in `llama.cpp-bin/`)
+- GGUF model file (e.g., Qwen3-4B-GGUF in `models/qwen-gguf/`)
+- Windows/macOS environment with Python 3.10+
+
 ## 1. 快速启动
 
 ### Windows
@@ -147,6 +153,10 @@ taskkill /PID <PID> /F
 
 ## 8. 相关文档
 
+- [从零部署指南](zero-to-hero-deployment.md)
 - [本地模型推理集成报告](../reports/本地模型推理集成_2026-03-27_21-07.md)
 - [CPU 推理优化指南](../CPU_INFERENCE.md)
 - [vLLM 集成指南](../VLLM_INTEGRATION.md)
+
+---
+*最后更新：2026-03-31*

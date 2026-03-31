@@ -8,14 +8,14 @@
 
 新增脚本：
 
-1. `start_project_prod.sh`：生产模式启动（macOS/Linux）
+1. `scripts/start_project_prod.sh`：生产模式启动（macOS/Linux）
 
 ## 2. 开发模式 vs 生产模式
 
 1. 开发模式：
    - 命令：`./start_project.sh`
 2. 生产模式：
-   - 命令：`./start_project_prod.sh`
+   - 命令：`./scripts/start_project_prod.sh`
    - 能力：端口检测、安全重启、依赖安装超时、环境变量校验、日志落盘
 
 ## 3. 首次部署

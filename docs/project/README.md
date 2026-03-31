@@ -1,20 +1,19 @@
 # 项目文档
 
-本目录包含 StoryWeaver 项目的规范文档和计划文件。
+本目录收录 StoryWeaver 的项目级规范、实现计划与提示词模板，主要用于规划、对齐与答辩准备。
 
-## 文件说明
+## 目录内容
 
-### 项目规范
-- **COMP5423 NLP Group Project Specification-2026.pdf** - 项目课程规范文档
-- **project intro.pdf** - 项目介绍文档
+- **项目规范**
+  - `COMP5423 NLP Group Project Specification-2026.pdf`：课程项目规范
+  - `project intro.pdf`：项目简介
+- **实施计划**
+  - `implementation_plan.md`：混合架构实现计划与阶段安排
+- **提示词模板**
+  - `agent_prompt.md`：面向编码代理的实现提示词
+  - `rebuilt_prompt.md`：重构/替换任务的阶段性提示词
 
-### 实现计划
-- **implementation_plan.md** - 详细的实现计划文档
+## 说明
 
-### 提示词模板
-- **agent_prompt.md** - AI 代理提示词模板
-- **rebuilt_prompt.md** - 重构后的提示词模板
-
-## 使用说明
-
-这些文档主要用于项目规划和开发参考，包含了项目的设计思路、实现方案和技术决策。
+- 本目录保留项目级历史规划与模板，不作为当前运行态说明的唯一来源。
+- 当前实现与部署说明以根目录 `README.md` 及 `docs/` 下的专题文档为准。
