@@ -1,10 +1,13 @@
 """Singleton OpenAI wrapper with retry, JSON mode, and usage tracking.
 
-OpenAI API 单例封装器模块。
+OpenAI API 单例封装器模块。支持混合模式（hybrid）：
+- 创意任务（story）使用本地 Qwen3-4B 模型
+- 结构化任务（option, relation）使用 Mimo v2 Flash API
 
 提供以下核心功能：
 - ``chat()``：发送聊天补全请求，返回纯文本响应
 - ``chat_json()``：发送聊天补全请求，返回 JSON 模式解析后的字典
+- ``get_client_for_task()``：根据任务类型和 NLG_MODE 返回合适的客户端
 - 自动重试机制：遇到临时性错误时自动重试最多 3 次（指数退避策略）
 - 会话级用量追踪：记录输入/输出 token 数量
 
@@ -20,14 +23,71 @@ from typing import Any, Dict, List, Optional, Tuple
 logger = logging.getLogger(__name__)
 
 
+# ── Hybrid Mode Client Manager ────────────────────────────────
+class HybridClientManager:
+    """Manage multiple LLM clients for hybrid mode routing.
+    
+    在混合模式下管理多个 LLM 客户端：
+    - 本地客户端：用于创意任务（story generation）
+    - API 客户端：用于结构化任务（option, relation, JSON）
+    """
+    
+    _instance: Optional["HybridClientManager"] = None
+    _local_client: Optional[LLMClient] = None
+    _api_client: Optional[LLMClient] = None
+    
+    def __new__(cls) -> "HybridClientManager":
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+    
+    @classmethod
+    def get_client_for_task(cls, task_type: str = "default") -> LLMClient:
+        """Get the appropriate client based on NLG_MODE and task type.
+        
+        根据 NLG_MODE 和任务类型返回合适的客户端：
+        - task_type="story" → 创意任务，使用本地客户端（如果可用）
+        - task_type="option"/"relation"/"json" → 结构化任务，使用 API 客户端（如果可用）
+        
+        Args:
+            task_type: Task type ("story", "option", "relation", "json", "default")
+            
+        Returns:
+            LLMClient: The appropriate client for the given task
+        """
+        from config import settings
+        
+        mode = getattr(settings, "NLG_MODE", "api").lower()
+        
+        if mode == "local":
+            # Always use local client
+            return LLMClient(client_type="local")
+        elif mode == "api":
+            # Always use API client
+            return LLMClient(client_type="api")
+        elif mode == "hybrid":
+            # Route based on task type
+            if task_type == "story":
+                # Creative tasks use local Qwen3
+                return LLMClient(client_type="local")
+            else:
+                # Structured tasks (option, relation, json) use Mimo API
+                return LLMClient(client_type="api")
+        else:
+            # Default to API for unknown modes
+            logger.warning(f"Unknown NLG_MODE: {mode}. Defaulting to API client.")
+            return LLMClient(client_type="api")
+
+
 class LLMClient:
-    """OpenAI 聊天补全单例封装器。
+    """OpenAI 聊天补全单例封装器（支持混合模式）。
 
     核心功能：
     - ``chat()``：发送聊天补全请求，返回纯文本响应
     - ``chat_json()``：发送聊天补全请求，返回 JSON 模式解析后的字典
     - 自动重试机制：遇到临时性错误时自动重试最多 3 次（指数退避策略）
     - 会话级用量追踪：记录输入/输出 token 数量
+    - 混合模式支持：可为本地客户端或 API 客户端
 
     使用单例模式确保整个应用共享同一个 API 客户端实例。
     采用懒加载方式初始化 OpenAI 客户端，只在首次使用时创建。
@@ -38,40 +98,56 @@ class LLMClient:
         _client: OpenAI 客户端实例（懒加载）
         _total_input_tokens: 会话内累计输入 token 数
         _total_output_tokens: 会话内累计输出 token 数
+        _client_type: 客户端类型 ("local" 或 "api")
     """
 
     _instance: Optional["LLMClient"] = None
+    _instances_by_type: Dict[str, "LLMClient"] = {}
 
-    def __new__(cls) -> "LLMClient":
-        """创建或返回单例实例。
+    def __new__(cls, client_type: str = "api") -> "LLMClient":
+        """创建或返回单例实例（支持多类型）。
 
-        确保整个应用只有一个 LLMClient 实例。
+        确保每种客户端类型都有一个单例实例。
+
+        参数：
+            client_type: "local" 或 "api"
 
         返回：
             LLMClient: 单例实例
         """
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._initialised = False
-        return cls._instance
+        client_type = client_type.lower()
+        if client_type not in cls._instances_by_type:
+            instance = super().__new__(cls)
+            instance._initialised = False
+            cls._instances_by_type[client_type] = instance
+            if cls._instance is None:
+                cls._instance = instance
+        return cls._instances_by_type[client_type]
 
-    def __init__(self) -> None:
+    def __init__(self, client_type: str = "api") -> None:
         """初始化客户端配置。
 
         仅在首次创建时执行初始化，后续调用会直接返回。
         加载配置、初始化 token 计数器。
+        
+        参数：
+            client_type: "local" 使用 OPENAI_BASE_URL；"api" 使用 MIMO_* 设置
         """
         if self._initialised:
             return
         from config import settings
 
         self._settings = settings
-        self._client: Any = None  # OpenAI 客户端实例（懒加载）
-        self._total_input_tokens: int = 0  # 累计输入 token 数
-        self._total_output_tokens: int = 0  # 累计输出 token 数
-        # 使用配置的超时设置
+        self._client_type = client_type.lower()
+        self._client: Any = None
+        self._total_input_tokens: int = 0
+        self._total_output_tokens: int = 0
+        
         import httpx
-        self._timeout = httpx.Timeout(self._settings.OPENAI_TIMEOUT_CONNECT, read=self._settings.OPENAI_TIMEOUT_READ)
+        self._timeout = httpx.Timeout(
+            self._settings.OPENAI_TIMEOUT_CONNECT, 
+            read=self._settings.OPENAI_TIMEOUT_READ
+        )
         self._initialised = True
 
     # ── lazy OpenAI client ────────────────────────────────
@@ -82,6 +158,10 @@ class LLMClient:
         首次访问时创建 OpenAI 客户端实例，支持自定义 base_url
         以兼容 OpenAI 兼容的第三方服务。
 
+        对于混合模式：
+        - client_type="local": 使用 OPENAI_BASE_URL（本地 Qwen3 llama.cpp 服务器）
+        - client_type="api": 使用 MIMO_* 设置（Mimo v2 Flash 云 API）
+
         返回：
             OpenAI: 已配置的 OpenAI 客户端实例
 
@@ -91,17 +171,36 @@ class LLMClient:
         if self._client is None:
             try:
                 from openai import OpenAI
-                # 构建客户端参数
                 kwargs: Dict[str, Any] = {
-                    "api_key": self._settings.OPENAI_API_KEY,
-                    "timeout": self._timeout,  # 防止无限阻塞
+                    "timeout": self._timeout,
                 }
-                # 如果配置了自定义 base_url，使用它（支持第三方 OpenAI 兼容服务）
-                if self._settings.OPENAI_BASE_URL:
-                    kwargs["base_url"] = self._settings.OPENAI_BASE_URL
+                
+                if self._client_type == "local":
+                    # Local Qwen3-4B via llama.cpp
+                    kwargs["api_key"] = self._settings.OPENAI_API_KEY or "not-needed-for-local"
+                    if self._settings.OPENAI_BASE_URL:
+                        kwargs["base_url"] = self._settings.OPENAI_BASE_URL
+                    logger.info(f"Creating local LLM client: {self._settings.OPENAI_BASE_URL}")
+                else:
+                    # API client: use MIMO_* settings if available, fallback to OPENAI_*
+                    mimo_api_key = getattr(self._settings, "MIMO_API_KEY", None)
+                    mimo_base_url = getattr(self._settings, "MIMO_BASE_URL", None)
+                    
+                    if mimo_api_key:
+                        kwargs["api_key"] = mimo_api_key
+                    else:
+                        kwargs["api_key"] = self._settings.OPENAI_API_KEY
+                    
+                    if mimo_base_url:
+                        kwargs["base_url"] = mimo_base_url
+                    elif self._settings.OPENAI_BASE_URL:
+                        kwargs["base_url"] = self._settings.OPENAI_BASE_URL
+                    
+                    logger.info(f"Creating API LLM client: {kwargs.get('base_url', 'default')}")
+                
                 self._client = OpenAI(**kwargs)
             except Exception as exc:
-                logger.error("创建 OpenAI 客户端失败: %s", exc)
+                logger.error(f"Failed to create OpenAI client ({self._client_type}): {exc}")
                 raise
         return self._client
 
@@ -418,5 +517,22 @@ class LLMClient:
         }
 
 
-# Convenience module-level singleton
+# Convenience module-level singleton and hybrid routing
 llm_client = LLMClient()
+
+
+def get_client_for_task(task_type: str = "default") -> LLMClient:
+    """Get the appropriate LLM client for a given task type.
+    
+    Routes requests based on NLG_MODE configuration:
+    - hybrid mode: creative tasks (story) → local, structured (option/relation) → API
+    - local mode: always local
+    - api mode: always API
+    
+    参数：
+        task_type: Task type ("story", "option", "relation", "json", "default")
+    
+    返回：
+        LLMClient: The appropriate client for the task
+    """
+    return HybridClientManager.get_client_for_task(task_type)

@@ -61,6 +61,10 @@ class Settings(BaseSettings):
 
     # ── NLG Config ────────────────────────────────────────
     # 自然语言生成（NLG）配置
+    NLG_MODE: str = "hybrid"  # NLG 模型选择：local（本地 Qwen3）| api（Mimo API）| hybrid（混合）
+    # Options: "local" (uses OPENAI_BASE_URL for local Qwen3-4B)
+    #          "api" (uses OPENAI_API_KEY + OPENAI_BASE_URL for Mimo API)
+    #          "hybrid" (uses Qwen3 for creative tasks, Mimo for structured tasks)
     NUM_OPTIONS: int = 3  # 每次生成的玩家选项数量
 
     # ── Knowledge Graph Config ────────────────────────────
