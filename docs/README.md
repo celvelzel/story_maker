@@ -46,8 +46,7 @@
 - [部署指南 (macOS)](guides/deployment-macos.md)
 
 ### 备选推理方案
-- [vLLM 集成指南](../VLLM_INTEGRATION.md) - 本地 GPU 推理
-- [CPU 推理指南](../CPU_INFERENCE.md) - 旧版 CPU 推理
+- [CPU 推理指南](guides/CPU_INFERENCE.md) - CPU 推理优化指南
 
 ### 🛠️ 自动化与测试
 - **[自动化测试报告](reports/automated_test_report.md)** - 全模块自动化测试结果

@@ -1,5 +1,7 @@
 # Model Comparison Report: Local Qwen3-4B vs Xiaomi Mimo v2 Flash
 
+> **Last Updated**: 2026-03-31
+
 **Evaluation Date:** March 31, 2026
 **Task:** Interactive Fiction Story Generation
 

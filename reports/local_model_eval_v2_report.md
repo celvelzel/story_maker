@@ -1,5 +1,7 @@
 # Local Model Evaluation Report v2 (with LLM Judge)
 
+> **Last Updated**: 2026-03-31
+
 **Model:** merged_model_Qwen3-4B-Instruct-2507
 **Base URL:** http://localhost:8000/v1
 **Device:** NVIDIA GeForce RTX 3080 Ti (12GB VRAM)

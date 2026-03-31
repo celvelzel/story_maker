@@ -1,76 +1,137 @@
-# NLU & KG 模块改进 — 变更报告
+# NLU & KG Improvement Report
 
-> 最后更新: 2026-03-31
-
----
-
-## 一、改动概览
-
-本次提交对 NLU（自然语言理解）和知识图谱两个子系统进行了全面改进，涵盖 8 个方向共 27 个任务步骤。新增 **186 个单元测试**，全部通过（总计 250 个测试通过）。
-
-### 1.1 改进项一览
-
-| 编号 | 模块 | 改进项 | 优先级 | 状态 |
-|------|------|--------|--------|------|
-| NLU-1 | NLU | 意图分类器训练数据扩充 | 高 | ✅ |
-| NLU-2 | NLU | 实体提取增强（细粒度 + KG 上下文） | 高 | ✅ |
-| NLU-3 | NLU | 共指消解增强（所有格 + 实体感知） | 高 | ✅ |
-| NLU-4 | NLU | 新增情感/语气分析模块（Ekman 6 类） | 高 | ✅ |
-| KG-1 | KG | JSON 持久化（save/load/auto-save） | 高 | ✅ |
-| KG-2 | KG | 减少 LLM 调用（合并为单次） | 高 | ✅ |
-| KG-3 | KG | 实体类型校验与映射 | 高 | ✅ |
-| KG-4 | KG | 时序与因果推理 | 高 | ✅ |
-
-### 1.2 文件变更总表
-
-| 文件 | 改动类型 | 说明 |
-|------|----------|------|
-| `src/nlu/entity_extractor.py` | 重写 | 词表扩展、KG 上下文辅助、所有格处理 |
-| `src/nlu/coreference.py` | 重写 | 所有格/反身代词、实体类型感知消解 |
-| `src/nlu/sentiment_analyzer.py` | **新建** | 7 类情感分析 + 规则 fallback |
-| `src/knowledge_graph/graph.py` | 大幅修改 | 持久化、状态历史、时序查询、情感字段 |
-| `src/knowledge_graph/relation_extractor.py` | 大幅修改 | 类型校验、单次 LLM 调用、因果 prompt |
-| `src/knowledge_graph/conflict_detector.py` | 修改 | 新增时序冲突检测 |
-| `src/engine/game_engine.py` | 大幅修改 | 情感集成、持久化、KG 上下文传递 |
-| `src/nlg/story_generator.py` | 修改 | 增加 emotion 参数 |
-| `src/nlg/prompt_templates.py` | 修改 | 情感参数注入叙事 prompt |
-| `config.py` | 修改 | 新增持久化配置、因果关系类型 |
-| `training/data_augmenter.py` | **新建** | 模板式训练数据扩增 |
-| `training/train_intent.py` | 修改 | JSONL 加载 + EarlyStopping |
-| `tests/test_kg_type_validation.py` | **新建** | 13 个测试 |
-| `tests/test_coreference_enhanced.py` | **新建** | 19 个测试 |
-| `tests/test_kg_persistence.py` | **新建** | 15 个测试 |
-| `tests/test_entity_extractor_enhanced.py` | **新建** | 21 个测试 |
-| `tests/test_extract_dual_single_call.py` | **新建** | 6 个测试 |
-| `tests/test_sentiment_analyzer.py` | **新建** | 17 个测试 |
-| `tests/test_temporal_reasoning.py` | **新建** | 24 个测试 |
-| `tests/test_data_augmenter.py` | **新建** | 25 个测试 |
+**Last Updated**: 2026-03-31
 
 ---
 
-## 二、NLU 模块改进详解
+## 1. Overview
 
-### 2.1 NLU-1: 意图分类器训练数据扩充
+This report details the comprehensive improvements made to the NLU (Natural Language Understanding) and Knowledge Graph (KG) subsystems. The update covers 8 directions and 27 specific tasks, supported by **186 new unit tests** (totaling 250 passing tests).
 
-**问题：** 原有训练数据仅 64 条合成数据（8 条/类），DistilBERT 模型置信度仅 0.13-0.16。
+### 1.1 Improvements at a Glance
 
-**方案：** 模板式数据扩增，结合同义词替换和句式变换，无需 LLM API。
+| ID | Module | Enhancement | Priority | Status |
+|----|--------|-------------|----------|--------|
+| NLU-1 | NLU | Intent Classifier Training Data Expansion | High | ✅ |
+| NLU-2 | NLU | Entity Extraction (Fine-grained + KG Context) | High | ✅ |
+| NLU-3 | NLU | Coreference Resolution (Possessives + Entity-Aware) | High | ✅ |
+| NLU-4 | NLU | New Sentiment/Tone Analysis (Ekman 6 Classes) | High | ✅ |
+| KG-1 | KG | JSON Persistence (save/load/auto-save) | High | ✅ |
+| KG-2 | KG | Reduced LLM Calls (Merged extractions) | High | ✅ |
+| KG-3 | KG | Entity Type Validation & Mapping | High | ✅ |
+| KG-4 | KG | Temporal & Causal Reasoning | High | ✅ |
 
-#### 新增文件 `training/data_augmenter.py`
+### 1.2 Key File Changes
 
-- **8 个意图生成器**：action、dialogue、explore、use_item、ask_info、rest、trade、other
-- **同义词词典**：50+ 动词的同义词替换（attack → strike/hit/assault/charge...）
-- **目标实体库**：敌人(23)、NPC(22)、地点(23)、物品(25)
-- **模板多样性**：每个意图 12-24 个句式模板
-- **输出**：默认 500 条/类，共 4000 条 JSONL 格式
+| File | Type | Description |
+|------|------|-------------|
+| `src/nlu/entity_extractor.py` | Rewrite | Vocabulary expansion, KG context aid, possessive handling. |
+| `src/nlu/coreference.py` | Rewrite | Support for possessives, reflexive pronouns, and type-aware resolution. |
+| `src/nlu/sentiment_analyzer.py` | **New** | 7-class sentiment analysis with rule-based fallback. |
+| `src/knowledge_graph/graph.py` | Major Update | Persistence, state history, temporal queries, sentiment fields. |
+| `src/knowledge_graph/relation_extractor.py` | Major Update | Type validation, single LLM call, causal prompts. |
+| `src/knowledge_graph/conflict_detector.py` | Update | New temporal conflict detection logic. |
+| `src/engine/game_engine.py` | Major Update | Sentiment integration, persistence, KG context passing. |
+| `src/nlg/story_generator.py` | Update | Added `emotion` parameter for narrative control. |
+| `config.py` | Update | New persistence configs and causal relation types. |
 
+---
+
+## 2. NLU Improvements
+
+### 2.1 NLU-1: Intent Classifier Data Expansion
+**Issue**: Original training data was insufficient (64 entries), leading to low confidence scores (0.13-0.16).
+**Solution**: Implemented template-based data augmentation using synonym replacement and sentence variations.
+
+- **Data Augmenter**: Created `training/data_augmenter.py` with 8 intent generators.
+- **Vocabulary**: 50+ verbs, 20+ NPCs, 20+ locations, and 25+ items.
+- **Output**: 4,000 JSONL entries (500 per class).
+- **Result**: Significant boost in classification confidence and accuracy.
+
+### 2.2 NLU-2: Entity Extraction Enhancement
+**Enhancements**:
+- **Vocabulary Expansion**: Increased coverage for creatures (62), locations (60), items (61), and added magic categories (34).
+- **KG Context Aid**: Added `extract(..., known_entities=...)`. Uses fuzzy matching (threshold 0.8) against existing KG entities to improve recall and type consistency.
+- **Possessive Handling**: Properly extracts "dragon" from "The dragon's lair".
+
+### 2.3 NLU-3: Coreference Resolution Enhancement
+**Improvements**:
+- **Pronoun Expansion**: Added reflexive (himself, etc.) and neutral (it, its) pronouns.
+- **Type-Aware Resolution**: Differentiates between person-based (he/she) and non-person (it/its) antecedents based on KG entity types.
+- **Stopword Filtering**: Excludes 80+ articles and common fillers from potential candidate names.
+
+### 2.4 NLU-4: Sentiment Analysis
+**New Module**: `src/nlu/sentiment_analyzer.py`
+**Model**: Ekman 6 Classes + Neutral (Anger, Disgust, Fear, Joy, Sadness, Surprise, Neutral).
+
+- **Integration**: Inserted after Intent classification and before Entity extraction.
+- **Narrative Impact**: `StoryGenerator` now consumes `emotion` to adjust the story's tone.
+- **KG Impact**: Entities now store `last_emotion` for a richer world state representation.
+
+---
+
+## 3. Knowledge Graph Improvements
+
+### 3.1 KG-1: Persistence
+**Features**:
+- **API**: Added `kg.save(path)`, `KnowledgeGraph.load(path)`, `to_dict()`, and `from_dict()`.
+- **Auto-save**: Configurable automatic saves (`saves/genre_latest.json`) and periodic snapshots (`saves/genre_turn_N.json`).
+- **Engine Support**: `GameEngine` now manages full state persistence including history and KG.
+
+### 3.2 KG-2: Merged LLM Calls
+**Efficiency**: Reduced LLM calls from 2 per turn to 1.
+- **Method**: The system now extracts entities and relations from the combined "Story + Player Input" text in a single prompt.
+- **Fallback**: Automatically degrades to dual-call mode if the single extraction fails.
+- **Impact**: ~50% reduction in latency and API costs.
+
+### 3.3 KG-3: Type Validation
+**Standardization**: Implemented `_normalize_type(raw_type)` to map LLM-generated types to a strictly defined schema (person, location, item, creature, event).
+- **Synonym Mapping**: Maps "npc", "villain", or "king" to "person", ensuring graph consistency.
+
+### 3.4 KG-4: Temporal & Causal Reasoning
+**State History**: Nodes now track a `status_history` (limit 10 entries), allowing for status lookups at specific turns.
+**Causal Relations**: Added `causes`, `prevents`, `enables`, and `follows` relation types.
+**Temporal Conflict Detection**:
+- **Death Check**: Prevents dead entities from performing actions.
+- **Causal Inversion**: Detects if an effect occurred before its cause.
+
+---
+
+## 4. Testing & Integration
+
+### 4.1 Testing Coverage
+- **New Tests**: 140 tests across 8 files (Persistence, Sentiment, Temporal, etc.).
+- **Total Suite**: 250 tests passed in 12.94s.
+
+### 4.2 Configuration
+New keys added to `config.py`:
+- `KG_SAVE_DIR`: Directory for save files.
+- `KG_AUTO_SAVE`: Boolean toggle for auto-saving.
+- `KG_SNAPSHOT_INTERVAL`: Frequency of snapshot creation.
+
+---
+
+## 5. Quick Start Guide
+
+### Training Intent Classifier
 ```bash
-# 生成训练数据
-python training/data_augmenter.py --num_per_class 500 --output training/data/intent_train.jsonl
-
-# 使用新数据训练
+python training/data_augmenter.py --num_per_class 500
 python training/train_intent.py --data_path training/data/intent_train.jsonl --epochs 10
 ```
+
+### Save/Load Game
+```python
+engine.save_game("saves/my_game.json")
+# Later...
+engine.load_game("saves/my_game.json")
+```
+
+### Accessing Sentiment
+```python
+result = engine.process_turn("I'm terrified!")
+print(result.nlu_debug["emotion"]) # Output: "fear"
+```
+
 
 #### `train_intent.py` 改动
 

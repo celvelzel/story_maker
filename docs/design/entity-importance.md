@@ -1,10 +1,10 @@
 # Entity Importance Strategy
 
-This document details the Knowledge Graph (KG) entity pruning and importance scoring mechanism in the `story_maker` project. This feature is managed via the `KG_IMPORTANCE_MODE` parameter in the configuration.
+This document details the Knowledge Graph (KG) entity pruning and importance scoring mechanism in the `story_weaver` project. This feature is managed via the `KG_IMPORTANCE_MODE` parameter in the configuration.
 
 ## 1. Functional Overview
 
-In long-form narratives, the Knowledge Graph grows as the number of turns increases. To ensure the effectiveness of the LLM context, the system needs to identify which entities are core to the current story and which are outdated background information. The entity pruning strategy determines an entity's `importance_score` (0.0 to 1.0), which in turn affects its priority during summary generation.
+In long-form narratives, the Knowledge Graph grows as the number of turns increases. To ensure the effectiveness of the LLM context, the system identifies which entities are core to the current story and which are outdated background information. The entity pruning strategy determines an entity's `importance_score` (0.0 to 1.0), which affects its priority during context window construction and summary generation.
 
 ## 2. Strategy Comparison
 
@@ -23,7 +23,7 @@ This is the system's default intelligent mode, combining graph structure, tempor
 
 **Advantages:**
 - **Dynamic Pruning**: Characters who haven't appeared for a long time (e.g., prologue characters) naturally lose importance.
-- **Player-Oriented**: Items or characters repeatedly mentioned by the player receive a significant weight boost (`KG_IMPORTANCE_PLAYER_BOOST`).
+- **Player-Oriented**: Items or characters repeatedly mentioned by the player receive a significant weight boost.
 - **Context-Friendly**: Ensures that limited context space is always reserved for the most active entities.
 
 ### 2. Degree Only
@@ -60,8 +60,13 @@ In the Streamlit sidebar **"⚙ KG Strategy Settings"** panel, select the **"Ent
 
 ### 3. Code Invocation
 ```python
+from src.engine.game_engine import GameEngine
 engine = GameEngine(importance_mode="composite")
 ```
+
+## 5. Implementation Details
+
+The importance scoring is calculated in the `KnowledgeGraphManager` during each `update_graph` call. Entities with scores below a certain threshold (default 0.1) may be excluded from the immediate LLM context window to save tokens, while still being preserved in the full graph for potential future recall.
 
 ---
 *Related Reference: For detailed technical implementation, see [docs/reports/kg-optimization.md](../reports/kg-optimization.md)*

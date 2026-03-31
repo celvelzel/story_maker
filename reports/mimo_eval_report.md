@@ -1,5 +1,7 @@
 # Xiaomi Mimo v2 Flash Model Evaluation Report
 
+> **Last Updated**: 2026-03-31
+
 **Model:** mimo-v2-flash
 **Base URL:** https://api.xiaomimimo.com/v1
 **Provider:** Xiaomi Mimo API (Cloud)

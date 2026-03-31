@@ -1,23 +1,26 @@
-# 问题修复报告
+# Fixes and Troubleshooting
 
-本目录记录 StoryWeaver 项目各类问题的修复过程和解决方案。
+This directory documents the fixes and troubleshooting solutions for various issues encountered in the StoryWeaver project.
 
-## 文件说明
+## Document Index
 
-### DistilBERT 相关修复
-- **distilbert-compatibility-fix.md** - DistilBERT 兼容性修复完整总结，包含 5 层防护方案
-- **distilbert-tokenizer-fix.md** - DistilBERT Tokenizer 与 Model 输入兼容性加固报告
-- **distilbert-troubleshooting.md** - DistilBERT 问题排查指南与解决方案
+### DistilBERT (Intent Classification)
+- **[DistilBERT Compatibility Fix](distilbert-compatibility-fix.md)** - Comprehensive fix for DistilBERT model input compatibility, implementing a 5-layer protection scheme.
+- **[DistilBERT Tokenizer Fix](distilbert-tokenizer-fix.md)** - Technical report on hardening the interface between the DistilBERT tokenizer and the classification model.
+- **[DistilBERT Troubleshooting](distilbert-troubleshooting.md)** - Practical guide for identifying and resolving DistilBERT-related runtime issues.
 
-### 其他修复
-- **fastcoref-fix.md** - FastCoref 与 transformers 5.2.0 不兼容性修复方案
-- **llm-json-truncation-fix.md** - LLM JSON 输出截断问题修复方案
+### Coreference Resolution
+- **[FastCoref Fix](fastcoref-fix.md)** - Resolution for incompatibilities between `fastcoref` and newer `transformers` versions (specifically 5.2.0+).
 
-## 修复模式
+### LLM & Generation
+- **[LLM JSON Truncation Fix](llm-json-truncation-fix.md)** - Strategy for handling truncated JSON outputs from LLMs and ensuring structural integrity.
 
-项目中采用的通用修复模式：
-1. **通用输入过滤** - 按模型 forward 签名自动过滤输入字段
-2. **防御性配置** - 从源头减少无效字段生成
-3. **安全包装** - 重试 + 回退 + 版本警告机制
-4. **依赖锁定** - 确保测试范围内运行
-5. **健康检查** - 提前发现环境问题
+## Common Fix Patterns
+
+We employ several recurring patterns to ensure system stability:
+
+1.  **Automatic Input Filtering**: Automatically stripping unexpected fields from tokenizer outputs based on the model's `forward` signature.
+2.  **Defensive Configuration**: Reducing invalid field generation at the source by tightening tokenizer parameters.
+3.  **Safety Wrappers**: Implementing retry-with-fallback mechanisms and version-aware warning systems.
+4.  **Dependency Pinning**: Locking critical library versions to ensure a stable testing and runtime environment.
+5.  **Proactive Health Checks**: Early detection of environmental or model loading issues during startup.

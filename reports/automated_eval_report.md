@@ -1,5 +1,7 @@
 # Automated Evaluation Report
 
+> **Last Updated**: 2026-03-31
+
 **Genre:** fantasy | **Turns:** 2
 
 ## ⏱️ Response Speed (Latency)

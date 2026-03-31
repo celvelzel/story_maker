@@ -1,56 +1,66 @@
-# 本地模型推理启动指南
+# Local Model Inference Startup Guide
 
-本文档介绍如何在本地启动 llama.cpp 服务器并运行 StoryWeaver 应用。
+This document describes how to start the llama.cpp server locally and run the StoryWeaver application.
 
 ## Prerequisites
 
 - [llama.cpp](https://github.com/ggerganov/llama.cpp) binaries (placed in `llama.cpp-bin/`)
-- GGUF model file (e.g., Qwen3-4B-GGUF in `models/qwen-gguf/`)
+- GGUF model file (e.g., Qwen-3B-GGUF or similar in `models/qwen-gguf/`)
 - Windows/macOS environment with Python 3.10+
 
-## 1. 快速启动
+## 1. Quick Start
 
 ### Windows
 
+```powershell
+# Step 1: Start the local llama.cpp server (Open a new terminal window)
+.\scripts\start_llama_server.bat
+
+# Step 2: Start the StoryWeaver application (Open another new terminal window)
+.\scripts\start_project_prod.bat
+```
+
+### macOS / Linux
+
 ```bash
-# 步骤 1: 启动本地 llama.cpp 服务器（开启新终端窗口）
-scripts\start_llama_server.bat
+# Step 1: Start the local llama.cpp server (Open a new terminal window)
+./scripts/start_llama_server.sh
 
-# 步骤 2: 启动 StoryWeaver 应用（另开新终端窗口）
-scripts\start_project_prod.bat
+# Step 2: Start the StoryWeaver application (Open another new terminal window)
+./scripts/start_project_prod.sh
 ```
 
-### 访问地址
+### Access URLs
 
-- **StoryWeaver 应用**: http://127.0.0.1:7860
-- **llama.cpp API 端点**: http://127.0.0.1:8081/v1/chat/completions
+- **StoryWeaver Application**: [http://127.0.0.1:7860](http://127.0.0.1:7860)
+- **llama.cpp API Endpoint**: [http://127.0.0.1:8081/v1/chat/completions](http://127.0.0.1:8081/v1/chat/completions)
 
-## 2. 启动脚本说明
+## 2. Startup Script Details
 
-### start_llama_server.bat
+### start_llama_server (bat/sh)
 
-启动本地 llama.cpp 服务器，提供 OpenAI 兼容 API。
+Starts the local llama.cpp server, providing an OpenAI-compatible API.
 
-**配置参数**（可修改脚本内变量）：
+**Configuration Parameters** (Adjustable within the script):
 
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `LLAMA_BIN` | `llama.cpp-bin\llama-server.exe` | llama-server 可执行文件 |
-| `MODEL_PATH` | `models\qwen-gguf\qwen3-4b-q4_k_m.gguf` | GGUF 量化模型 |
-| `PORT` | `8081` | API 服务端口 |
-| `HOST` | `127.0.0.1` | 监听地址 |
-| `CONTEXT_SIZE` | `2048` | 上下文长度 |
-| `BATCH_SIZE` | `512` | 批处理大小 |
-| `THREADS` | `4` | CPU 线程数 |
+| Parameter | Default Value | Description |
+|-----------|---------------|-------------|
+| `LLAMA_BIN` | `llama.cpp-bin/llama-server` | Path to the llama-server executable |
+| `MODEL_PATH` | `models/qwen-gguf/qwen3-4b-q4_k_m.gguf` | Path to the GGUF quantized model |
+| `PORT` | `8081` | API service port |
+| `HOST` | `127.0.0.1` | Listen address |
+| `CONTEXT_SIZE` | `2048` | Context length (tokens) |
+| `BATCH_SIZE` | `512` | Batch size |
+| `THREADS` | `4` | Number of CPU threads to use |
 
-**启动后显示**：
+**Expected Console Output**:
 
-```
+```text
 =============================================
   llama.cpp Local API Server
 =============================================
 
-[INFO] Model:    models\qwen-gguf\qwen3-4b-q4_k_m.gguf
+[INFO] Model:    models/qwen-gguf/qwen3-4b-q4_k_m.gguf
 [INFO] Server:   http://127.0.0.1:8081
 [INFO] Context:  2048 tokens
 [INFO] Threads:  4
@@ -60,39 +70,39 @@ OpenAI-compatible endpoints:
   Models:  http://127.0.0.1:8081/v1/models
 ```
 
-### start_project_prod.bat
+### start_project_prod (bat/sh)
 
-启动 StoryWeaver Streamlit 应用。
+Starts the StoryWeaver Streamlit application in production mode.
 
-**功能特性**：
-- 自动检测并处理占用端口的进程
-- 自动创建虚拟环境并安装依赖
-- 日志输出到 `logs/` 目录
+**Features**:
+- Automatically detects and handles processes occupying the target port.
+- Creates a virtual environment and installs dependencies if missing.
+- Redirects logs to the `logs/` directory.
 
-## 3. 依赖文件
+## 3. Required Files
 
-确保以下文件存在：
+Ensure the following files are present:
 
-1. **llama-server**: `llama.cpp-bin/llama-server.exe`
-2. **量化模型**: `models/qwen-gguf/qwen3-4b-q4_k_m.gguf`
-3. **环境配置**: `.env`（需配置本地后端选项）
+1. **llama-server**: `llama.cpp-bin/llama-server` (or `.exe` on Windows)
+2. **Quantized Model**: `models/qwen-gguf/qwen3-4b-q4_k_m.gguf`
+3. **Configuration**: `.env` (configured for local backend)
 
-### 检查模型文件
+### Verify Model Files
 
 ```bash
-dir models\qwen-gguf\
+ls -lh models/qwen-gguf/
 ```
 
-应看到：
-- `qwen3-4b-q4_k_m.gguf` - Q4 量化模型（推荐，2.4GB）
-- `qwen3-4b-f16.gguf` - FP16 模型（7.5GB，需要更多内存）
+Expected output:
+- `qwen3-4b-q4_k_m.gguf` - Q4 quantized model (~2.4GB, recommended)
+- `qwen3-4b-f16.gguf` - FP16 model (~7.5GB, requires more RAM)
 
-## 4. 配置文件 (.env)
+## 4. Environment Configuration (.env)
 
-项目默认配置为本地 llama.cpp 后端。`.env` 文件示例：
+The project defaults to the local llama.cpp backend. Example `.env` configuration:
 
-```bash
-# ===== 方案 C：llama.cpp 本地 CPU 推理（默认激活）=====
+```ini
+# ===== Option C: llama.cpp Local CPU Inference (Default) =====
 OPENAI_BASE_URL=http://127.0.0.1:8081/v1
 OPENAI_MODEL=qwen3-4b
 OPENAI_API_KEY=local
@@ -100,63 +110,60 @@ OPENAI_TEMPERATURE=0.7
 OPENAI_MAX_TOKENS=512
 ```
 
-如需切换到远程 API 或 vLLM，参考 `docs/reports/本地模型推理集成_2026-03-27_21-07.md`。
+To switch to a remote API or vLLM, refer to the documentation in `docs/reports/`.
 
-## 5. 演示模式日志
+## 5. Live Logs
 
-启动应用后，当 LLM 请求发出时，llama.cpp 服务器终端会显示：
+When the application sends an LLM request, the llama.cpp server terminal will display:
 
-```
+```text
 ==================================================
-[LLM] 📥 收到请求
+[LLM] 📥 Request Received
 ==================================================
   [system]: You are a helpful assistant...
   [user]: Create a story about...
 ==================================================
-[LLM] 🔄 正在处理 (model=qwen3-4b, temp=0.7, max_tokens=512)
-[LLM] ✅ 完成! (耗时: 15.2s, 输入: 128 tokens, 输出: 256 tokens)
+[LLM] 🔄 Processing (model=qwen3-4b, temp=0.7, max_tokens=512)
+[LLM] ✅ Complete! (Duration: 15.2s, Input: 128 tokens, Output: 256 tokens)
 ```
 
-日志显示：
-- **📥 收到请求**: 收到聊天请求，显示消息角色和内容预览
-- **🔄 正在处理**: 模型正在生成，包含配置参数
-- **✅ 完成**: 生成完成，显示耗时和 token 使用量
+## 6. Troubleshooting
 
-## 6. 故障排查
+### Port Already in Use
 
-### 端口被占用
-
-```bash
-# Windows: 检查端口占用
+**Windows**:
+```powershell
 netstat -ano | findstr :8081
-netstat -ano | findstr :7860
-
-# 终止占用进程
 taskkill /PID <PID> /F
 ```
 
-### 模型文件找不到
+**macOS/Linux**:
+```bash
+lsof -i :8081
+kill -9 <PID>
+```
 
-确保模型文件在 `models/qwen-gguf/` 目录下。参考文档 `docs/guides/../CPU_INFERENCE.md` 进行模型转换。
+### Model Not Found
 
-### 连接失败
+Ensure the model file is in `models/qwen-gguf/`. If you need to convert a model, see `docs/guides/CPU_INFERENCE.md`.
 
-1. 检查 llama.cpp 服务器是否运行（终端窗口是否打开）
-2. 确认端口 `8081` 可访问：`curl http://127.0.0.1:8081/v1/models`
-3. 查看 `.env` 配置的 `OPENAI_BASE_URL` 是否正确
+### Connection Failed
 
-## 7. 性能提示
+1. Check if the llama.cpp server is actually running.
+2. Verify port `8081` is accessible: `curl http://127.0.0.1:8081/v1/models`
+3. Confirm `OPENAI_BASE_URL` in `.env` matches the server address.
 
-- **量化模型**: 使用 Q4_K_M 量化，内存占用约 2.4GB
-- **CPU 线程**: 根据 CPU 核心数调整 `--threads` 参数
-- **上下文长度**: 根据故事长度需求调整 `--ctx-size`
+## 7. Performance Tips
 
-## 8. 相关文档
+- **Quantization**: Use `Q4_K_M` for a good balance of speed and quality (uses ~2.4GB RAM).
+- **Threads**: Match the `--threads` parameter to your physical CPU core count.
+- **Context Size**: Increase `--ctx-size` if you plan to have very long story sessions.
 
-- [从零部署指南](zero-to-hero-deployment.md)
-- [本地模型推理集成报告](../reports/本地模型推理集成_2026-03-27_21-07.md)
-- [CPU 推理优化指南](../CPU_INFERENCE.md)
-- [vLLM 集成指南](../VLLM_INTEGRATION.md)
+## 8. Related Documents
+
+- [Zero-to-Hero Deployment Guide](zero-to-hero-deployment.md)
+- [CPU Inference Optimization Guide](CPU_INFERENCE.md)
+- [vLLM Integration Guide](../../VLLM_INTEGRATION.md)
 
 ---
-*最后更新：2026-03-31*
+*Last Updated: 2026-03-31*

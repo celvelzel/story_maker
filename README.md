@@ -1,5 +1,7 @@
 # StoryWeaver: AI-Powered Text Adventure Game with Dynamic Plot Generation
 
+> **Last Updated**: 2026-03-31
+
 **[English](README.md) | [中文](README_zh.md)**
 
 ## COMP5423 NLP Group Project

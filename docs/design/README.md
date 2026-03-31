@@ -1,21 +1,21 @@
-# 设计文档
+# Design Documentation
 
-本目录包含 StoryWeaver 项目的技术设计文档和规范。
+This directory contains technical design documents and specifications for the StoryWeaver project.
 
-## 文件说明
+## Document Index
 
-### 核心设计
-- **entity-importance.md** - 实体重要性评分策略，包含复合模式和度数模式两种算法
-- **nlg-local-model-finetuning.md** - NLG 模块本地大模型微调与部署方案
+### Core Architecture
+- **[entity-importance.md](entity-importance.md)** - Entity importance scoring strategy for Knowledge Graph pruning. Supports `composite` and `degree_only` modes.
+- **[nlg-local-model-finetuning.md](nlg-local-model-finetuning.md)** - Fine-tuning and deployment plan for local LLM integration in the NLG module.
 
-### 提示词模板 (`prompts/`)
-- **story_opening.md** - 故事开场生成提示词
-- **story_continuation.md** - 故事延续生成提示词
-- **option_generation.md** - 选项生成提示词
+### Prompt Templates (`prompts/`)
+- **[story_opening.md](prompts/story_opening.md)** - System prompts for generating new story beginnings.
+- **[story_continuation.md](prompts/story_continuation.md)** - System prompts for continuing the narrative based on player input.
+- **[option_generation.md](prompts/option_generation.md)** - Prompts for generating branching player choices.
 
-## 设计原则
+## Design Principles
 
-1. **模块化设计** - NLU、NLG、KG 三大模块独立开发，通过标准接口交互
-2. **降级可用** - 所有模块支持 fallback 机制，确保服务不中断
-3. **可扩展性** - 支持模型热切换和策略动态调整
-4. **一致性维护** - 通过知识图谱和冲突检测保证故事世界状态一致
+1.  **Modular Architecture** - NLU, NLG, and KG modules are independent and communicate via well-defined interfaces.
+2.  **Graceful Degradation** - All modules support fallback mechanisms (e.g., keyword-based NLU if models fail) to ensure continuous service.
+3.  **Extensibility** - Support for hot-swapping models and dynamic strategy adjustments via configuration.
+4.  **World Consistency** - State management via Knowledge Graph and Conflict Detection to maintain narrative integrity.

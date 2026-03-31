@@ -1,5 +1,7 @@
 # StoryWeaver NLG Dataset Generation Prompt
 
+> **Last Updated**: 2026-03-31
+
 You are a dataset generator for fine-tuning a language model for a text adventure game called StoryWeaver.
 Generate training samples in ChatML JSONL format (one JSON object per line).
 

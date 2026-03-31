@@ -1,17 +1,17 @@
-# API 文档
+# API Documentation
 
-本目录包含 StoryWeaver 项目的 API 接口文档。
+This directory contains the API documentation for the StoryWeaver project.
 
-## 文件说明
+## Files
 
-- **API_REFERENCE.md** - 完整的 API 参考文档，包含：
-  - 前端接口规范
-  - 数据模型定义
-  - 后端 API 接口
-  - NLU/NLG/KG 模块 API
-  - 配置与错误处理
-  - 使用示例
+- **[API_REFERENCE.md](API_REFERENCE.md)** - Complete API reference, including:
+  - Frontend interaction models
+  - Data structure definitions (TurnResult, StoryOption, etc.)
+  - Backend orchestration (GameEngine)
+  - Module-specific APIs (NLU, NLG, KG, Evaluation)
+  - Configuration settings and error handling
+  - Usage examples
 
-## 使用说明
+## Usage
 
-该文档详细说明了 StoryWeaver 前后端交互的所有接口，是开发前端或集成第三方服务的必备参考。
+This documentation is the primary reference for frontend-backend integration and internal module communication. It is kept up-to-date with the current codebase state.

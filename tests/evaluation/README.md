@@ -1,5 +1,7 @@
 # Quality Benchmark & Regression Harness
 
+> **Last Updated**: 2026-03-31
+
 This directory contains the quality benchmark foundation for NLU + KG regression gating.
 
 ## Files

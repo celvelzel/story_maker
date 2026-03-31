@@ -1,5 +1,7 @@
 # Hybrid Model Strategy - Detailed Implementation Guide
 
+> **Last Updated**: 2026-03-31
+
 **Based on:** Model Comparison v2 Report  
 **Date:** March 31, 2026
 

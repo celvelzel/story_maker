@@ -1,33 +1,33 @@
-# NLG 模型目录
+# NLG Models Directory
 
-本目录用于存放微调过的语言模型（LLM），用于本地推理以替换项目的 LLM API 调用。
+This directory stores fine-tuned Large Language Models (LLMs) used for local inference, providing an alternative to third-party API calls.
 
-## 用途
+## Purpose
 
-- **本地推理**: 使用本地部署的语言模型替代 OpenAI API 调用
-- **数据隐私**: 敏感数据无需上传到第三方服务
-- **离线开发**: 无网络环境下仍可进行故事生成和选项生成
+- **Local Inference:** Replace OpenAI-compatible API calls with locally hosted models.
+- **Data Privacy:** Keep sensitive story data within the local infrastructure.
+- **Offline Development:** Enable story and option generation without an internet connection.
 
-## 使用方式
+## Configuration
 
-项目通过 `src/nlg/` 模块调用语言模型。要切换到本地模型，需要修改 `config.py` 中的配置或环境变量：
+The project interacts with LLMs via the `src/nlg/` module. To switch to local models, update `config.py` or your `.env` file:
 
 ```bash
-# .env 配置示例（根据实际模型调整）
-NLG_MODEL_TYPE=local
-NLG_MODEL_PATH=models/nlg/your-model/
-NLG_BASE_URL=http://localhost:8000/v1  # 本地推理服务地址（如 vLLM）
+# .env Configuration Example
+NLG_MODE=local
+OPENAI_BASE_URL=http://localhost:8000/v1  # Address of your local inference server (e.g., vLLM or llama.cpp)
+OPENAI_MODEL=qwen3-4b-instruct            # The model name as registered on the server
 ```
 
-## 支持的模型格式
+## Supported Formats
 
-- **vLLM**: 推荐格式，部署命令 `vllm serve models/nlg/your-model/`
-- **Hugging Face**: 标准格式，直接加载模型目录
-- **GGUF/GGML**: 通过 llama.cpp 量化模型
+- **vLLM:** Recommended for high-performance serving. Use `vllm serve models/nlg/your-model/`.
+- **Hugging Face:** Standard transformers format.
+- **GGUF:** Optimized for CPU/GPU inference via `llama.cpp`.
 
-## 部署示例
+## Deployment Example
 
-### 使用 vLLM 本地部署
+### Local Serving with vLLM
 
 ```bash
 vllm serve models/nlg/your-model/ \
@@ -36,6 +36,7 @@ vllm serve models/nlg/your-model/ \
     --tensor-parallel-size 1
 ```
 
-### API 兼容层
+### API Compatibility
 
-项目 NLG 模块已实现与 OpenAI API 兼容的接口，本地 vLLM 服务可直接替换 `OPENAI_BASE_URL` 配置。
+The project's NLG module uses an OpenAI-compatible interface. Any local server that follows this standard (like vLLM, Ollama, or llama.cpp's server) can be used by updating the `OPENAI_BASE_URL` and `OPENAI_MODEL` settings.
+

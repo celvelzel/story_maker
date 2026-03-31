@@ -1,5 +1,7 @@
 # Hybrid Model Evaluation Report (Qwen3-4B + Mimo v2 Flash)
 
+> **Last Updated**: 2026-03-31
+
 **Strategy:** Hybrid routing based on task type
 - **Story Generation:** merged_model_Qwen3-4B-Instruct-2507 (local)
 - **Options & Relations:** mimo-v2-flash (API)

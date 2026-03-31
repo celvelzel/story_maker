@@ -1,5 +1,7 @@
 # Model Comparison Report v2 (with LLM Judge Comparison)
 
+> **Last Updated**: 2026-03-31
+
 **Evaluation Date:** March 31, 2026
 **Task:** Interactive Fiction Story Generation
 **Models Compared:** Local Qwen3-4B-Instruct vs Xiaomi Mimo v2 Flash

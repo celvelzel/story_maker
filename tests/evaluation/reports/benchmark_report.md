@@ -1,5 +1,7 @@
 # Benchmark Evaluation Report
 
+> **Last Updated**: 2026-03-31
+
 - Generated At: 2026-03-25T12:01:07.025614+00:00
 - Mode: full
 - Benchmark Source: `C:\Develop\python_projects\COMP5423_NLP\story_maker\tests\evaluation\data\nlu_kg_quality_benchmark.jsonl`

@@ -1,5 +1,7 @@
 # StoryWeaver 从零开始全平台部署指南 (Zero to Hero)
 
+> **Last Updated**: 2026-03-31
+
 本文档旨在为开发人员（或 AI Agent）提供在**全新的 Windows 或 macOS 机器**上，从零开始部署 StoryWeaver 项目的完整指导，支持 **CPU / CUDA / Apple Silicon (Metal)** 三种推理模式。
 
 ---

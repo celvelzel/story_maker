@@ -1,5 +1,7 @@
 # StoryWeaver：动态情节生成的 AI 驱动文本冒险游戏
 
+> **最后更新**: 2026-03-31
+
 **[English](README.md) | [中文](README_zh.md)**
 
 ## COMP5423 自然语言处理小组项目

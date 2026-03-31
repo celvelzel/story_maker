@@ -1,6 +1,8 @@
 # Comprehensive Model Comparison Report
 ## Local vs API vs Hybrid Strategy
 
+> **Last Updated**: 2026-03-31
+
 **Comparison Date:** March 31, 2026
 **Models Evaluated:** 
 - Qwen3-4B-Instruct (Local)

@@ -1,113 +1,86 @@
-# Troubleshooting: DistilBERT / Tokenizer Compatibility
+# Troubleshooting Guide: DistilBERT & Tokenizer Compatibility
 
-## Issue
+This guide addresses common runtime issues and configuration errors related to the DistilBERT NLU modules (Intent Classification and Sentiment Analysis).
 
-`TypeError: DistilBertForSequenceClassification.forward() got an unexpected keyword argument 'token_type_ids'`
+## 1. Primary Error: `unexpected keyword argument 'token_type_ids'`
 
-## Root Cause
-
-- **DistilBERT Architecture**: DistilBERT does not use `token_type_ids` (segment embeddings).
-- **Tokenizer behavior**: Some `transformers` versions return `token_type_ids` by default.
-- **Strict model signatures**: When `**inputs` is passed to the model, an extra `token_type_ids` key causes a `TypeError`.
-
-## Applied Fixes
-
-### 1. Generic Input Filtering (Primary Defense)
-Location: `src/nlu/intent_classifier.py`, `src/nlu/sentiment_analyzer.py`
-
-```python
-def _filter_model_inputs(self, inputs):
-    signature = inspect.signature(self.model.forward)
-    parameters = signature.parameters
-    accepts_kwargs = any(
-        p.kind == inspect.Parameter.VAR_KEYWORD
-        for p in parameters.values()
-    )
-    if accepts_kwargs:
-        return inputs  # Model accepts extra kwargs, no filtering needed
-    allowed_keys = set(parameters.keys())
-    return {k: v for k, v in inputs.items() if k in allowed_keys}
+### Symptom
+The application crashes during NLU processing with the following traceback:
+```text
+TypeError: DistilBertForSequenceClassification.forward() got an unexpected keyword argument 'token_type_ids'
 ```
 
-- **Why**: Automatically strips any key the model doesn't accept, not just `token_type_ids`. Future-proof against new tokenizer fields.
-- **Benefits**: Works for DistilBERT, BERT, RoBERTa, and any model variant.
+### Root Cause
+*   **Architecture**: DistilBERT is a distilled version of BERT that explicitly removes segment embeddings (`token_type_ids`) to save space.
+*   **Library Conflict**: Newer versions of `transformers` (4.40+) return `token_type_ids` by default even for models that don't use them.
+*   **Signature Mismatch**: Passing these extra keys to the model's `forward()` method triggers a Python `TypeError`.
 
-### 2. Tokenizer Configuration (Secondary Defense)
-```python
-inputs = self.tokenizer(
-    text,
-    return_tensors="pt",
-    truncation=True,
-    max_length=...,
-    padding=True,
-    return_token_type_ids=False,  # Prevents token_type_ids from being generated
-)
-```
+---
 
-- **Why**: Reduces unnecessary fields at the source, making filtering faster.
+## 2. Implemented Solutions
 
-### 3. Model Loading Safety Wrapper
-Location: `src/nlu/intent_classifier.py`, `src/nlu/sentiment_analyzer.py`
+The codebase now includes a **4-layer defense** against this and similar issues:
 
-- **Retry logic**: Up to 3 attempts with 1-second delay for transient load failures.
-- **Clean fallback**: On any failure, resets model state and falls back to keyword matching.
-- **Version warning**: Warns if `transformers >= 4.50` is detected (outside tested range).
+### Layer 1: Dynamic Input Filtering (Automatic)
+Located in `src/nlu/intent_classifier.py` and `src/nlu/sentiment_analyzer.py`.
+The system now uses `inspect.signature` to check what the model actually accepts before passing the data.
+*   **Action**: Any key not in the model's `forward` signature is automatically stripped.
+*   **Benefit**: This is "future-proof"—it will handle any new fields added by future `transformers` updates without code changes.
 
-```python
-MAX_RETRIES = 3
-RETRY_DELAY = 1.0
+### Layer 2: Tokenizer Hardening
+*   **Action**: Tokenizer calls now explicitly set `return_token_type_ids=False`.
+*   **Benefit**: Reduces memory overhead and prevents the problematic field from being created in the first place.
 
-def load(self) -> None:
-    for attempt in range(1, self.MAX_RETRIES + 1):
-        try:
-            # ... load logic ...
-            return
-        except Exception as exc:
-            if attempt < self.MAX_RETRIES:
-                time.sleep(self.RETRY_DELAY)
-                self._reset_model_state()
-    # Falls back to rule-based keyword matching
-    self._reset_model_state()
-    self.backend = "rule_fallback"
-```
+### Layer 3: Robust Model Loading (Retry + Fallback)
+If the model fails to load due to GPU memory issues, missing files, or version mismatches:
+*   **Retry**: The system attempts to load 3 times with a 1-second delay.
+*   **Fallback**: If loading fails after 3 attempts, the system **automatically and transparently** switches to keyword-based rule matching (`rule_fallback`).
+*   **Zero Downtime**: The game will continue to run even if the deep learning models are unavailable.
 
-### 4. Dependency Version Pins
-Location: `requirements.txt`
+### Layer 4: Dependency Pinning
+*   **Action**: `requirements.txt` pins `transformers>=4.40.0,<4.50.0`.
+*   **Benefit**: Prevents breaking changes from major library updates while allowing security patches.
 
-```
-transformers>=4.40.0,<4.50.0
-```
+---
 
-- **Why**: Locks to the tested range. Newer major versions may introduce breaking changes.
+## 3. Diagnostic Steps
 
-## Deployment Checklist
+If you suspect NLU issues, follow these steps:
 
-Before deploying to a new environment, run:
+### Step 1: Run the Health Check
+Run the dedicated diagnostic script to verify your environment:
 ```bash
-# Health check (verifies all dependencies and model loading)
 python scripts/health_check.py -v
-
-# Full test suite
-pytest tests/ -v
 ```
+**Look for:** `[+] [PASS] token_type_ids compatibility`.
 
-## Additional Safeguards
-
-- **Cross-device support**: Automatic CPU/GPU detection; model moves to available device.
-- **Rule fallback**: If model loading fails (missing weights, GPU unavailable, incompatible version), the system transparently falls back to keyword-based classification — no downtime.
-- **Error isolation**: `_check_transformers_version()` wraps version checks in try/except to avoid crashing in unusual environments.
-
-## Verification
-
-```bash
-# Unit tests for the compatibility fix
-pytest tests/test_intent_classifier_compat.py -v
-
-# Full integration tests
-pytest tests/test_integration.py -v
-
-# All tests
-pytest tests/ -v
+### Step 2: Verify NLU Status
+Check the application logs for the NLU initialization summary:
+```text
+✓ All NLU modules successfully loaded (No fallbacks)
+  - Intent: ✓ distilbert-base-uncased active
 ```
+If it shows `backend: rule_fallback`, the model failed to load. Check for "Model loading failed" earlier in the logs.
 
-Expected result: **All tests pass** (266 tests).
+### Step 3: Check CUDA/GPU
+If using a GPU, ensure `torch.cuda.is_available()` is true. The system will automatically move the model to CPU if the GPU is full or unavailable.
+
+---
+
+## 4. Common Troubleshooting Scenarios
+
+| Issue | Solution |
+|:---|:---|
+| **Out of Memory (OOM)** | The system will catch the OOM error and fall back to rules. To fix, close other applications or set `DEVICE=cpu` in your `.env`. |
+| **Missing Model Files** | Ensure the `models/` directory contains the fine-tuned artifacts. If missing, the system uses rules. |
+| **Wrong Transformers Version** | If you see a "Transformers version warning", run `pip install -r requirements.txt` to align with the tested range. |
+
+---
+
+## 5. Verification Commands
+
+| Goal | Command |
+|:---|:---|
+| Test Compatibility Logic | `pytest tests/test_intent_classifier_compat.py -v` |
+| Test Full NLU Pipeline | `pytest tests/test_nlu.py -v` |
+| Full System Integration | `pytest tests/test_integration.py -v` |

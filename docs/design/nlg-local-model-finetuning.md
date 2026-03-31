@@ -17,7 +17,7 @@ StoryWeaver's current NLG pipeline:
 5.  **Configuration**: `config.py` (Pydantic Settings) manages `OPENAI_API_KEY`, `OPENAI_BASE_URL`, and `OPENAI_MODEL`, loading from `.env`.
 6.  **Current Model**: Uses `gpt-4o-mini` or compatible models via OpenAI-compatible endpoints.
 
-**Key Finding**: The project already supports OpenAI-compatible interfaces. We only need to extend `config.py` and `src/utils/api_client.py` for dynamic switching and cache resetting to enable hot-swapping between local and cloud models.
+**Key Finding**: The project supports OpenAI-compatible interfaces. We extended `config.py` and `src/utils/api_client.py` for dynamic switching to enable hot-swapping between local and cloud models.
 
 ---
 
@@ -40,7 +40,7 @@ StoryWeaver's current NLG pipeline:
 
 ## 3. Fine-tuning Platform: PolyU Student HPC
 
-Training requires GPUs and will be conducted on the PolyU Student HPC.
+Training requires GPUs and is conducted on the PolyU Student HPC.
 
 ### 3.1 HPC Environment Setup
 1.  Login via SSH.
@@ -67,12 +67,12 @@ Use the existing cloud API (`gpt-4o-mini`) to generate `(Prompt → Response)` p
 *   **Advantages**:
     * 100% alignment with project `prompt_templates`.
     * Fast and diverse data generation by mixing templates for `kg_summary`, `history`, `intent`, and `emotion`.
-*   **Implementation**: `training/generate_dataset.py`.
+*   **Implementation**: `training/train_generator.py` and `training/data_augmenter.py`.
 
 ### 4.2 Data Volume
 *   **Story Generation**: 300 samples (Opening + Continuation).
 *   **Option Generation**: 300 samples (JSON structured).
-*   **Total**: 600 samples (adjustable).
+*   **Total**: 600+ samples, stored in `training/nlg_dataset/combined_data.jsonl`.
 
 ### 4.3 Format (ChatML)
 ```json
@@ -89,13 +89,18 @@ Use the existing cloud API (`gpt-4o-mini`) to generate `(Prompt → Response)` p
 
 ## 5. Fine-tuning: ms-swift + LoRA
 
-### 5.1 Configuration
+### 5.1 Training Scripts
+Training is automated via shell scripts in the `training/` directory:
+- `training/train_llama.sh`: Fine-tunes Llama-3.2-3B.
+- `training/train_qwen.sh`: Fine-tunes Qwen-2.5-3B.
+
+### 5.2 Configuration
 *   **Method**: LoRA (Low-Rank Adaptation).
-*   **Command**:
+*   **Command Example**:
     ```bash
     swift sft \
         --model_type llama3_2-3b-instruct \
-        --dataset /path/to/nlg_dataset.jsonl \
+        --dataset training/nlg_dataset/combined_data.jsonl \
         --sft_type lora \
         --output_dir output/nlg_model \
         --learning_rate 2e-4 \
@@ -107,7 +112,7 @@ Use the existing cloud API (`gpt-4o-mini`) to generate `(Prompt → Response)` p
 
 ## 6. Export and Quantization
 
-After training, merge weights and export to GGUF format for local CPU inference.
+After training, weights are merged and exported to GGUF format for local CPU inference.
 
 ```bash
 # Merge LoRA
@@ -119,32 +124,33 @@ swift export --model_type llama3_2-3b-instruct --model_id_or_path <merged_path> 
 
 ---
 
-## 7. Local Deployment (Ollama)
+## 7. Local Deployment (llama.cpp / Ollama)
 
-1.  Create a `Modelfile`:
-    ```text
-    FROM ./model-q8_0.gguf
-    ```
-2.  Create model: `ollama create storyweaver-model -f Modelfile`
-3.  Ollama provides an OpenAI-compatible API at `http://localhost:11434/v1`.
+The project supports both `llama.cpp` and `Ollama` for local inference.
+
+1.  **llama.cpp**: Start the server using `scripts/start_llama_server.sh`.
+2.  **Ollama**: Create a `Modelfile` and run `ollama create storyweaver-model -f Modelfile`.
+
+Local models are served at an OpenAI-compatible endpoint (e.g., `http://localhost:8000/v1` or `http://localhost:11434/v1`).
 
 ---
 
 ## 8. UI Integration
 
-Add a toggle in the Streamlit sidebar to switch between:
-*   **Cloud API**
-*   **Local Model**
+A toggle in the Streamlit sidebar allows switching between:
+*   **Cloud API** (OpenAI)
+*   **Local Model** (llama.cpp/Ollama)
 
-Updating the selection will trigger `api_client.reload_client()` to refresh the connection.
+Switching triggers a configuration update in `src/utils/api_client.py` to route requests to the selected backend.
 
 ---
 
-## 9. Roadmap
+## 9. Roadmap Status
 
-1. [x] Dataset generation script (`training/generate_dataset.py`)
-2. [ ] HPC Training (SLURM)
-3. [ ] Model Export (GGUF)
-4. [ ] Local Testing (Ollama)
-5. [ ] UI Dynamic Switching Implementation
+1. [x] Dataset generation script (`training/train_generator.py`)
+2. [x] Training scripts for Llama and Qwen (`training/train_*.sh`)
+3. [x] Model Export (GGUF integration)
+4. [x] Local Deployment scripts (`scripts/start_llama_server.sh`)
+5. [x] UI Dynamic Switching Implementation
+
 

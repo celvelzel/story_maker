@@ -1,19 +1,20 @@
-# 项目文档
+# Project Documentation
 
-本目录收录 StoryWeaver 的项目级规范、实现计划与提示词模板，主要用于规划、对齐与答辩准备。
+This directory contains project-level specifications, implementation plans, and prompt templates for StoryWeaver. These files are primarily used for planning, alignment, and presentation preparation.
 
-## 目录内容
+## Directory Contents
 
-- **项目规范**
-  - `COMP5423 NLP Group Project Specification-2026.pdf`：课程项目规范
-  - `project intro.pdf`：项目简介
-- **实施计划**
-  - `implementation_plan.md`：混合架构实现计划与阶段安排
-- **提示词模板**
-  - `agent_prompt.md`：面向编码代理的实现提示词
-  - `rebuilt_prompt.md`：重构/替换任务的阶段性提示词
+- **Project Specifications**
+  - `COMP5423 NLP Group Project Specification-2026.pdf`: Course project specification.
+  - `project intro.pdf`: Project introduction.
+- **Implementation Plan**
+  - `implementation_plan.md`: Hybrid architecture implementation plan and stage arrangements (Main reference for design).
+- **Prompt Templates**
+  - `agent_prompt.md`: Implementation prompts for coding agents.
+  - `rebuilt_prompt.md`: Phased prompts for reconstruction/replacement tasks.
 
-## 说明
+## Instructions
 
-- 本目录保留项目级历史规划与模板，不作为当前运行态说明的唯一来源。
-- 当前实现与部署说明以根目录 `README.md` 及 `docs/` 下的专题文档为准。
+- This directory preserves project-level historical planning and templates. It is not the sole source of truth for the current operational state.
+- Current implementation and deployment instructions should refer to the root `README.md` and specialized documentation under `docs/`.
+- All documentation in this directory is preserved in English as per project standards.
