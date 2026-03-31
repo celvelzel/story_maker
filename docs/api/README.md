@@ -4,13 +4,16 @@ This directory contains the API documentation for the StoryWeaver project.
 
 ## Files
 
-- **[API_REFERENCE.md](API_REFERENCE.md)** - Complete API reference, including:
+- **[API_REFERENCE.md](API_REFERENCE.md)** - Complete API reference (v1.2.0), including:
   - Frontend interaction models
-  - Data structure definitions (TurnResult, StoryOption, etc.)
-  - Backend orchestration (GameEngine)
-  - Module-specific APIs (NLU, NLG, KG, Evaluation)
-  - Configuration settings and error handling
-  - Usage examples
+  - Data structure definitions (TurnResult, StoryOption, GameState, Emotion Result)
+  - Backend orchestration (GameEngine with lazy NLU loading, save/load)
+  - NLU Module APIs (IntentClassifier, EntityExtractor, CoreferenceResolver, SentimentAnalyzer)
+  - NLG Module APIs (StoryGenerator, OptionGenerator, Hybrid NLG Routing)
+  - Knowledge Graph APIs (KnowledgeGraph, RelationExtractor, ConflictDetector)
+  - Evaluation APIs (8 automatic metrics + 8-dimension LLM Judge)
+  - Full configuration reference (all Pydantic Settings parameters)
+  - Error handling and usage examples
 
 ## Usage
 

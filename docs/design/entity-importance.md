@@ -6,27 +6,41 @@ This document details the Knowledge Graph (KG) entity pruning and importance sco
 
 In long-form narratives, the Knowledge Graph grows as the number of turns increases. To ensure the effectiveness of the LLM context, the system identifies which entities are core to the current story and which are outdated background information. The entity pruning strategy determines an entity's `importance_score` (0.0 to 1.0), which affects its priority during context window construction and summary generation.
 
-## 2. Strategy Comparison
+## 2. Strategy Modes
 
-Two modes are currently supported: `composite` (default) and `degree_only`.
+Three modes are currently supported: `composite` (default), `incremental`, and `degree_only`.
 
-### 1. Composite (Recommended)
+### 2.1 Composite (Recommended)
 This is the system's default intelligent mode, combining graph structure, temporal decay, and player interaction.
 
 **Calculation Formula:**
-`Importance = 0.3 * norm(degree) + 0.3 * recency + 0.2 * norm(mention_count) + 0.2 * norm(player_mention_count)`
+```
+Importance = 0.3 * norm(degree) + 0.3 * recency + 0.2 * norm(mention_count) + 0.2 * norm(player_mention_count)
+```
 
-*   **norm(degree)**: Normalized degree of the node (more connections result in a higher base weight).
-*   **recency**: Uses an exponential decay formula `0.95 ^ turns_since_last_mention`. The longer it has been since the last mention, the faster the weight drops.
-*   **mention_count**: Total frequency of the entity appearing in the story text.
-*   **player_mention_count**: Number of times the player directly mentions the entity in their input.
+- **norm(degree)**: Normalized degree of the node (more connections result in a higher base weight).
+- **recency**: Uses an exponential decay formula `0.95 ^ turns_since_last_mention`. The longer it has been since the last mention, the faster the weight drops.
+- **mention_count**: Total frequency of the entity appearing in the story text.
+- **player_mention_count**: Number of times the player directly mentions the entity in their input.
 
 **Advantages:**
 - **Dynamic Pruning**: Characters who haven't appeared for a long time (e.g., prologue characters) naturally lose importance.
 - **Player-Oriented**: Items or characters repeatedly mentioned by the player receive a significant weight boost.
 - **Context-Friendly**: Ensures that limited context space is always reserved for the most active entities.
 
-### 2. Degree Only
+### 2.2 Incremental (Performance-Optimized)
+An optimization of the composite mode that recalculates importance scores only for "dirty" (modified) nodes, with periodic full recalculation as a safeguard.
+
+**Core Logic:**
+- Only entities modified in the current turn (added, mentioned, or state-changed) have their importance recalculated.
+- Every `KG_INCREMENTAL_FULL_RECALC_INTERVAL` turns (default: 10), a full recalculation is performed to prevent drift.
+- Controlled by `KG_ENABLE_INCREMENTAL_IMPORTANCE` toggle in config.
+
+**When to Use:**
+- Long sessions with large KGs (>100 nodes) where full recalculation becomes expensive.
+- When per-turn latency is a concern.
+
+### 2.3 Degree Only
 A traditional graph theory evaluation method, primarily for backward compatibility or minimalist scenarios.
 
 **Core Logic:**

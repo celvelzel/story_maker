@@ -1,6 +1,9 @@
 # Story Opening Generation — Prompt Specification
 
-This document defines the prompt structure used for generating the initial scene of a new story. These templates are used both in the live application and as the basis for generating fine-tuning datasets.
+> **Last Updated:** 2026-04-01  
+> **Source:** `src/nlg/prompt_templates.py`
+
+This document defines the prompt structure used for generating the initial scene of a new story.
 
 ## 1. System Prompt
 
@@ -25,6 +28,47 @@ Anti-patterns (avoid):
 - Don't ignore the world state. If the KG says a door is locked, it's locked.
 - Don't make things happen without reason.
 ```
+
+## 2. User Prompt Template
+
+The user prompt specifies the genre and immediate requirements for the opening scene.
+
+```text
+Create the opening scene of a {genre} text adventure. The opening must be **specific and concrete**.
+
+Requirements:
+- **WHERE**: Name the exact location (building, room, terrain). Describe it visually in 2-3 concrete details.
+- **WHEN**: State the time of day/season/era clearly.
+- **WHAT**: Describe a specific object, threat, or person the player encounters.
+- **WHY**: Establish an immediate problem or choice the player must face.
+
+Write exactly **1 concise paragraph** (3-4 sentences) showing these elements. Focus on what the player directly experiences (objects, people, immediate threat), not abstract atmosphere. End with a clear, concrete choice.
+```
+
+## 3. Usage
+
+```python
+from src.nlg.prompt_templates import OPENING_PROMPT, SYSTEM_PROMPT
+from src.utils.api_client import llm_client
+
+user_msg = OPENING_PROMPT.format(genre="fantasy")
+messages = [
+    {"role": "system", "content": SYSTEM_PROMPT},
+    {"role": "user", "content": user_msg},
+]
+opening = llm_client.chat(messages)
+```
+
+## 4. Supported Genres
+
+Common genres used for testing and dataset augmentation:
+- fantasy, science fiction, cyberpunk, horror, mystery
+- post-apocalyptic, steampunk, noir detective, pirate adventure
+- space opera, dark fantasy, survival, political intrigue
+- haunted mansion, heist
+
+---
+*Implementation Note: The actual templates are stored in `src/nlg/prompt_templates.py`.*
 
 ## 2. User Prompt Template
 

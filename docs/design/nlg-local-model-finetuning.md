@@ -1,5 +1,6 @@
 # NLG Module Local LLM Fine-tuning and Deployment Plan
 
+> **Last Updated:** 2026-04-01  
 > Project: StoryWeaver (text adventure game)
 > 
 > Goal: Migrate the NLG module from a single cloud API call to a fine-tuned LLM capable of running on a local machine (e.g., AMD R7 without dedicated GPU). Support seamless switching between the local model and cloud API to compare performance.
@@ -12,12 +13,12 @@ StoryWeaver's current NLG pipeline:
 
 1.  **UI Layer**: `app.py` (Streamlit) handles rendering.
 2.  **Engine Layer**: `src/nlg/story_generator.py` and `src/nlg/option_generator.py` construct prompts.
-3.  **Prompt Templates**: `docs/design/prompts/` define strict I/O formats (including `kg_summary`, `history`, `intent`, etc.).
-4.  **API Client**: `src/utils/api_client.py` uses a **singleton pattern** to wrap an OpenAI-compatible client.
-5.  **Configuration**: `config.py` (Pydantic Settings) manages `OPENAI_API_KEY`, `OPENAI_BASE_URL`, and `OPENAI_MODEL`, loading from `.env`.
-6.  **Current Model**: Uses `gpt-4o-mini` or compatible models via OpenAI-compatible endpoints.
+3.  **Prompt Templates**: `src/nlg/prompt_templates.py` defines all templates (`SYSTEM_PROMPT`, `OPENING_PROMPT`, `STORY_CONTINUE_PROMPT`, `OPTION_GENERATION_PROMPT`).
+4.  **API Client**: `src/utils/api_client.py` uses a **multi-type singleton pattern** with `LLMClient` and `HybridClientManager` for task-based routing.
+5.  **Configuration**: `config.py` (Pydantic Settings) manages `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`, and `NLG_MODE`, loading from `.env`.
+6.  **Current Model**: Default `mimo-v2-flash` via OpenAI-compatible endpoints. Hybrid mode routes creative tasks (story) to local Qwen3 and structured tasks (options, relations) to Mimo API.
 
-**Key Finding**: The project supports OpenAI-compatible interfaces. We extended `config.py` and `src/utils/api_client.py` for dynamic switching to enable hot-swapping between local and cloud models.
+**Key Finding**: The architecture supports three NLG modes (`api`, `local`, `hybrid`) with per-type LLM client singletons. The `HybridClientManager` routes tasks: story → local, option/relation/json → API.
 
 ---
 

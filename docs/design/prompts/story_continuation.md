@@ -1,6 +1,9 @@
 # Story Continuation Generation — Prompt Specification
 
-This document defines the prompt structure used for continuing the narrative based on player input and the current world state. These templates are used for both live generation and fine-tuning dataset creation.
+> **Last Updated:** 2026-04-01  
+> **Source:** `src/nlg/prompt_templates.py`
+
+This document defines the prompt structure used for continuing the narrative based on player input and the current world state.
 
 ## 1. System Prompt
 
@@ -25,6 +28,61 @@ Anti-patterns (avoid):
 - Don't ignore the world state. If the KG says a door is locked, it's locked.
 - Don't make things happen without reason.
 ```
+
+## 2. User Prompt Template
+
+The user prompt provides the current context (Knowledge Graph summary, recent history, and player state) to guide the next narrative step.
+
+```text
+{kg_summary}
+
+Recent history:
+{history}
+
+The player's intent is "{intent}".
+The player's emotional tone is: {emotion}
+The player says: "{player_input}"
+
+Continue the story by:
+1. **React directly** to what the player did—explain the immediate, concrete consequence in 1-2 sentences.
+2. **Maintain consistency** with the world state above. Only describe things that exist in the KG. Respect object properties and locations.
+3. **Advance the plot**: In the next 1-2 sentences, introduce the next situation or challenge. Be specific about what the player encounters.
+
+Write exactly **1 paragraph** (3-4 sentences total). End with a clear moment where the player must decide what to do next.
+```
+
+## 3. Context Variables
+
+| Variable | Source | Description |
+|----------|--------|-------------|
+| `kg_summary` | `KnowledgeGraph.to_summary()` | Current world state (flat or layered mode). |
+| `history` | `GameState.recent_history(6)` | Last 6 dialogue entries formatted as `[Player]/[Narrator]` lines. |
+| `intent` | `IntentClassifier.predict()` | Classified intent (action, dialogue, explore, use_item, ask_info, rest, trade, other). |
+| `emotion` | `SentimentAnalyzer.analyze()` | Detected emotion (anger, disgust, fear, joy, sadness, surprise, neutral). |
+| `player_input` | `CoreferenceResolver.resolve()` | Coreference-resolved player input text. |
+
+## 4. Usage
+
+```python
+from src.nlg.prompt_templates import STORY_CONTINUE_PROMPT, SYSTEM_PROMPT
+from src.utils.api_client import llm_client
+
+user_msg = STORY_CONTINUE_PROMPT.format(
+    kg_summary=kg_summary,
+    history=history,
+    intent=intent,
+    emotion=emotion,
+    player_input=resolved_input,
+)
+messages = [
+    {"role": "system", "content": SYSTEM_PROMPT},
+    {"role": "user", "content": user_msg},
+]
+story = llm_client.chat(messages)
+```
+
+---
+*Implementation Note: The actual templates are stored in `src/nlg/prompt_templates.py`.*
 
 ## 2. User Prompt Template
 

@@ -1,5 +1,8 @@
 # Option Generation — Prompt Specification
 
+> **Last Updated:** 2026-04-01  
+> **Source:** `src/nlg/prompt_templates.py`
+
 This document defines the prompt structure used for generating branching player choices based on the latest narrative passage and world state.
 
 ## 1. System Prompt
@@ -40,21 +43,19 @@ World state:
 {kg_summary}
 
 Return ONLY a JSON object:
-{{"options": [{{"text": "...", "intent_hint": "action|dialogue|explore|use_item|ask_info|rest|trade|other", "risk_level": "low|medium|high"}}]}}
+{"options": [{"text": "...", "intent_hint": "action|dialogue|explore|use_item|ask_info|rest|trade|other", "risk_level": "low|medium|high"}]}
 ```
 
-## 3. Training Data Generation (ChatML)
+## 3. Output Schema
 
-For fine-tuning local models (e.g., Llama-3, Qwen), samples are generated in JSONL format using the following structure:
+Each option is a `StoryOption` dataclass:
 
-```json
-{
-  "messages": [
-    {"role": "system", "content": "... (System Prompt from Section 1) ..."},
-    {"role": "user", "content": "... (Filled Template from Section 2) ..."},
-    {"role": "assistant", "content": "{\"options\": [{\"text\": \"Raise your enchanted shield and charge the dragon head-on.\", \"intent_hint\": \"action\", \"risk_level\": \"high\"}, {\"text\": \"Squeeze through the narrow crevice in the far wall to find another route.\", \"intent_hint\": \"explore\", \"risk_level\": \"medium\"}, {\"text\": \"Try to communicate with the dragon, offering a truce in exchange for safe passage.\", \"intent_hint\": \"dialogue\", \"risk_level\": \"low\"}]}"}
-  ]
-}
+```python
+@dataclass
+class StoryOption:
+    text: str            # Option text displayed to user
+    intent_hint: str     # Suggested intent category
+    risk_level: str      # Risk level: "low" | "medium" | "high"
 ```
 
 ## 4. Constraint Checklist
@@ -63,6 +64,28 @@ For fine-tuning local models (e.g., Llama-3, Qwen), samples are generated in JSO
 - **Intent Hints**: Must be one of `action`, `dialogue`, `explore`, `use_item`, `ask_info`, `rest`, `trade`, or `other`.
 - **Risk Levels**: Must be one of `low`, `medium`, or `high`.
 - **Contextual Fit**: Options must be grounded in the provided `story_text` and `kg_summary`.
+
+## 5. Fallback Behavior
+
+If LLM option generation fails, the system falls back to hardcoded defaults:
+
+```python
+_FALLBACK_OPTIONS = [
+    StoryOption("Look around and assess the situation.", "explore", "low"),
+    StoryOption("Move cautiously forward.", "action", "medium"),
+    StoryOption("Try to speak with someone nearby.", "dialogue", "low"),
+]
+```
+
+## 6. Usage
+
+```python
+from src.nlg.option_generator import OptionGenerator
+from src.nlg.prompt_templates import OPTION_GENERATION_PROMPT, SYSTEM_PROMPT
+
+option_gen = OptionGenerator()
+options = option_gen.generate(story_text, kg_summary, num_options=3)
+```
 
 ---
 *Implementation Note: The actual templates are stored in `src/nlg/prompt_templates.py`.*
