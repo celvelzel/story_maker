@@ -72,16 +72,7 @@ class CoreferenceResolver:
 
     def load(self) -> None:
         """加载 fastcoref 模型。如果不可用，使用规则回退。"""
-        import os
-
-        # ── Set reasonable timeout for HuggingFace downloads ──
-        # Don't skip network entirely — try first, fail fast if unreachable.
-        # HF_HUB_DOWNLOAD_TIMEOUT controls per-request timeout (seconds).
-        _prev_timeout = os.environ.get("HF_HUB_DOWNLOAD_TIMEOUT")
         try:
-            # 10s timeout per request (default is 30s with 5 retries = 150s worst case)
-            os.environ["HF_HUB_DOWNLOAD_TIMEOUT"] = "10"
-
             # ── Compatibility patch for transformers 5.2.0 x fastcoref 2.x ──────────────────
             from transformers.modeling_utils import PreTrainedModel
 
@@ -98,12 +89,6 @@ class CoreferenceResolver:
         except Exception as exc:
             logger.warning("fastcoref unavailable (%s) – rule-based fallback.", exc)
             self.model = None
-        finally:
-            # Restore original env
-            if _prev_timeout is None:
-                os.environ.pop("HF_HUB_DOWNLOAD_TIMEOUT", None)
-            else:
-                os.environ["HF_HUB_DOWNLOAD_TIMEOUT"] = _prev_timeout
 
     # ── public API ────────────────────────────────────────
     def resolve(

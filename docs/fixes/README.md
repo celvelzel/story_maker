@@ -9,11 +9,8 @@
 - **distilbert-tokenizer-fix.md** - DistilBERT Tokenizer 与 Model 输入兼容性加固报告
 - **distilbert-troubleshooting.md** - DistilBERT 问题排查指南与解决方案
 
-### FastCoref 相关修复
-- **fastcoref-fix.md** - FastCoref 与 transformers 5.2.0 不兼容性修复方案
-- **fastcoref-huggingface-timeout-fix.md** - FastCoref HuggingFace 网络超时快速失败修复
-
 ### 其他修复
+- **fastcoref-fix.md** - FastCoref 与 transformers 5.2.0 不兼容性修复方案
 - **llm-json-truncation-fix.md** - LLM JSON 输出截断问题修复方案
 
 ## 修复模式
