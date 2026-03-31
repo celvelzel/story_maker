@@ -1,133 +1,110 @@
-# StoryWeaver: AI-Powered Text Adventure Game
-## Presentation Script & Speaker Notes
+# StoryWeaver: Presentation Script
 
-**Target Duration:** ~7 Minutes
-**Total Word Count:** ~950 words
+## Slide 1: Title & Introduction
+**Visual Suggestion:** A sleek, dark-themed title slide with a subtle fantasy or sci-fi text adventure aesthetic. The game title "StoryWeaver" should be prominent, with a dynamic, glowing "AI" node network graphic subtly connecting the letters. Include university/course branding (COMP5423) and group member names at the bottom.
 
----
-
-### Slide 1: Title Slide
-**Slide Title:** StoryWeaver: AI-Powered Text Adventure Game with Dynamic Plot Generation
-**Visual Suggestion:** A cinematic, split-screen title slide. On the left, a retro-style text adventure interface with glowing green text. On the right, a futuristic visualization of a neural network or a glowing node-based knowledge graph. Include the project name "StoryWeaver," the course code "COMP5423," and the team members' names.
 **Slide Content:**
-* StoryWeaver: AI-Powered Text Adventure Game
-* Dynamic Plot Generation & Interactive Storytelling
+* **StoryWeaver**
+* AI-Powered Text Adventure Game with Dynamic Plot Generation
 * COMP5423 NLP Group Project
-* [Team Members' Names]
+* Group Members: [List your group members from the intro doc]
 
-**Speaker Notes:** (Estimated time: 30 seconds | ~60 words)
-"Good evening, everyone. Welcome to our presentation for the COMP5423 NLP Group Project. Today, our team is thrilled to introduce 'StoryWeaver'—an AI-powered text adventure game engine that we have built from the ground up. Our goal with this project is to redefine interactive storytelling by using advanced Natural Language Processing techniques to create dynamic, responsive, and infinitely branching narratives."
-
----
-
-### Slide 2: Introduction & Problem Statement
-**Slide Title:** The Evolution of Interactive Fiction
-**Visual Suggestion:** A comparative diagram. On one side, "Traditional Games" showing a rigid, pre-written flowchart of static story branches. On the other side, "StoryWeaver" showing an open-ended, expanding web of dynamic, AI-generated possibilities.
-**Slide Content:**
-* **Traditional Text Adventures:** Rigid, pre-scripted branches, limited player agency.
-* **The Challenge:** Maintaining narrative consistency while allowing infinite player freedom.
-* **Our Solution:** StoryWeaver—combining local NLU models with LLM generation for infinite, coherent storytelling.
-
-**Speaker Notes:** (Estimated time: 45 seconds | ~100 words)
-"Let's start by looking at the problem. Traditional text adventure games rely on pre-written scripts. The player’s choices are limited to a rigid, hardcoded flowchart. If a player tries something the developer didn't anticipate, the game simply fails to understand. The core challenge in modernizing this genre is how to grant the player complete freedom of input without breaking the game's narrative consistency. Our solution is StoryWeaver. By integrating local Natural Language Understanding models with Large Language Models, we shift the paradigm from 'pre-scripted branching' to 'dynamic plot generation,' allowing for truly personalized and coherent storytelling based entirely on what the player types."
+**Speaker Notes:**
+*(Estimated time: 45 seconds)*
+"Good evening, everyone. Welcome to our presentation for COMP5423. Today, our team is thrilled to introduce 'StoryWeaver'—an AI-powered text adventure game engine that utilizes Natural Language Processing to generate dynamic, responsive plots based entirely on player choices. My name is [Your Name], and along with my teammates, we will walk you through the motivation, architecture, and technical implementation of a system that bridges theoretical NLP foundations with real-world interactive gaming. Let's dive into how we are redefining narrative gameplay."
 
 ---
 
-### Slide 3: Project Requirements & Core Objectives
-**Slide Title:** Fulfilling the COMP5423 Requirements
-**Visual Suggestion:** A clean, four-pillar diagram. Each pillar represents a core requirement: "Intent Recognition," "Context-Aware Generation," "Plot Consistency," and "Dialogue Management," with small, intuitive icons for each.
-**Slide Content:**
-* **Understand Player Input:** Intent recognition and entity extraction.
-* **Dynamic Generation:** Context-aware story continuation using LLMs.
-* **Narrative Consistency:** Dynamic Knowledge Graph to prevent plot holes.
-* **Evaluation & UX:** Measuring coherence, responsiveness, and player immersion.
+## Slide 2: Motivation & Problem Statement
+**Visual Suggestion:** A split-screen comparison graphic. On the left, a traditional "decision tree" showing a rigid, finite number of pre-written game endings (labeled "Static Narrative"). On the right, a glowing, infinitely expanding neural network or branching path (labeled "Dynamic Plot Generation"). 
 
-**Speaker Notes:** (Estimated time: 45 seconds | ~100 words)
-"To achieve this, we aligned our development strictly with the COMP5423 project specifications. Our system needed to seamlessly execute four core NLP tasks. First, understanding user intent—interpreting exactly what the player wants to do. Second, context-aware text generation—crafting story responses that fit the current situation. Third, and perhaps most importantly, plot consistency—ensuring the AI remembers past events so characters don't magically come back to life. Finally, we needed a robust dialogue management system to tie the interactions together. We built our architecture to hit every single one of these marks efficiently."
+**Slide Content:**
+* **The Challenge:** Traditional text adventures rely on static, hard-coded branching paths.
+* **Our Solution (StoryWeaver):** Infinite, personalized narrative generation using NLP.
+* **Core Objectives:**
+  * Understand complex user intents.
+  * Maintain strict narrative consistency.
+  * Produce contextually coherent story branches.
+
+**Speaker Notes:**
+*(Estimated time: 60 seconds)*
+"Traditionally, text adventure games have relied on massive, hard-coded decision trees. While effective, they are limited by the developer's time and imagination. Our motivation with StoryWeaver was to break this limitation. By leveraging state-of-the-art Natural Language Processing, we've designed a system that acts as a real-time Dungeon Master. It doesn't just pick from a list of pre-written outcomes; it understands the player's natural language input, maintains narrative consistency over long sessions, and generates entirely new story segments that logically align with the game's setting. This project allows us to consolidate our NLP expertise into a highly engaging, immersive application."
 
 ---
 
-### Slide 4: Technical Architecture Overview
-**Slide Title:** The Engine Behind StoryWeaver
-**Visual Suggestion:** A high-level system architecture flowchart based on the README. showing the Streamlit Frontend connecting to the Game Engine orchestrator, which then branches to the local NLU module (DistilBERT/spaCy), the NLG module (OpenAI/Local LLM), and the Knowledge Graph state manager.
-**Slide Content:**
-* **Frontend:** Interactive Streamlit UI with Knowledge Graph Visualizer.
-* **NLU Pipeline (Local):** DistilBERT (Intent), spaCy (NER), fastcoref (Coreference).
-* **NLG Pipeline (API/Local):** OpenAI API / Qwen for story & option generation.
-* **State Management:** NetworkX Knowledge Graph for conflict detection.
+## Slide 3: Project Requirements & Key Steps
+**Visual Suggestion:** A four-pillar infographic or a timeline chevron diagram detailing the four major phases: Data Preparation, Algorithm Design, System Implementation, and Performance Evaluation. Use clean icons for each (e.g., a database icon, a brain/gear icon, a code window icon, and a bar chart icon).
 
-**Speaker Notes:** (Estimated time: 60 seconds | ~130 words)
-"This is the architecture powering StoryWeaver. At the top, we have our Streamlit frontend, which provides a clean chat interface and real-time debug visualizations. When a player inputs a command, it hits our Game Engine Orchestrator. We designed a hybrid approach for optimal performance. The Natural Language Understanding pipeline runs locally—using a fine-tuned DistilBERT for intent classification, spaCy for entity recognition, and fastcoref to resolve pronouns like 'it' or 'him'. Once we understand the input, we pass the structured data to our Natural Language Generation module, powered by advanced LLMs, to continue the story and generate new choices. All of this is anchored by a dynamic Knowledge Graph that constantly updates the world state."
+**Slide Content:**
+* **Data Preparation:** Text adventure scripts, dialogue datasets, and plot annotations.
+* **Algorithm Design:** Context-aware generation, intent recognition, and dialogue management.
+* **System Implementation:** Orchestrated via HuggingFace, PyTorch, and a Streamlit UI.
+* **Performance Evaluation:** Assessing narrative quality, interaction responsiveness, and coherence.
+
+**Speaker Notes:**
+*(Estimated time: 60 seconds)*
+"To successfully build StoryWeaver, our development process was strictly aligned with the course's task specifications, broken down into four key pillars. First, Data Preparation: organizing text adventure scripts and annotating plot consistency. Second, Algorithm Design: integrating local context-aware text generation and user intent recognition. Third, System Implementation: bringing the algorithms to life using frameworks like PyTorch and HuggingFace Transformers, all wrapped in a user-friendly Streamlit frontend. Finally, Performance Evaluation, where we rigorously assess the system’s plot coherence, response times, and overall player immersion."
 
 ---
 
-### Slide 5: The Per-Turn Processing Pipeline
-**Slide Title:** Step-by-Step: How a Turn Unfolds
-**Visual Suggestion:** A horizontal timeline or step-by-step pipeline graphic (Steps 1 to 5). Highlight an example: Player types "Hit the goblin with my sword." -> NLU extracts intent (Attack) -> State checks Graph -> LLM generates outcome -> Graph updates goblin to "defeated."
-**Slide Content:**
-1. **Coreference Resolution:** Resolving pronouns using recent history.
-2. **Intent & Entity Extraction:** Parsing actions and targets.
-3. **Knowledge Graph Check & Update:** Preventing logical conflicts.
-4. **Story Generation:** Crafting the narrative response.
-5. **Option Generation:** Providing 3 dynamic, risk-assessed choices.
+## Slide 4: Technical Architecture Overview
+**Visual Suggestion:** A clean, high-contrast block diagram of the system architecture (matching the README). The top layer shows the "Streamlit Frontend" (Chat UI, NLU Debug, Knowledge Graph). An arrow points down to the "Game Engine (Orchestrator)", which houses the local NLU modules (DistilBERT, spaCy, fastcoref) and the NLG modules (LLM API). A separate block shows the Knowledge Graph.
 
-**Speaker Notes:** (Estimated time: 60 seconds | ~140 words)
-"Let’s walk through what happens under the hood during a single turn. Imagine the player types, 'Take the key and unlock it.' Step one is Coreference Resolution; our fastcoref model determines that 'it' refers to the 'rusty door' from the previous turn. Step two is Intent and Entity Extraction, where DistilBERT identifies the intent as 'unlock' and the entities as 'key' and 'door'. In step three, before we write the story, we query our Knowledge Graph to ensure the player actually has the key. If there are no conflicts, step four triggers the LLM to write a contextual, engaging narrative response. Finally, in step five, the system generates three new possible actions for the player, categorized by risk level, to keep the gameplay moving."
+**Slide Content:**
+* **Streamlit Frontend:** Interactive Chat UI, NLU Debugger, and live Knowledge Graph visualizer.
+* **Game Engine (Orchestrator):** The brain coordinating state, input, and generation.
+* **Local NLU Module:** DistilBERT + spaCy + fastcoref for fast, cost-effective intent & entity extraction.
+* **NLG & Knowledge Graph:** LLM-powered story APIs integrated with a NetworkX dynamic world state.
+
+**Speaker Notes:**
+*(Estimated time: 90 seconds)*
+"Here is the high-level architecture of StoryWeaver. We designed the system to be highly modular and efficient. At the top, we have our Streamlit Frontend, providing not just the game interface, but live debugging tools for the NLU pipeline and a visualizer for our Knowledge Graph. 
+The core is our Game Engine Orchestrator. To balance performance and capability, we utilize a hybrid approach. For Natural Language Understanding—parsing what the player actually means—we use fast, local models including a fine-tuned DistilBERT for intent classification, spaCy for entity extraction, and fastcoref for coreference resolution. For the heavy lifting of creative writing, our Natural Language Generation module utilizes powerful external LLM APIs, tightly constrained by our internal game state."
 
 ---
 
-### Slide 6: Dynamic Knowledge Graph (The Memory)
-**Slide Title:** Maintaining Narrative Consistency
-**Visual Suggestion:** A zoomed-in, interactive-looking network node graph. Show nodes like "Player," "Village Elder," and "Forbidden Cave," connected by edges like "Has spoken to," "Possesses," or "Located in."
-**Slide Content:**
-* **The Problem with LLMs:** Prone to hallucination and forgetting context.
-* **Our Solution:** A NetworkX-powered explicit world state.
-* **Mechanism:** Relation extraction from text to graph nodes/edges.
-* **Result:** Rules-based and LLM-assisted conflict detection prevents impossible actions.
+## Slide 5: The Core Pipeline (Per Turn)
+**Visual Suggestion:** A sleek horizontal flowchart showing a single player turn. Player Input -> Coreference Resolution -> Intent & Entity Extraction -> Knowledge Graph Check -> Story Generation -> Option Generation -> UI Update. Highlight the transition from NLU (understanding) to NLG (creating).
 
-**Speaker Notes:** (Estimated time: 60 seconds | ~140 words)
-"A major challenge in AI storytelling is that LLMs hallucinate or forget long-term context. To solve this, we implemented a Dynamic Knowledge Graph using NetworkX. Instead of relying purely on the LLM's context window, our system extracts entities and relationships from every generated story segment and maps them explicitly. If the player acquires an item, it becomes a node connected to the player. When a player attempts an action, our engine cross-references the Knowledge Graph first. If the player tries to 'negotiate with the village elder' but the graph shows the elder is in a different location, the system detects the conflict and forces the story to reflect that failure, ensuring a logically sound game world."
+**Slide Content:**
+* **1. Resolution & Extraction:** Resolving pronouns (fastcoref) and identifying intents/entities (DistilBERT/spaCy).
+* **2. Knowledge Graph Update:** Extracting new relations and detecting plot conflicts.
+* **3. Story Generation:** LLM continues the narrative based strictly on current constraints.
+* **4. Option Generation:** System dynamically generates three logical choices with varying risk levels.
+
+**Speaker Notes:**
+*(Estimated time: 90 seconds)*
+"Let’s look at what happens under the hood during a single turn of gameplay. When a player inputs an action, the pipeline immediately runs Coreference Resolution to understand pronouns based on recent history. Next, DistilBERT and spaCy classify the intent and extract entities. 
+Before any text is generated, our system consults the Knowledge Graph. It checks for narrative conflicts—ensuring you can't talk to an NPC that is currently in another location. Once the logic is verified, the LLM generates the next story segment. Finally, the Option Generation module provides three dynamic, risk-varying choices for the player, ensuring the gameplay loop remains continuous and engaging."
 
 ---
 
-### Slide 7: Evaluation & Performance
-**Slide Title:** System Evaluation & Metrics
-**Visual Suggestion:** A dashboard-style layout showing bar charts or gauges for NLU Accuracy, Response Latency, and Text Diversity (Distinct-n/Self-BLEU scores), alongside a "User Satisfaction" metric.
-**Slide Content:**
-* **NLU Accuracy:** High precision on intent classification via fine-tuned DistilBERT.
-* **Text Diversity:** Evaluated using Distinct-n and Self-BLEU metrics.
-* **Quality Assurance:** LLM-as-a-Judge to measure narrative coherence.
-* **Performance:** Optimized local NLP execution for low latency.
+## Slide 6: Managing Narrative Consistency (Knowledge Graph)
+**Visual Suggestion:** A stylized representation of a Knowledge Graph (nodes connected by edges). Show a specific example: A player node connected to an item node ("Player -> holds -> Magic Sword") and an environment node ("Goblin -> hates -> Magic Sword"). 
 
-**Speaker Notes:** (Estimated time: 45 seconds | ~110 words)
-"To ensure we built a robust system and not just a prototype, we implemented rigorous evaluation metrics. We evaluate our text generation using Distinct-n and Self-BLEU scores to guarantee lexical diversity—making sure the AI doesn't sound repetitive. We also utilize an 'LLM-as-a-Judge' approach to automatically score the plot coherence and logical flow of the generated stories. On the performance side, moving our NLU components to local, lightweight models like DistilBERT significantly reduced our pipeline latency, resulting in a snappy, responsive user experience that keeps the player immersed."
+**Slide Content:**
+* **The "Hallucination" Problem:** Unconstrained LLMs often forget plot points or contradict themselves.
+* **Dynamic World State:** NetworkX manages entities, locations, and relationships.
+* **Conflict Detection:** Rule-based logic paired with LLM consistency checking.
+* **Result:** A persistent, logical game world that remembers player actions.
+
+**Speaker Notes:**
+*(Estimated time: 60 seconds)*
+"One of the biggest challenges in AI narrative generation is the 'hallucination' problem—where the AI forgets past events or contradicts the established plot. We solved this by implementing a Dynamic Knowledge Graph using NetworkX. 
+Instead of just feeding the LLM raw text history, our pipeline extracts entities and relationships from every turn and updates a structured database. If a player tries to use an item they don't possess, our Conflict Detection module catches it before the story generator even runs. This ensures that the generated world is persistent, logical, and deeply reactive to the player's specific journey."
 
 ---
 
-### Slide 8: Challenges & Solutions
-**Slide Title:** Overcoming Development Hurdles
-**Visual Suggestion:** A split slide. Left side: "Challenges" with icons of bugs, slow clocks, and tangled wires. Right side: "Solutions" with icons of speedometers, organized folders, and checkmarks.
+## Slide 7: Conclusion & Live Demonstration
+**Visual Suggestion:** A bold summary slide with a "Play" or "Start Game" graphic. A QR code or link to the GitHub repository can be placed in the corner. Key takeaways listed clearly.
+
 **Slide Content:**
-* **Challenge:** LLM context window limits and high latency.
-  * *Solution:* Shifted NLU locally; explicit Knowledge Graph memory.
-* **Challenge:** Pronoun ambiguity in player input.
-  * *Solution:* Integrated fastcoref for highly accurate contextual resolution.
-* **Challenge:** Unpredictable player inputs breaking the game state.
-  * *Solution:* Multi-layered conflict detection pipeline.
+* **Bridging Theory & Practice:** Combining robust local NLU with generative LLMs.
+* **Scalable Architecture:** Modular design allows for easy swapping of models.
+* **Future Work:** Expanding the evaluation metrics and multi-agent NPC interactions.
+* **Live Demonstration:** Let's see StoryWeaver in action!
 
-**Speaker Notes:** (Estimated time: 50 seconds | ~110 words)
-"Building StoryWeaver came with significant challenges. Initially, sending everything to an LLM was too slow and expensive. We solved this by decoupling the NLU pipeline and running models locally, which drastically cut down latency. Another major hurdle was pronoun ambiguity. Players naturally type things like 'attack him', but the engine needs to know who 'him' is. Integrating the fastcoref library completely solved this by tracking entities across the conversation history. Finally, players are unpredictable. To handle wild inputs, our multi-layered conflict detection ensures that even if a player tries to do something impossible, the game engine catches it gracefully and incorporates the failure into the story."
-
----
-
-### Slide 9: Conclusion & Future Work
-**Slide Title:** The Future of StoryWeaver
-**Visual Suggestion:** A forward-looking, inspiring graphic—perhaps a player looking into a glowing book or a portal. A QR code to the project's GitHub repository in the corner.
-**Slide Content:**
-* **Summary:** Successfully bridged theoretical NLP with an interactive application.
-* **Impact:** A scalable framework for dynamic storytelling and training datasets.
-* **Future Work:** Multi-agent NPC interactions, local LLM fine-tuning, and voice integration.
-* **Thank You! / Q&A**
-
-**Speaker Notes:** (Estimated time: 45 seconds | ~100 words)
-"In conclusion, StoryWeaver successfully bridges theoretical NLP foundations with a highly interactive, real-world application. We delivered a system that understands intent, generates compelling narratives, and maintains strict logical consistency. Looking ahead, this architecture lays the groundwork for exciting future expansions, such as integrating multi-agent AI for complex NPC behaviors, fully local LLM execution, or even voice-to-text integration. We have learned an immense amount about system architecture, NLP integration, and teamwork throughout this project. Thank you very much for your time and attention. We would now be happy to show you a live demonstration and answer any questions."
+**Speaker Notes:**
+*(Estimated time: 45 seconds)*
+"In conclusion, StoryWeaver successfully bridges theoretical NLP concepts with an engaging, interactive application. By combining lightweight, local NLU models with the creative power of generative LLMs, we've created a scalable architecture that maintains strict narrative consistency without sacrificing creativity. 
+We look forward to expanding our evaluation metrics and potentially adding multi-agent NPC interactions in the future. We believe this project perfectly encapsulates the intended learning outcomes of this course. Thank you for your time and attention. Now, we would like to transition to a live demonstration to show you StoryWeaver in action."
