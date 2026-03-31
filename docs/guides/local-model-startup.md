@@ -2,11 +2,13 @@
 
 This document describes how to start the llama.cpp server locally and run the StoryWeaver application.
 
+> **Last Updated**: 2026-04-01
+
 ## Prerequisites
 
 - [llama.cpp](https://github.com/ggerganov/llama.cpp) binaries (placed in `llama.cpp-bin/`)
-- GGUF model file (e.g., Qwen-3B-GGUF or similar in `models/qwen-gguf/`)
-- Windows/macOS environment with Python 3.10+
+- GGUF model file in `models/qwen-gguf/`
+- Windows/macOS/Linux environment with Python 3.10+
 
 ## 1. Quick Start
 
@@ -24,7 +26,9 @@ This document describes how to start the llama.cpp server locally and run the St
 
 ```bash
 # Step 1: Start the local llama.cpp server (Open a new terminal window)
-./scripts/start_llama_server.sh
+# Option A: Use the batch script wrapper (if available)
+# Option B: Run llama-server directly:
+./llama.cpp-bin/llama-server -m models/qwen-gguf/qwen3-4b-q4_k_m.gguf --host 127.0.0.1 --port 8081 -c 2048 -b 512 -t 4 --chat-template chatml
 
 # Step 2: Start the StoryWeaver application (Open another new terminal window)
 ./scripts/start_project_prod.sh
@@ -37,7 +41,7 @@ This document describes how to start the llama.cpp server locally and run the St
 
 ## 2. Startup Script Details
 
-### start_llama_server (bat/sh)
+### start_llama_server.bat (Windows)
 
 Starts the local llama.cpp server, providing an OpenAI-compatible API.
 
@@ -45,8 +49,8 @@ Starts the local llama.cpp server, providing an OpenAI-compatible API.
 
 | Parameter | Default Value | Description |
 |-----------|---------------|-------------|
-| `LLAMA_BIN` | `llama.cpp-bin/llama-server` | Path to the llama-server executable |
-| `MODEL_PATH` | `models/qwen-gguf/qwen3-4b-q4_k_m.gguf` | Path to the GGUF quantized model |
+| `LLAMA_BIN` | `llama.cpp-bin\llama-server.exe` | Path to the llama-server executable |
+| `MODEL_PATH` | `models\qwen-gguf\qwen3-4b-q4_k_m.gguf` | Path to the GGUF quantized model |
 | `PORT` | `8081` | API service port |
 | `HOST` | `127.0.0.1` | Listen address |
 | `CONTEXT_SIZE` | `2048` | Context length (tokens) |
@@ -56,11 +60,11 @@ Starts the local llama.cpp server, providing an OpenAI-compatible API.
 **Expected Console Output**:
 
 ```text
-=============================================
+=========================================
   llama.cpp Local API Server
-=============================================
+=========================================
 
-[INFO] Model:    models/qwen-gguf/qwen3-4b-q4_k_m.gguf
+[INFO] Model:    models\qwen-gguf\qwen3-4b-q4_k_m.gguf
 [INFO] Server:   http://127.0.0.1:8081
 [INFO] Context:  2048 tokens
 [INFO] Threads:  4
@@ -68,6 +72,25 @@ Starts the local llama.cpp server, providing an OpenAI-compatible API.
 OpenAI-compatible endpoints:
   Chat:    http://127.0.0.1:8081/v1/chat/completions
   Models:  http://127.0.0.1:8081/v1/models
+```
+
+### macOS/Linux: Direct llama-server Command
+
+There is no `start_llama_server.sh` script. Run `llama-server` directly:
+
+**CPU mode:**
+```bash
+./llama.cpp-bin/llama-server -m models/qwen-gguf/qwen3-4b-q4_k_m.gguf --host 127.0.0.1 --port 8081 -c 2048 -b 512 -t 4 --chat-template chatml
+```
+
+**Apple Silicon Metal acceleration (recommended):**
+```bash
+./llama.cpp-bin/llama-server -m models/qwen-gguf/qwen3-4b-q4_k_m.gguf --host 127.0.0.1 --port 8081 -c 2048 -b 512 -t 8 --ngl 99 --chat-template chatml
+```
+
+**NVIDIA CUDA acceleration:**
+```bash
+./llama.cpp-bin/llama-server -m models/qwen-gguf/qwen3-4b-q4_k_m.gguf --host 127.0.0.1 --port 8081 -c 4096 -b 512 -t 8 --ngl 99 --chat-template chatml
 ```
 
 ### start_project_prod (bat/sh)
@@ -95,37 +118,37 @@ ls -lh models/qwen-gguf/
 
 Expected output:
 - `qwen3-4b-q4_k_m.gguf` - Q4 quantized model (~2.4GB, recommended)
-- `qwen3-4b-f16.gguf` - FP16 model (~7.5GB, requires more RAM)
 
 ## 4. Environment Configuration (.env)
 
-The project defaults to the local llama.cpp backend. Example `.env` configuration:
+The project supports three NLG modes via `config.py` (`NLG_MODE`): `api`, `local`, `hybrid`.
+
+**For local llama.cpp backend**, configure `.env` as follows:
 
 ```ini
-# ===== Option C: llama.cpp Local CPU Inference (Default) =====
+# llama.cpp Local Inference
 OPENAI_BASE_URL=http://127.0.0.1:8081/v1
 OPENAI_MODEL=qwen3-4b
 OPENAI_API_KEY=local
-OPENAI_TEMPERATURE=0.7
+
+# Timeout (adjust based on hardware)
+# CPU inference: longer timeouts
+OPENAI_TIMEOUT_CONNECT=30.0
+OPENAI_TIMEOUT_READ=180.0
+
+# GPU (CUDA/Metal): shorter timeouts
+# OPENAI_TIMEOUT_CONNECT=10.0
+# OPENAI_TIMEOUT_READ=60.0
+
 OPENAI_MAX_TOKENS=512
+OPENAI_TEMPERATURE=0.8
 ```
 
-To switch to a remote API or vLLM, refer to the documentation in `docs/reports/`.
+To switch to remote API, update `OPENAI_BASE_URL` and `OPENAI_MODEL` accordingly. See `config/.env.example` for the remote API template.
 
 ## 5. Live Logs
 
-When the application sends an LLM request, the llama.cpp server terminal will display:
-
-```text
-==================================================
-[LLM] 📥 Request Received
-==================================================
-  [system]: You are a helpful assistant...
-  [user]: Create a story about...
-==================================================
-[LLM] 🔄 Processing (model=qwen3-4b, temp=0.7, max_tokens=512)
-[LLM] ✅ Complete! (Duration: 15.2s, Input: 128 tokens, Output: 256 tokens)
-```
+When the application sends an LLM request, the llama.cpp server terminal will display request processing information.
 
 ## 6. Troubleshooting
 
@@ -145,7 +168,7 @@ kill -9 <PID>
 
 ### Model Not Found
 
-Ensure the model file is in `models/qwen-gguf/`. If you need to convert a model, see `docs/guides/CPU_INFERENCE.md`.
+Ensure the model file is in `models/qwen-gguf/`. See [Zero-to-Hero Deployment](zero-to-hero-deployment.md) for model download instructions.
 
 ### Connection Failed
 
@@ -158,12 +181,12 @@ Ensure the model file is in `models/qwen-gguf/`. If you need to convert a model,
 - **Quantization**: Use `Q4_K_M` for a good balance of speed and quality (uses ~2.4GB RAM).
 - **Threads**: Match the `--threads` parameter to your physical CPU core count.
 - **Context Size**: Increase `--ctx-size` if you plan to have very long story sessions.
+- **Metal/CUDA**: Use `--ngl 99` to offload all layers to GPU for significant speedup.
 
 ## 8. Related Documents
 
 - [Zero-to-Hero Deployment Guide](zero-to-hero-deployment.md)
-- [CPU Inference Optimization Guide](CPU_INFERENCE.md)
-- [vLLM Integration Guide](../../VLLM_INTEGRATION.md)
+- [CPU Inference (Deprecated)](CPU_INFERENCE.md)
 
 ---
-*Last Updated: 2026-03-31*
+*Last Updated: 2026-04-01*
