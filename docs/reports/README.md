@@ -1,25 +1,33 @@
 # 优化与改进报告
 
-本目录包含 StoryWeaver 项目的系统优化、性能改进和功能增强报告。
+本目录包含 StoryWeaver 项目的系统优化、性能改进和功能增强报告，按类别组织如下：
+
+## 目录结构
+
+- **optimization/** - 系统优化与功能增强报告
+- **local-model/** - 本地模型推理相关文档
+- **changelog/** - 版本更新记录
+- **test-results/** - 自动化测试结果与数据
 
 ## 文件说明
 
-### 知识图谱优化
+### 系统优化 (`optimization/`)
 - **kg-optimization.md** - 知识图谱子系统全面增强报告，包含数据模型、更新逻辑、冲突解决等
 - **nlu-kg-improvement.md** - NLU 和知识图谱模块 27 项改进任务报告
-
-### 系统性能与稳定性
 - **runtime-persistence.md** - 浏览器刷新持久化改造报告
-- **automated_test_report.md** - 核心模块（NLU/NLG/KG）自动化测试结果报告
 
-### 本地模型推理
+### 本地模型推理 (`local-model/`)
 - **本地模型推理集成_2026-03-27_21-07.md** - llama.cpp 本地 CPU 推理集成（首次）
 - **local-model-tuning_2026-03-27.md** - 本地模型调优报告（日志增强、超时配置）
 
-### 版本更新记录
+### 版本更新记录 (`changelog/`)
 - **更新记录_2026-03-24_20-03.md** - 基础架构与核心循环初步完善
 - **更新记录_2026-03-24_20-30.md** - 错误处理与日志系统增强
 - **更新记录_评估指标扩展_2026-03-25_16-27.md** - 评估模块（Distinct-n/Self-BLEU）扩展与集成
+
+### 测试结果 (`test-results/`)
+- **automated_test_report.md** - 核心模块（NLU/NLG/KG）自动化测试结果报告
+- **automated_test_results.json** - 原始测试数据（JSON 格式）
 
 ## 改进方向
 

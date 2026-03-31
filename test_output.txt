@@ -1,0 +1,8 @@
+03/31/2026 22:53:19 - INFO - 	 missing_keys: []
+03/31/2026 22:53:19 - INFO - 	 unexpected_keys: []
+03/31/2026 22:53:19 - INFO - 	 mismatched_keys: []
+03/31/2026 22:53:19 - INFO - 	 error_msgs: []
+03/31/2026 22:53:19 - INFO - 	 Model Parameters: 90.5M, Transformer: 82.1M, Coref head: 8.4M
+03/31/2026 22:53:20 - INFO - 	 Coreference resolver loaded (fastcoref)
+Testing CoreferenceResolver...
+✅ FastCoref LOADED successfully!
