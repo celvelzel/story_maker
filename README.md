@@ -119,5 +119,5 @@ Use the startup script that matches your OS for production deployment:
 2. **[Data Flow](docs/guides/data-flow.md)** - Field-level data mapping
 3. **[Deployment Guide](docs/guides/zero-to-hero-deployment.md)** - Full setup guide
 4. **[API Reference](docs/api/API_REFERENCE.md)** - Complete API documentation
-5. **[Optimization Report](docs/reports/kg-optimization.md)** - KG enhancement details
-6. **[Persistence Doc](docs/reports/runtime-persistence.md)** - Session persistence
+5. **[Optimization Report](docs/reports/optimization/kg-optimization.md)** - KG enhancement details
+6. **[Persistence Doc](docs/reports/optimization/runtime-persistence.md)** - Session persistence

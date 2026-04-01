@@ -25,29 +25,42 @@ story_maker/
 ├── requirements.txt
 ├── README.md
 ├── src/
+│   ├── __init__.py
 │   ├── utils/
+│   │   ├── __init__.py
 │   │   └── api_client.py         # Singleton API wrapper, retry, cost tracking
 │   ├── nlu/
+│   │   ├── __init__.py
 │   │   ├── intent_classifier.py  # DistilBERT fine-tuned, 8 intents + rule_fallback
 │   │   ├── entity_extractor.py   # spaCy NER + noun phrase
 │   │   ├── sentiment_analyzer.py # Sentiment analyzer
 │   │   └── coreference.py        # fastcoref FCoref
 │   ├── knowledge_graph/
+│   │   ├── __init__.py
 │   │   ├── graph.py              # KnowledgeGraph: MultiDiGraph, to_summary()
 │   │   ├── relation_extractor.py # LLM-based extraction
 │   │   ├── conflict_detector.py  # Rule + LLM conflict detection
 │   │   └── visualizer.py         # PyVis visualization
 │   ├── nlg/
+│   │   ├── __init__.py
 │   │   ├── prompt_templates.py   # All prompt templates
 │   │   ├── story_generator.py    # Story generation logic
 │   │   └── option_generator.py   # Option generation logic
 │   ├── engine/
+│   │   ├── __init__.py
 │   │   ├── game_engine.py        # Orchestration pipeline
 │   │   ├── runtime_session.py    # Session persistence
-│   │   └── state.py              # GameState dataclass
-│   ├── ui/                       # Streamlit UI modules
+│   │   ├── state.py              # GameState dataclass
+│   │   └── naming.py             # Entity naming and ID generation
+│   ├── ui/
+│   │   ├── __init__.py
+│   │   ├── state_manager.py      # UI state management
+│   │   ├── layout/               # Theme and styling
+│   │   └── sections/             # Chat, sidebar, evaluation UI
 │   └── evaluation/
+│       ├── __init__.py
 │       ├── metrics.py            # Automated metrics
+│       ├── consistency_eval.py   # Consistency evaluation metrics
 │       └── llm_judge.py          # LLM-as-Judge
 ├── tests/                        # Comprehensive tests
 ├── scripts/                      # Startup scripts (start_project_prod.sh)

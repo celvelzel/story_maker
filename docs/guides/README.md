@@ -16,9 +16,8 @@ This directory contains usage guides and deployment documentation for the StoryW
 - **[deployment-windows.md](deployment-windows.md)** - High-availability deployment guide for Windows.
 - **[deployment-macos.md](deployment-macos.md)** - High-availability deployment guide for macOS.
 
-### Inference Configuration (Alternative Options)
-- **[CPU_INFERENCE.md](CPU_INFERENCE.md)** - Legacy CPU inference optimization guide (using vLLM, deprecated in favor of llama.cpp).
-- **[vLLM Integration Guide](../../VLLM_INTEGRATION.md)** - Local GPU inference integration guide (requires NVIDIA GPU).
+### Deprecated / Archived
+- **[CPU_INFERENCE.md](CPU_INFERENCE.md)** - ⚠️ DEPRECATED. Legacy vLLM CPU inference guide. Use llama.cpp instead.
 
 ## Quick Start
 
@@ -30,7 +29,7 @@ This directory contains usage guides and deployment documentation for the StoryW
 ## Deployment Modes
 
 The project supports two running modes:
-- **Development Mode** - Rapid iteration using `start_project.sh` or `start_project.bat`.
+- **Development Mode** - Manual launch: `.venv/bin/python -m streamlit run app.py` or `.venv\Scripts\python -m streamlit run app.py`
 - **Production Mode** - High-availability deployment using `scripts/start_project_prod.sh` or `scripts/start_project_prod.bat`.
 
 ## Inference Backend Selection
@@ -38,5 +37,4 @@ The project supports two running modes:
 | Backend | Hardware Requirements | Recommended Scenario |
 |---------|-----------------------|----------------------|
 | **llama.cpp (Local)** | CPU / Metal / CUDA | ⭐ Recommended. Works on CPU, supports Metal/CUDA acceleration. |
-| **vLLM (Local)** | NVIDIA GPU | High-performance deployment with dedicated GPU. |
 | **Remote API** | Internet Connection | Fast testing and highest quality output. |
