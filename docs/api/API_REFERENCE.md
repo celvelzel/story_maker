@@ -1,63 +1,63 @@
-# StoryWeaver API Reference
+# StoryWeaver API 参考文档
 
-> **Version:** 1.2.0  
-> **Last Updated:** 2026-04-01  
-> **Base URL:** `http://localhost:7860`  
-> **Framework:** Streamlit + Python Backend  
-> **NLG Mode:** Hybrid (Local Qwen3 + Mimo API)  
-
----
-
-## Table of Contents
-
-1. [Overview](#1-overview)
-2. [UI Interaction Model](#2-ui-interaction-model)
-3. [Data Models](#3-data-models)
-4. [Backend API Reference](#4-backend-api-reference)
-5. [NLU Module API](#5-nlu-module-api)
-6. [NLG Module API](#6-nlg-module-api)
-7. [Knowledge Graph API](#7-knowledge-graph-api)
-8. [Evaluation API](#8-evaluation-api)
-9. [Configuration](#9-configuration)
-10. [Error Handling](#10-error-handling)
-11. [Examples](#11-examples)
+> **版本：** 1.2.0  
+> **最后更新：** 2026-04-01  
+> **基础 URL：** `http://localhost:7860`  
+> **框架：** Streamlit + Python 后端  
+> **NLG 模式：** 混合模式 (本地 Qwen3 + Mimo API)  
 
 ---
 
-## 1. Overview
+## 目录
 
-StoryWeaver is an interactive text adventure game engine that combines:
+1. [概述](#1-概述)
+2. [UI 交互模型](#2-ui-交互模型)
+3. [数据模型](#3-数据模型)
+4. [后端 API 参考](#4-后端-api-参考)
+5. [NLU 模块 API](#5-nlu-模块-api)
+6. [NLG 模块 API](#6-nlg-模块-api)
+7. [知识图谱 API](#7-知识图谱-api)
+8. [评估 API](#8-评估-api)
+9. [配置](#9-配置)
+10. [错误处理](#10-错误处理)
+11. [示例](#11-示例)
 
-- **NLU (Natural Language Understanding):** Intent classification (DistilBERT + keyword fallback), entity extraction (spaCy + noun-phrase + KG context), coreference resolution (fastcoref + rule fallback), and sentiment/emotion analysis (distilroberta + keyword fallback).
-- **NLG (Natural Language Generation):** Hybrid LLM-powered story and option generation. Supports `api`, `local`, and `hybrid` modes via configurable routing.
-- **KG (Knowledge Graph):** Dynamic world-state tracking with conflict detection (rule-based + temporal + LLM), multi-strategy resolution, importance scoring (composite/incremental/degree_only), and layered summary generation.
+---
 
-### Architecture
+## 1. 概述
+
+StoryWeaver 是一个交互式文字冒险游戏引擎，结合了以下核心能力：
+
+- **NLU（自然语言理解）：** 意图分类（DistilBERT + 关键词兜底）、实体抽取（spaCy + 名词短语 + KG 上下文）、共指消解（fastcoref + 规则兜底）、情感/情绪分析（distilroberta + 关键词兜底）。
+- **NLG（自然语言生成）：** 基于 LLM 的混合式故事与选项生成。支持通过可配置路由切换 `api`、`local` 和 `hybrid` 三种模式。
+- **KG（知识图谱）：** 动态世界状态追踪，支持冲突检测（规则 + 时序 + LLM）、多策略解决、重要性评分（composite/incremental/degree_only）以及分层摘要生成。
+
+### 架构
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        Streamlit Frontend                       │
+│                        Streamlit 前端                            │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌───────────────┐  │
-│  │ Chat UI  │  │ Option   │  │ KG Vis   │  │ Evaluation    │  │
-│  │ Input    │  │ Buttons  │  │ Panel    │  │ Dashboard     │  │
+│  │ 聊天界面  │  │ 选项按钮  │  │ KG 可视化 │  │ 评估仪表盘    │  │
+│  │ 输入      │  │          │  │ 面板      │  │              │  │
 │  └────┬─────┘  └────┬─────┘  └──────────┘  └───────────────┘  │
 │       │              │                                          │
 │       └──────────────┴──────────────────────────────────────────┘
 │                              │
 │                    ┌─────────▼─────────┐
 │                    │   GameEngine      │
-│                    │  (Orchestrator)   │
+│                    │   (编排器)         │
 │                    └─────────┬─────────┘
 │                              │
 │         ┌────────────────────┼────────────────────┐
 │         │                    │                    │
 │  ┌──────▼──────┐    ┌───────▼───────┐    ┌───────▼───────┐
-│  │  NLU Layer  │    │  NLG Layer    │    │  KG Layer     │
+│  │  NLU 层     │    │  NLG 层       │    │  KG 层        │
 │  │ ┌─────────┐ │    │ ┌───────────┐ │    │ ┌───────────┐ │
-│  │ │ Intent  │ │    │ │ Story Gen │ │    │ │ Graph     │ │
-│  │ │ Entity  │ │    │ │ Option Gen│ │    │ │ Relations │ │
-│  │ │ Coref   │ │    │ └───────────┘ │    │ │ Conflict  │ │
-│  │ │ Sentiment│ │                   │ └───────────┘ │
+│  │ │ 意图    │ │    │ │ 故事生成   │ │    │ │ 图谱      │ │
+│  │ │ 实体    │ │    │ │ 选项生成   │ │    │ │ 关系      │ │
+│  │ │ 共指    │ │    │ └───────────┘ │    │ │ 冲突      │ │
+│  │ │ 情感    │ │    │               │    │ └───────────┘ │
 │  │ └─────────┘ │    └───────────────┘    └───────────────┘
 │  └─────────────┘
 │         │                                      │
@@ -68,58 +68,58 @@ StoryWeaver is an interactive text adventure game engine that combines:
 │  │ distilroberta│                       └─────────────┘
 │  └─────────────┘
 │                    ┌─────────▼─────────┐
-│                    │   LLM Client      │
-│                    │ (Hybrid: Local +  │
-│                    │  OpenAI Compatible)│
+│                    │   LLM 客户端       │
+│                    │ (混合: 本地 +     │
+│                    │  OpenAI 兼容)      │
 │                    └───────────────────┘
 ```
 
 ---
 
-## 2. UI Interaction Model
+## 2. UI 交互模型
 
-### 2.1 Page Layout
+### 2.1 页面布局
 
-| Zone | Component | Description |
+| 区域 | 组件 | 描述 |
 |------|-----------|-------------|
-| **Main Header** | Hero Banner | Project title and introduction. |
-| **Main Area** | Genre Input | Story type input (e.g., `fantasy`, `sci-fi`, `mystery`). |
-| **Main Area** | New Game Button | 🎮 Starts a new game session. |
-| **Main Area** | Chat History | Interaction history with foldable turns. |
-| **Main Area** | Option Buttons | 🧭 Clickable action branches (usually 3). |
-| **Main Area** | Chat Input | Free-text action input. |
-| **Main Area** | Evaluation Panel | 📊 Session evaluation metrics and dashboard. |
-| **Sidebar** | NLU Model Config | 🧠 NLU model path and backend settings. |
-| **Sidebar** | KG Visualization | 📊 Interactive knowledge graph view. |
-| **Sidebar** | Consistency Trend | 📈 Visual trend of story consistency. |
-| **Sidebar** | NLU Debug Info | 🔍 Detailed NLU parsing results (intent, emotion, entities, coref). |
-| **Sidebar** | Stats | Counters for turns, entities, and conflicts. |
-| **Sidebar** | Download | 📥 Export full story as text. |
+| **主标题** | 横幅 | 项目标题与简介 |
+| **主区域** | 类型输入 | 故事类型输入（如 `fantasy`、`sci-fi`、`mystery`） |
+| **主区域** | 新游戏按钮 | 🎮 开始新的游戏会话 |
+| **主区域** | 聊天历史 | 交互历史，支持折叠回合 |
+| **主区域** | 选项按钮 | 🧭 可点击的分支行动（通常 3 个） |
+| **主区域** | 聊天输入 | 自由文本行动输入 |
+| **主区域** | 评估面板 | 📊 会话评估指标与仪表盘 |
+| **侧边栏** | NLU 模型配置 | 🧠 NLU 模型路径与后端设置 |
+| **侧边栏** | KG 可视化 | 📊 交互式知识图谱视图 |
+| **侧边栏** | 一致性趋势 | 📈 故事一致性可视化趋势 |
+| **侧边栏** | NLU 调试信息 | 🔍 详细 NLU 解析结果（意图、情绪、实体、共指） |
+| **侧边栏** | 统计 | 回合数、实体数、冲突数计数器 |
+| **侧边栏** | 下载 | 📥 导出完整故事为文本文件 |
 
-### 2.2 User Interaction Flow
+### 2.2 用户交互流程
 
 ```
 ┌──────────────────┐
-│  User Accesses   │
+│    用户访问       │
 └────────┬─────────┘
          │
          ▼
 ┌──────────────────┐     ┌──────────────────────┐
-│  Enter Genre     │────▶│ GameEngine.start_game │
-│  Click New Game  │     └──────────┬───────────┘
+│    输入类型       │────▶│ GameEngine.start_game │
+│    点击新游戏     │     └──────────┬───────────┘
 └──────────────────┘                │
          │                          ▼
          │              ┌───────────────────────┐
-         │              │ Generate Opening +    │
-         │              │ 3 Options + Init KG   │
+         │              │ 生成开场白 +           │
+         │              │ 3 个选项 + 初始化 KG   │
          │              └──────────┬────────────┘
          │                         │
          ▼                         ▼
 ┌──────────────────────────────────────────────┐
-│              Game in Progress                │
+│              游戏进行中                        │
 │                                              │
 │  ┌─────────────────┐  ┌──────────────────┐  │
-│  │ Free-text Input │  │ Click Option     │  │
+│  │  自由文本输入    │  │  点击选项         │  │
 │  └────────┬────────┘  └────────┬─────────┘  │
 │           │                    │             │
 │           └────────┬───────────┘             │
@@ -128,430 +128,429 @@ StoryWeaver is an interactive text adventure game engine that combines:
 │  ┌─────────────────────────────────────┐    │
 │  │    GameEngine.process_turn(input)    │    │
 │  │                                     │    │
-│  │  1. Coreference Resolution          │    │
-│  │  2. Intent Classification           │    │
-│  │  3. Sentiment/Emotion Analysis      │    │
-│  │  4. Entity Extraction               │    │
-│  │  5. Story Generation (via LLM)      │    │
-│  │  6. KG Update (Dual/Story Extract)  │    │
-│  │  7. Conflict Detection + Resolution │    │
-│  │  8. Option Generation (via LLM)     │    │
+│  │  1. 共指消解                         │    │
+│  │  2. 意图分类                         │    │
+│  │  3. 情感/情绪分析                    │    │
+│  │  4. 实体抽取                         │    │
+│  │  5. 故事生成（通过 LLM）             │    │
+│  │  6. KG 更新（双重/故事抽取）         │    │
+│  │  7. 冲突检测与解决                   │    │
+│  │  8. 选项生成（通过 LLM）             │    │
 │  └─────────────────────────────────────┘    │
 │                    │                         │
 │                    ▼                         │
 │  ┌─────────────────────────────────────┐    │
-│  │           Return TurnResult          │    │
-│  │  - story_text                       │    │
-│  │  - options                          │    │
-│  │  - nlu_debug (incl. emotion)        │    │
-│  │  - kg_html                          │    │
-│  │  - conflicts                        │    │
+│  │           返回 TurnResult            │    │
+│  │  - story_text（故事文本）            │    │
+│  │  - options（选项列表）               │    │
+│  │  - nlu_debug（含情绪信息）           │    │
+│  │  - kg_html（图谱可视化）             │    │
+│  │  - conflicts（冲突列表）             │    │
 │  │  - kg_node_count, kg_edge_count     │    │
 │  └─────────────────────────────────────┘    │
 │                                              │
 │  ┌─────────────────┐                        │
-│  │ Run Evaluation  │                        │
+│  │    运行评估      │                        │
 │  └────────┬────────┘                        │
 │           │                                  │
 │           ▼                                  │
 │  ┌─────────────────────────────────────┐    │
-│  │        Evaluation Results           │    │
-│  │  - Auto Metrics (Distinct-n, etc.)  │    │
-│  │  - LLM Judge Scores (8 dimensions)  │    │
+│  │           评估结果                   │    │
+│  │  - 自动指标（Distinct-n 等）         │    │
+│  │  - LLM 评审得分（8 个维度）          │    │
 │  └─────────────────────────────────────┘    │
 │                                              │
 │  ┌─────────────────┐                        │
-│  │ Download Story  │──▶ Export .txt file    │
+│  │   下载故事       │──▶ 导出 .txt 文件      │
 │  └─────────────────┘                        │
 └──────────────────────────────────────────────┘
 ```
 
 ---
 
-## 3. Data Models
+## 3. 数据模型
 
-### 3.1 TurnResult
+### 3.1 TurnResult（回合结果）
 
-Core data structure returned after each turn processing.
+每回合处理后返回的核心数据结构。
 
 ```python
 @dataclass
 class TurnResult:
-    story_text: str                    # Generated narrative text
-    options: List[StoryOption]         # Player action branches
-    nlu_debug: Dict = {}               # NLU debugging (intent, emotion, entities, stage_metrics)
-    kg_html: str = ""                  # KG visualization HTML
-    conflicts: List[str] = []          # Consistency conflict descriptions
-    kg_node_count: int = 0             # KG node count at turn end
-    kg_edge_count: int = 0             # KG edge count at turn end
+    story_text: str                    # 生成的叙事文本
+    options: List[StoryOption]         # 玩家分支行动选项
+    nlu_debug: Dict = {}               # NLU 调试信息（意图、情绪、实体、阶段指标）
+    kg_html: str = ""                  # KG 可视化 HTML
+    conflicts: List[str] = []          # 一致性冲突描述
+    kg_node_count: int = 0             # 回合结束时 KG 节点数
+    kg_edge_count: int = 0             # 回合结束时 KG 边数
 ```
 
-### 3.2 StoryOption
+### 3.2 StoryOption（故事选项）
 
-Selectable action branch for the player.
+玩家可选择的行动分支。
 
 ```python
 @dataclass
 class StoryOption:
-    text: str            # Option text displayed to user
-    intent_hint: str     # Suggested intent category
-    risk_level: str      # Risk level: "low" | "medium" | "high"
+    text: str            # 向用户显示的选项文本
+    intent_hint: str     # 建议的意图类别
+    risk_level: str      # 风险等级："low"（低）| "medium"（中）| "high"（高）
 ```
 
-### 3.3 GameState
+### 3.3 GameState（游戏状态）
 
-Session state management.
+会话状态管理。
 
 ```python
 @dataclass
 class GameState:
-    turn_id: int = 0                           # Current turn (starts at 0)
-    genre: str = "fantasy"                      # Story genre
-    story_history: List[Dict[str, str]] = []    # Dialogue history [{"role": "player"|"narrator", "text": "..."}]
-    kg_turn_stats: List[Dict[str, int]] = []    # Per-turn KG node/edge snapshots
+    turn_id: int = 0                           # 当前回合（从 0 开始）
+    genre: str = "fantasy"                      # 故事类型
+    story_history: List[Dict[str, str]] = []    # 对话历史 [{"role": "player"|"narrator", "text": "..."}]
+    kg_turn_stats: List[Dict[str, int]] = []    # 每回合 KG 节点/边快照
 ```
 
-### 3.4 Entity
+### 3.4 Entity（实体）
 
-NLU extracted entity.
+NLU 抽取的实体。
 
 ```python
 {
-    "text": str,        # Entity text
-    "type": str,        # Entity type (person, location, item, creature, event)
-    "start": int,       # Start position in text
-    "end": int,         # End position in text
-    "source": str,      # Source (spacy | noun_phrase | possessive | regex | kg_context | kg_alias)
-    "confidence": float # Confidence score (0.0-1.0)
+    "text": str,        # 实体文本
+    "type": str,        # 实体类型（person/人物, location/地点, item/物品, creature/生物, event/事件）
+    "start": int,       # 在文本中的起始位置
+    "end": int,         # 在文本中的结束位置
+    "source": str,      # 来源（spacy | noun_phrase/名词短语 | possessive/所有格 | regex/正则 | kg_context/KG上下文 | kg_alias/KG别名）
+    "confidence": float # 置信度（0.0-1.0）
 }
 ```
 
-### 3.5 Emotion Result
+### 3.5 Emotion Result（情绪结果）
 
-Sentiment analysis output.
+情感分析输出。
 
 ```python
 {
-    "emotion": str,         # Dominant emotion label
-    "confidence": float,    # Confidence score (0.0-1.0)
-    "scores": Dict[str, float]  # All emotion scores
+    "emotion": str,         # 主导情绪标签
+    "confidence": float,    # 置信度（0.0-1.0）
+    "scores": Dict[str, float]  # 所有情绪得分
 }
 ```
 
-Emotion labels: `anger`, `disgust`, `fear`, `joy`, `sadness`, `surprise`, `neutral`.
+情绪标签：`anger`（愤怒）、`disgust`（厌恶）、`fear`（恐惧）、`joy`（喜悦）、`sadness`（悲伤）、`surprise`（惊讶）、`neutral`（中性）。
 
-### 3.6 Intent Labels
+### 3.6 Intent Labels（意图标签）
 
-Supported intent categories: `action`, `dialogue`, `explore`, `use_item`, `ask_info`, `rest`, `trade`, `other`.
+支持的意图类别：`action`（行动）、`dialogue`（对话）、`explore`（探索）、`use_item`（使用物品）、`ask_info`（询问信息）、`rest`（休息）、`trade`（交易）、`other`（其他）。
 
 ---
 
-## 4. Backend API Reference
+## 4. 后端 API 参考
 
-### 4.1 GameEngine
+### 4.1 GameEngine（游戏引擎）
 
-Orchestrates the NLU → NLG → KG pipeline.
+编排 NLU → NLG → KG 流水线。
 
 #### `GameEngine.__init__(genre="fantasy", intent_model_path=None, auto_load_nlu=False, conflict_resolution=None, extraction_mode=None, importance_mode=None, summary_mode=None)`
 
-- `genre`: Default story type.
-- `intent_model_path`: Custom path for DistilBERT model.
-- `auto_load_nlu`: If True, loads local models on initialization (default: lazy load on first `process_turn`).
-- `conflict_resolution`: Override for `KG_CONFLICT_RESOLUTION` setting.
-- `extraction_mode`: Override for `KG_EXTRACTION_MODE` setting.
-- `importance_mode`: Override for `KG_IMPORTANCE_MODE` setting.
-- `summary_mode`: Override for `KG_SUMMARY_MODE` setting.
+- `genre`：默认故事类型
+- `intent_model_path`：DistilBERT 模型的自定义路径
+- `auto_load_nlu`：如果为 True，在初始化时加载本地模型（默认：在首次 `process_turn` 时惰性加载）
+- `conflict_resolution`：覆盖 `KG_CONFLICT_RESOLUTION` 设置
+- `extraction_mode`：覆盖 `KG_EXTRACTION_MODE` 设置
+- `importance_mode`：覆盖 `KG_IMPORTANCE_MODE` 设置
+- `summary_mode`：覆盖 `KG_SUMMARY_MODE` 设置
 
 #### `GameEngine.start_game() -> TurnResult`
 
-Initializes the session and generates the opening narrative. Seeds KG from opening text.
+初始化会话并生成开场叙事。从开场文本中初始化 KG。
 
 #### `GameEngine.process_turn(player_input: str) -> TurnResult`
 
-Executes the full 8-stage pipeline for a single turn:
-1. **Coreference Resolution** — fastcoref resolves pronouns using recent history (with entity-type awareness).
-2. **Intent Classification** — DistilBERT fine-tuned classifier (with keyword fallback).
-3. **Sentiment Analysis** — distilroberta emotion classifier (with keyword fallback).
-4. **Entity Extraction** — spaCy NER + noun-phrase heuristics + KG context fuzzy matching.
-5. **Story Generation** — LLM continues the narrative (routed by NLG_MODE).
-6. **KG Update** — LLM extracts entities & relations (dual_extract or story_only mode).
-7. **Conflict Detection + Resolution** — Rule-based + temporal + LLM detection with configurable resolution strategy.
-8. **Option Generation** — LLM generates 3 player choices with risk levels.
+执行单回合的完整 8 阶段流水线：
+1. **共指消解** — fastcoref 使用近期历史消解代词（含实体类型感知）
+2. **意图分类** — DistilBERT 微调分类器（含关键词兜底）
+3. **情感分析** — distilroberta 情绪分类器（含关键词兜底）
+4. **实体抽取** — spaCy NER + 名词短语启发式 + KG 上下文模糊匹配
+5. **故事生成** — LLM 继续叙事（由 NLG_MODE 路由）
+6. **KG 更新** — LLM 抽取实体与关系（dual_extract 或 story_only 模式）
+7. **冲突检测与解决** — 规则 + 时序 + LLM 检测，配合可配置的解决策略
+8. **选项生成** — LLM 生成 3 个带风险等级的玩家选择
 
 #### `GameEngine.save_game(filepath=None) -> str`
 
-Saves current game state (KG + story history) to JSON. Supports semantic naming for new games.
+将当前游戏状态（KG + 故事历史）保存为 JSON。支持新游戏的语义命名。
 
 #### `GameEngine.load_game(filepath: str) -> None`
 
-Loads a saved game state from JSON file.
+从 JSON 文件加载已保存的游戏状态。
 
-#### Evaluation Helpers
+#### 评估辅助方法
 
-- `GameEngine.all_story_texts` → List of all narrator texts.
-- `GameEngine.kg_entity_names` → List of all KG entity display names.
-- `GameEngine.kg_density_inputs` → Per-turn KG size snapshots.
-
----
-
-## 5. NLU Module API
-
-### 5.1 IntentClassifier
-
-DistilBERT-based classifier with keyword fallback. Backend identifiable via `nlu_debug.intent_backend` (`distilbert` | `rule_fallback`).
-
-- `load()` — Loads model from path with retry (up to 3 attempts). Falls back to rule-based on failure.
-- `predict(text: str) -> Dict[str, object]` — Returns `{"intent": str, "confidence": float}`.
-- `rule_fallback(text: str) -> Dict[str, object]` — Keyword-based classification (always available).
-
-### 5.2 EntityExtractor
-
-Hybrid spaCy NER + noun-phrase heuristic + KG context-aware extractor.
-
-- `load()` — Loads spaCy model. Falls back to noun-phrase only on failure.
-- `extract(text: str, known_entities=None) -> List[Dict]` — Returns deduplicated entity list with KG context enrichment.
-- Supports fuzzy matching against known KG entities for alias resolution.
-
-### 5.3 CoreferenceResolver
-
-Uses `fastcoref` FCoref to resolve pronouns based on recent history. Enhanced with entity-type awareness.
-
-- `load()` — Loads fastcoref model. Falls back to rule-based resolution.
-- `resolve(text: str, context=None, known_entities=None) -> str` — Returns text with pronouns replaced by antecedents.
-- Supports personal, non-personal, possessive, and reflexive pronouns.
-
-### 5.4 SentimentAnalyzer
-
-DistilRoBERTa-based emotion classifier with keyword fallback.
-
-- `load()` — Loads `j-hartmann/emotion-english-distilroberta-base` with retry. Falls back to keyword matching.
-- `analyze(text: str) -> Dict[str, object]` — Returns `{"emotion": str, "confidence": float, "scores": Dict[str, float]}`.
-- Emotion labels: `anger`, `disgust`, `fear`, `joy`, `sadness`, `surprise`, `neutral`.
+- `GameEngine.all_story_texts` → 所有叙述者文本列表
+- `GameEngine.kg_entity_names` → 所有 KG 实体显示名称列表
+- `GameEngine.kg_density_inputs` → 每回合 KG 大小快照
 
 ---
 
-## 6. NLG Module API
+## 5. NLU 模块 API
 
-### 6.1 StoryGenerator
+### 5.1 IntentClassifier（意图分类器）
 
-Handles narrative generation via LLM. All routing handled by `api_client`.
+基于 DistilBERT 的分类器，含关键词兜底。后端可通过 `nlu_debug.intent_backend` 识别（`distilbert` | `rule_fallback`）。
 
-- `generate_opening(genre: str) -> str` — Generates opening scene.
-- `continue_story(player_input, intent, kg_summary, history, emotion) -> str` — Continues narrative based on player action and world state.
+- `load()` — 从路径加载模型，支持重试（最多 3 次）。失败时回退到规则匹配
+- `predict(text: str) -> Dict[str, object]` — 返回 `{"intent": str, "confidence": float}`
+- `rule_fallback(text: str) -> Dict[str, object]` — 基于关键词的分类（始终可用）
 
-### 6.2 OptionGenerator
+### 5.2 EntityExtractor（实体抽取器）
 
-Generates 3 branching choices in JSON format with LLM. Falls back to hardcoded options on failure.
+混合 spaCy NER + 名词短语启发式 + KG 上下文感知抽取器。
 
-- `generate(story_text, kg_summary, num_options=None) -> List[StoryOption]` — Returns contextual player options.
+- `load()` — 加载 spaCy 模型。失败时回退到仅名词短语
+- `extract(text: str, known_entities=None) -> List[Dict]` — 返回去重后的实体列表，含 KG 上下文增强
+- 支持与已知 KG 实体的模糊匹配以解析别名
 
-### 6.3 Hybrid NLG Routing
+### 5.3 CoreferenceResolver（共指消解器）
 
-The `LLMClient` and `HybridClientManager` in `src/utils/api_client.py` support three modes:
+使用 `fastcoref` FCoref 基于近期历史消解代词。增强实体类型感知。
 
-| NLG_MODE | Story Generation | Option/Relation Generation |
+- `load()` — 加载 fastcoref 模型。失败时回退到规则消解
+- `resolve(text: str, context=None, known_entities=None) -> str` — 返回代词被先行词替换后的文本
+- 支持人称代词、非人称代词、所有格代词和反身代词
+
+### 5.4 SentimentAnalyzer（情感分析器）
+
+基于 DistilRoBERTa 的情绪分类器，含关键词兜底。
+
+- `load()` — 加载 `j-hartmann/emotion-english-distilroberta-base`，支持重试。失败时回退到关键词匹配
+- `analyze(text: str) -> Dict[str, object]` — 返回 `{"emotion": str, "confidence": float, "scores": Dict[str, float]}`
+- 情绪标签：`anger`（愤怒）、`disgust`（厌恶）、`fear`（恐惧）、`joy`（喜悦）、`sadness`（悲伤）、`surprise`（惊讶）、`neutral`（中性）
+
+---
+
+## 6. NLG 模块 API
+
+### 6.1 StoryGenerator（故事生成器）
+
+通过 LLM 处理叙事生成。所有路由由 `api_client` 管理。
+
+- `generate_opening(genre: str) -> str` — 生成开场场景
+- `continue_story(player_input, intent, kg_summary, history, emotion) -> str` — 基于玩家行动和世界状态继续叙事
+
+### 6.2 OptionGenerator（选项生成器）
+
+通过 LLM 以 JSON 格式生成 3 个分支选择。失败时回退到硬编码选项。
+
+- `generate(story_text, kg_summary, num_options=None) -> List[StoryOption]` — 返回上下文相关的玩家选项
+
+### 6.3 混合 NLG 路由
+
+`src/utils/api_client.py` 中的 `LLMClient` 和 `HybridClientManager` 支持三种模式：
+
+| NLG_MODE | 故事生成 | 选项/关系生成 |
 |----------|-----------------|---------------------------|
 | `api` | Mimo/OpenAI API | Mimo/OpenAI API |
-| `local` | Local Qwen3 (llama.cpp) | Local Qwen3 (llama.cpp) |
-| `hybrid` | Local Qwen3 (llama.cpp) | Mimo/OpenAI API |
+| `local` | 本地 Qwen3 (llama.cpp) | 本地 Qwen3 (llama.cpp) |
+| `hybrid` | 本地 Qwen3 (llama.cpp) | Mimo/OpenAI API |
 
 ---
 
-## 7. Knowledge Graph API
+## 7. 知识图谱 API
 
-### 7.1 KnowledgeGraph
+### 7.1 KnowledgeGraph（知识图谱）
 
-Manages the world state using a NetworkX MultiDiGraph. Features:
-- **Rich Entity Attributes:** Description, status, status history, emotion tracking, temporal metadata.
-- **Importance Scoring:** Three modes — `composite` (default), `incremental`, `degree_only`.
-- **Layered Summary Generation:** `flat` (backward compatible) and `layered` (importance-ranked with descriptions).
-- **Temporal Decay:** Relationship confidence decay per turn with configurable cadence.
-- **Persistence:** Supports snapshots and auto-saving to `saves/`.
+使用 NetworkX MultiDiGraph 管理世界状态。特性：
+- **丰富实体属性：** 描述、状态、状态历史、情绪追踪、时序元数据
+- **重要性评分：** 三种模式 — `composite`（默认）、`incremental`、`degree_only`
+- **分层摘要生成：** `flat`（向后兼容）和 `layered`（按重要性排序含描述）
+- **时序衰减：** 每回合关系置信度衰减，衰减周期可配置
+- **持久化：** 支持快照和自动保存到 `saves/`
 
-#### Key Methods
-- `add_entity(name, entity_type, description, status, turn_id, is_player_mentioned, emotion)` — Upsert entity node.
-- `add_relation(source, target, relation, context, turn_id, confidence)` — Add edge with rich attributes.
-- `update_entity_state(name, state_updates, turn_id)` — Update entity status fields.
-- `refresh_mentions(mentioned_names, turn_id, player_mentioned_names)` — Batch-update mention tracking.
-- `apply_decay(turn_id)` — Reduce confidence of unconfirmed relations.
-- `recalculate_importance()` — Recalculate importance scores (supports incremental mode).
-- `to_summary(max_entities)` — Generate textual world-state summary (flat or layered).
-- `get_timeline(n)` — Return recent events as timeline.
-- `to_dict() / from_dict(data)` — Serialization/deserialization.
-- `save(filepath) / load(filepath)` — File persistence.
+#### 关键方法
+- `add_entity(name, entity_type, description, status, turn_id, is_player_mentioned, emotion)` — 新增或更新实体节点
+- `add_relation(source, target, relation, context, turn_id, confidence)` — 添加带丰富属性的边
+- `update_entity_state(name, state_updates, turn_id)` — 更新实体状态字段
+- `refresh_mentions(mentioned_names, turn_id, player_mentioned_names)` — 批量更新提及追踪
+- `apply_decay(turn_id)` — 降低未确认关系的置信度
+- `recalculate_importance()` — 重新计算重要性评分（支持增量模式）
+- `to_summary(max_entities)` — 生成文本世界状态摘要（flat 或 layered）
+- `get_timeline(n)` — 以时间线形式返回近期事件
+- `to_dict() / from_dict(data)` — 序列化/反序列化
+- `save(filepath) / load(filepath)` — 文件持久化
 
-### 7.2 RelationExtractor
+### 7.2 RelationExtractor（关系抽取器）
 
-LLM-powered extraction of entities and relations from text.
+基于 LLM 的实体与关系抽取。
 
-- `extract(text: str)` — Enhanced mode: extracts entities with description, status, state_changes + relations with context.
-- `extract_dual(player_input, story_text, existing_entities)` — Dual extraction from both player input and story text in single LLM call.
-- Module-level convenience functions: `extract()`, `extract_dual()`, `extract_legacy()`.
+- `extract(text: str)` — 增强模式：抽取含描述、状态、状态变化的实体 + 含上下文的关系
+- `extract_dual(player_input, story_text, existing_entities)` — 双重抽取：在单次 LLM 调用中同时从玩家输入和故事文本中抽取
+- 模块级便捷函数：`extract()`、`extract_dual()`、`extract_legacy()`
 
-### 7.3 ConflictDetector
+### 7.3 ConflictDetector（冲突检测器）
 
-Hybrid rule-based and LLM-based consistency checking with multi-strategy resolution.
+混合规则与 LLM 的一致性检查，支持多策略解决。
 
-**Detection Layers:**
-1. **Rule-based:** Exclusive relation pairs (ally_of↔enemy_of, alive↔dead), dead-active detection.
-2. **Temporal:** Post-death actions, causal inversion.
-3. **LLM:** Logical contradiction detection via LLM analysis.
+**检测层级：**
+1. **规则检测：** 互斥关系对（ally_of↔enemy_of、alive↔dead）、死亡活跃检测
+2. **时序检测：** 死后行为、因果倒置
+3. **LLM 检测：** 通过 LLM 分析检测逻辑矛盾
 
-**Resolution Strategies:**
-- `keep_latest` — Deterministic: keeps newer information, removes older conflicting data.
-- `llm_arbitrate` — Deterministic-first pass, then LLM arbitration for remaining conflicts.
+**解决策略：**
+- `keep_latest` — 确定性策略：保留更新信息，移除旧的冲突数据
+- `llm_arbitrate` — 确定性优先，然后 LLM 仲裁剩余冲突
 
 ---
 
-## 8. Evaluation API
+## 8. 评估 API
 
-### 8.1 Automatic Metrics
+### 8.1 自动指标
 
-| Metric | Description |
+| 指标 | 描述 |
 |--------|-------------|
-| `distinct_n` | Measures n-gram diversity (Distinct-1, 2, 3). |
-| `self_bleu` | Measures narrative redundancy (lower = more diverse). |
-| `entity_coverage` | Ratio of KG entities mentioned in text. |
-| `consistency_rate` | Ratio of conflict-free turns. |
-| `type_token_ratio` | Vocabulary richness metric. |
-| `flesch_reading_ease` | Readability score (English heuristic). |
-| `lexical_overlap` | Adjacent turn lexical similarity. |
-| `graph_density_evolution` | KG density trend over turns. |
+| `distinct_n` | 衡量 n-gram 多样性（Distinct-1, 2, 3） |
+| `self_bleu` | 衡量叙事冗余度（越低 = 越多样） |
+| `entity_coverage` | 文本中提及的 KG 实体比例 |
+| `consistency_rate` | 无冲突回合的比例 |
+| `type_token_ratio` | 词汇丰富度指标 |
+| `flesch_reading_ease` | 可读性评分（英语启发式） |
+| `lexical_overlap` | 相邻回合词汇重叠度 |
+| `graph_density_evolution` | KG 密度随回合变化趋势 |
 
-### 8.2 LLM Judge
+### 8.2 LLM 评审
 
-Evaluates full story sessions on **8 dimensions** (1-10 scale):
+以 **8 个维度**（1-10 分制）评估完整故事会话：
 
-| Dimension | Description |
+| 维度 | 描述 |
 |-----------|-------------|
-| `narrative_quality` | Prose quality, vivid descriptions, engaging language. |
-| `consistency` | Characters, locations, and facts remain coherent. |
-| `player_agency` | How meaningfully player choices affected the story. |
-| `creativity` | Originality of plot, settings, and characters. |
-| `pacing` | Appropriate story momentum and tension management. |
-| `option_relevance` | How well offered options align with current context. |
-| `causal_link` | Whether player actions cause believable state changes. |
-| `local_coherence` | Continuity between adjacent turns. |
+| `narrative_quality` | 散文质量、生动描述、引人入胜的语言 |
+| `consistency` | 角色、地点和事实保持一致 |
+| `player_agency` | 玩家选择对故事的影响程度 |
+| `creativity` | 情节、设定和角色的原创性 |
+| `pacing` | 故事节奏和张力管理是否恰当 |
+| `option_relevance` | 提供的选项与当前上下文的契合度 |
+| `causal_link` | 玩家行为是否引起可信的状态变化 |
+| `local_coherence` | 相邻回合之间的连贯性 |
 
-Uses separate evaluation LLM config (`EVAL_LLM_*` settings, default: `glm-5` via Zhipu API).
-
----
-
-## 9. Configuration
-
-Configured via `config.py` (Pydantic Settings) and `.env`.
-
-### LLM API Settings
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `OPENAI_API_KEY` | `""` | API key for local/OpenAI-compatible endpoint. |
-| `OPENAI_BASE_URL` | `""` | Base URL for OpenAI-compatible API. |
-| `OPENAI_MODEL` | `mimo-v2-flash` | Model name for NLG generation. |
-| `OPENAI_MAX_TOKENS` | `1024` | Maximum generation tokens. |
-| `OPENAI_TEMPERATURE` | `0.85` | Temperature for generation. |
-| `OPENAI_TIMEOUT_CONNECT` | `10.0` | Connection timeout (seconds). |
-| `OPENAI_TIMEOUT_READ` | `60.0` | Read timeout (seconds). |
-
-### Evaluation LLM Settings
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `EVAL_LLM_API_KEY` | `""` | Separate API key for LLM judge. |
-| `EVAL_LLM_BASE_URL` | `https://open.bigmodel.cn/api/paas/v4` | Evaluation LLM endpoint. |
-| `EVAL_LLM_MODEL` | `glm-5` | Model for evaluation. |
-| `EVAL_LLM_MAX_TOKENS` | `256` | Max tokens for evaluation. |
-| `EVAL_LLM_TEMPERATURE` | `0.3` | Temperature for evaluation. |
-
-### NLU Settings
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `INTENT_MODEL_NAME` | `distilbert-base-uncased` | Base model name. |
-| `INTENT_MODEL_PATH` | `models/intent_classifier` | Fine-tuned model path. |
-| `INTENT_MAX_LENGTH` | `128` | Max token length. |
-| `INTENT_LABELS` | 8 labels | `action, dialogue, explore, use_item, ask_info, rest, trade, other` |
-| `SPACY_MODEL` | `en_core_web_sm` | spaCy NER model. |
-
-### NLG Settings
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `NLG_MODE` | `hybrid` | `api`, `local`, or `hybrid`. |
-| `NUM_OPTIONS` | `3` | Number of player options per turn. |
-
-### Knowledge Graph Settings
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `KG_MAX_NODES` | `200` | Maximum nodes in KG. |
-| `KG_ENTITY_TYPES` | 5 types | `person, location, item, creature, event` |
-| `KG_RELATION_TYPES` | 12 types | `located_at, possesses, ally_of, enemy_of, knows, part_of, caused_by, has_attribute, causes, prevents, enables, follows` |
-| `KG_CONFLICT_RESOLUTION` | `llm_arbitrate` | `keep_latest` or `llm_arbitrate`. |
-| `KG_EXTRACTION_MODE` | `dual_extract` | `story_only` or `dual_extract`. |
-| `KG_IMPORTANCE_MODE` | `composite` | `degree_only`, `composite`, or `incremental`. |
-| `KG_SUMMARY_MODE` | `layered` | `flat` or `layered`. |
-| `KG_IMPORTANCE_DECAY_FACTOR` | `0.95` | Per-turn importance decay. |
-| `KG_RELATION_DECAY_FACTOR` | `0.90` | Relation confidence decay. |
-| `KG_RELATION_MIN_CONFIDENCE` | `0.2` | Minimum relation confidence threshold. |
-| `KG_IMPORTANCE_MENTION_BOOST` | `0.15` | Mention importance boost. |
-| `KG_IMPORTANCE_PLAYER_BOOST` | `0.3` | Player mention extra boost. |
-| `KG_MAX_TIMELINE_ENTRIES` | `5` | Maximum timeline entries. |
-| `KG_DECAY_CADENCE` | `1` | Every N turns apply decay. |
-| `KG_INCREMENTAL_FULL_RECALC_INTERVAL` | `10` | Full recalc interval for incremental mode. |
-| `KG_ENABLE_INCREMENTAL_IMPORTANCE` | `True` | Enable incremental importance. |
-| `KG_ENABLE_SUMMARY_CACHE` | `True` | Enable per-turn KG summary caching. |
-
-### Persistence Settings
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `KG_SAVE_DIR` | `saves/` | Save directory. |
-| `KG_AUTO_SAVE` | `True` | Auto-save enabled. |
-| `KG_SNAPSHOT_INTERVAL` | `5` | Snapshot every N turns. |
-
-### Game Settings
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `NARRATIVE_HISTORY_WINDOW` | `6` | Recent history entries for LLM context. |
-| `MAX_CONTEXT_TOKENS` | `512` | Maximum context tokens. |
-| `STREAMLIT_PORT` | `7860` | Streamlit server port. |
+使用独立的评估 LLM 配置（`EVAL_LLM_*` 设置，默认：通过智谱 API 的 `glm-5`）。
 
 ---
 
-## 10. Error Handling
+## 9. 配置
 
-- **LLM API Failure:** Automatic retry with exponential backoff (up to 3 attempts). UI displays error toast.
-- **NLU Model Missing:** Graceful fallback to rule-based matching for intent, entity, coref, and sentiment.
-- **KG Conflict:** Logged in `TurnResult.conflicts` without blocking the turn. Resolved based on configured strategy.
-- **JSON Parse Failure:** Multi-stage repair (markdown fence stripping, balanced JSON extraction, trailing comma removal, strict retry).
-- **Transformers Version Warning:** Logs warning if transformers >= 4.50 (tested range: 4.40–4.49).
+通过 `config.py`（Pydantic Settings）和 `.env` 配置。
+
+### LLM API 设置
+
+| 参数 | 默认值 | 描述 |
+|-----------|---------|-------------|
+| `OPENAI_API_KEY` | `""` | 本地/OpenAI 兼容端点的 API 密钥 |
+| `OPENAI_BASE_URL` | `""` | OpenAI 兼容 API 的基础 URL |
+| `OPENAI_MODEL` | `mimo-v2-flash` | NLG 生成的模型名称 |
+| `OPENAI_MAX_TOKENS` | `1024` | 最大生成 token 数 |
+| `OPENAI_TEMPERATURE` | `0.85` | 生成温度 |
+| `OPENAI_TIMEOUT_CONNECT` | `10.0` | 连接超时（秒） |
+| `OPENAI_TIMEOUT_READ` | `60.0` | 读取超时（秒） |
+
+### 评估 LLM 设置
+
+| 参数 | 默认值 | 描述 |
+|-----------|---------|-------------|
+| `EVAL_LLM_API_KEY` | `""` | LLM 评审的独立 API 密钥 |
+| `EVAL_LLM_BASE_URL` | `https://open.bigmodel.cn/api/paas/v4` | 评估 LLM 端点 |
+| `EVAL_LLM_MODEL` | `glm-5` | 评估模型 |
+| `EVAL_LLM_MAX_TOKENS` | `256` | 评估最大 token 数 |
+| `EVAL_LLM_TEMPERATURE` | `0.3` | 评估温度 |
+
+### NLU 设置
+
+| 参数 | 默认值 | 描述 |
+|-----------|---------|-------------|
+| `INTENT_MODEL_NAME` | `distilbert-base-uncased` | 基础模型名称 |
+| `INTENT_MODEL_PATH` | `models/intent_classifier` | 微调模型路径 |
+| `INTENT_MAX_LENGTH` | `128` | 最大 token 长度 |
+| `INTENT_LABELS` | 8 个标签 | `action, dialogue, explore, use_item, ask_info, rest, trade, other` |
+| `SPACY_MODEL` | `en_core_web_sm` | spaCy NER 模型 |
+
+### NLG 设置
+
+| 参数 | 默认值 | 描述 |
+|-----------|---------|-------------|
+| `NLG_MODE` | `hybrid` | `api`、`local` 或 `hybrid` |
+| `NUM_OPTIONS` | `3` | 每回合玩家选项数 |
+
+### 知识图谱设置
+
+| 参数 | 默认值 | 描述 |
+|-----------|---------|-------------|
+| `KG_MAX_NODES` | `200` | KG 最大节点数 |
+| `KG_ENTITY_TYPES` | 5 种类型 | `person`（人物）、`location`（地点）、`item`（物品）、`creature`（生物）、`event`（事件） |
+| `KG_RELATION_TYPES` | 12 种类型 | `located_at`、`possesses`、`ally_of`、`enemy_of`、`knows`、`part_of`、`caused_by`、`has_attribute`、`causes`、`prevents`、`enables`、`follows` |
+| `KG_CONFLICT_RESOLUTION` | `llm_arbitrate` | `keep_latest` 或 `llm_arbitrate` |
+| `KG_EXTRACTION_MODE` | `dual_extract` | `story_only` 或 `dual_extract` |
+| `KG_IMPORTANCE_MODE` | `composite` | `degree_only`、`composite` 或 `incremental` |
+| `KG_SUMMARY_MODE` | `layered` | `flat` 或 `layered` |
+| `KG_IMPORTANCE_DECAY_FACTOR` | `0.95` | 每回合重要性衰减因子 |
+| `KG_RELATION_DECAY_FACTOR` | `0.90` | 关系置信度衰减因子 |
+| `KG_RELATION_MIN_CONFIDENCE` | `0.2` | 最小关系置信度阈值 |
+| `KG_IMPORTANCE_MENTION_BOOST` | `0.15` | 提及重要性提升值 |
+| `KG_IMPORTANCE_PLAYER_BOOST` | `0.3` | 玩家提及额外提升值 |
+| `KG_MAX_TIMELINE_ENTRIES` | `5` | 最大时间线条目数 |
+| `KG_DECAY_CADENCE` | `1` | 每 N 回合应用衰减 |
+| `KG_INCREMENTAL_FULL_RECALC_INTERVAL` | `10` | 增量模式完整重计算间隔 |
+| `KG_ENABLE_INCREMENTAL_IMPORTANCE` | `True` | 启用增量重要性 |
+| `KG_ENABLE_SUMMARY_CACHE` | `True` | 启用每回合 KG 摘要缓存 |
+
+### 持久化设置
+
+| 参数 | 默认值 | 描述 |
+|-----------|---------|-------------|
+| `KG_SAVE_DIR` | `saves/` | 保存目录 |
+| `KG_AUTO_SAVE` | `True` | 启用自动保存 |
+| `KG_SNAPSHOT_INTERVAL` | `5` | 每 N 回合创建快照 |
+
+### 游戏设置
+
+| 参数 | 默认值 | 描述 |
+|-----------|---------|-------------|
+| `NARRATIVE_HISTORY_WINDOW` | `6` | LLM 上下文的近期历史条目数 |
+| `MAX_CONTEXT_TOKENS` | `512` | 最大上下文 token 数 |
+| `STREAMLIT_PORT` | `7860` | Streamlit 服务器端口 |
 
 ---
 
-## 11. Examples
+## 10. 错误处理
 
-Refer to `scripts/test_openai_api.py` for API connectivity testing or `tests/integration/test_integration.py` for full pipeline integration tests.
+- **LLM API 失败：** 自动重试，指数退避（最多 3 次）。UI 显示错误提示
+- **NLU 模型缺失：** 优雅回退到规则匹配（意图、实体、共指、情感）
+- **KG 冲突：** 记录在 `TurnResult.conflicts` 中，不阻塞回合。根据配置的策略解决
+- **JSON 解析失败：** 多阶段修复（Markdown 围栏剥离、平衡 JSON 提取、尾逗号移除、严格重试）
+- **Transformers 版本警告：** 如果 transformers >= 4.50，记录警告（测试范围：4.40–4.49）
 
-### Quick Start
+---
+
+## 11. 示例
+
+API 连通性测试请参考 `scripts/test_openai_api.py`，完整流水线集成测试请参考 `tests/integration/test_integration.py`。
+
+### 快速开始
 
 ```python
 from src.engine.game_engine import GameEngine
 
-# Create engine with lazy NLU loading (default)
+# 创建引擎，使用惰性 NLU 加载（默认）
 engine = GameEngine(genre="fantasy")
 
-# Start a new game
+# 开始新游戏
 result = engine.start_game()
 print(result.story_text)
 print([opt.text for opt in result.options])
 
-# Process a player turn
+# 处理玩家回合
 result = engine.process_turn("I draw my sword and attack the dragon")
 print(result.story_text)
-print(f"Intent: {result.nlu_debug['intent']}, Emotion: {result.nlu_debug['emotion']}")
-print(f"KG: {result.kg_node_count} nodes, {result.kg_edge_count} edges")
-print(f"Conflicts: {result.conflicts}")
+print(f"意图: {result.nlu_debug['intent']}, 情绪: {result.nlu_debug['emotion']}")
+print(f"知识图谱: {result.kg_node_count} 个节点, {result.kg_edge_count} 条边")
+print(f"冲突: {result.conflicts}")
 ```
-
