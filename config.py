@@ -27,9 +27,15 @@ class Settings(BaseSettings):
     # OpenAI / LLM API 配置
     OPENAI_API_KEY: str = Field(default="", description="OpenAI API key")  # API 密钥
     OPENAI_BASE_URL: str = Field(default="", description="OpenAI-compatible API base URL (e.g. https://your-server.com/v1)")  # API 基础 URL，支持兼容 OpenAI 的第三方服务
-    OPENAI_MODEL: str = "mimo-v2-flash"  # 使用的模型名称
+    OPENAI_MODEL: str = "mimo-v2-flash"  # 使用的模型名称（默认 / 本地兼容）
+    MIMO_MODEL: str = "mimo-v2-flash"  # Mimo API 专用模型名称
     OPENAI_MAX_TOKENS: int = 1024  # 最大生成 token 数
     OPENAI_TEMPERATURE: float = 0.85  # 温度参数，控制生成随机性（0-1）
+    
+    # ── Mimo Cloud API ────────────────────────────────────
+    # Mimo 云 API 专用配置（与 OPENAI_* 解耦）
+    MIMO_API_KEY: str = Field(default="", description="Mimo API key")
+    MIMO_BASE_URL: str = Field(default="", description="Mimo API base URL")
     
     # ── Timeout Config ─────────────────────────────────────
     # 超时配置（秒）
