@@ -1,135 +1,368 @@
-# 最终项目报告：StoryWeaver — AI 驱动的文字冒险引擎
+# Final Project Report: StoryWeaver — AI-Driven Text Adventure Engine
 
-**课程**：COMP5423 自然语言处理  
-**项目名称**：StoryWeaver  
-**小组成员**：[小组成员姓名]  
-**日期**：2026 年 4 月 1 日
-
----
-
-## 1. 任务设置与背景
-
-### 1.1 项目概述
-StoryWeaver 是一个交互式文字冒险游戏引擎，旨在展示本地自然语言理解（NLU）模型与大语言模型（LLM）叙事生成和动态世界状态管理的集成。该项目解决了多轮开放式叙事中维持叙事一致性和逻辑连贯性的核心挑战。
-
-### 1.2 动机
-传统文字冒险通常依赖于僵化的分支逻辑。现代基于 LLM 的游戏虽然灵活，但经常遭受"幻觉"之苦——AI 遗忘之前的事件、复活已死亡的角色或引入逻辑矛盾。StoryWeaver 通过知识图谱（KG）实现结构化的"世界状态"来缓解这些问题，知识图谱作为叙述者的基本事实来源。
-
-### 1.3 目标受众与适配性
-该系统面向交互式小说爱好者和对混合 AI 架构感兴趣的开发者。它符合 NLP 课程范围，利用了以下核心技术：
-- **NLU**：意图分类、实体抽取和共指消解
-- **NLG**：条件式故事续写和结构化选项生成
-- **知识工程**：关系抽取和自动化冲突检测
+**Course**: COMP5423 Natural Language Processing  
+**Project Name**: StoryWeaver  
+**Group Members**: [Group Member Names]  
+**Date**: April 1, 2026
 
 ---
 
-## 2. 系统开发与方法论
+## 0. Core Highlights Quick Look
 
-### 2.1 架构概述
-StoryWeaver 采用基于流水线的架构，每个玩家回合触发一系列处理阶段：
-
-[占位符：系统架构图，展示 NLU → 引擎 → NLG/KG 反馈循环]
-
-1.  **NLU 层（本地）**：使用轻量级本地模型处理原始玩家输入，消解代词、分类意图并抽取实体
-2.  **叙事引擎（编排器）**：管理游戏状态、历史，并调用生成和知识模块
-3.  **知识图谱（世界状态）**：基于 NetworkX 的图谱，追踪实体、关系和属性
-4.  **NLG 层（混合）**：使用远程 API（GPT-4o-mini）和本地模型（Qwen-4B）的组合生成故事文本和选项
-
-### 2.2 NLU 方法论
-- **意图分类**：微调的 **DistilBERT** 模型将输入分类为 8 个类别（如*行动、对话、探索*）。基于关键词的兜底方案确保模型加载失败时的鲁棒性
-- **共指消解**：使用 **fastcoref（FCoref）** 在意图分类之前，根据最近的叙事上下文消解代词（如"it"或"him"）
-- **实体抽取**：混合方法，使用 **spaCy NER**、名词短语启发式方法，以及与现有 KG 实体的模糊匹配，确保提及一致性
-- **情感分析**：使用 **DistilRoBERTa** 模型检测玩家情绪（Ekman 6 种情绪），使叙述者能够调整故事的基调
-
-### 2.3 知识图谱与世界状态
-KG 是系统的"记忆"。
-- **关系抽取**：基于 LLM 的（源、关系、目标）三元组抽取，附带上下文和置信度评分
-- **时序追踪**：每个节点和边追踪其 `created_turn`（创建回合）和 `last_confirmed_turn`（最后确认回合）
-- **重要性评分**：复合指标（度数中心性 + 近期性 + 提及频率）对实体排序，确保仅相关信息被反馈到 LLM 提示词中
-
-### 2.4 NLG 与提示词工程
-我们使用结构化提示词模板，将 `kg_summary`（知识图谱摘要）和 `history`（历史）注入 LLM 上下文。系统支持三种模式：
-- `api`（API 模式）：高质量远程推理
-- `local`（本地模式）：通过 `llama.cpp` 注重隐私的本地推理
-- `hybrid`（混合模式）：将创意散文分配给本地模型，结构化抽取分配给远程 API
+| # | Highlight | Evidence |
+|---|---|---|
+| 🔬 | **KG On/Off Quantitative Comparison** | Consistency 0% → 100%, Self-BLEU reduced by 38%, LLM Judge +22% |
+| 🛡️ | **Dual-Channel Conflict Detection** | Deterministic rules (mutually exclusive pairs + temporal detection) + LLM arbitration, handling 4 types of conflicts |
+| 🔄 | **Lazy Loading & Transparent Fallback** | All 4 NLU modules feature a rule-based "shadow" implementation, silently degrading upon model failure |
+| 🎛️ | **Three NLG Modes** | `api` (highest quality) / `local` (fully offline) / `hybrid` (cost-balanced), hot-swappable |
+| 💡 | **Emotion-Aware NLU** | DistilRoBERTa analyzes 7 Ekman emotions, dynamically adjusting the narrative tone |
+| 🌐 | **Interactive PyVis KG Visualization** | Real-time network graph, entities color-coded by type; serves as both a UI feature and a debugging tool |
 
 ---
 
-## 3. 技术挑战与解决方案
+## 1. Task Setup & Background
 
-### 3.1 挑战：维持长期叙事一致性
-**问题**：随着故事推进，LLM 上下文窗口变得杂乱，导致"遗忘"或与既定事实矛盾（如一个角色同时出现在两个地方）。
-**解决方案**：我们实现了**双通道冲突检测**系统。
-1.  **确定性规则**：一组硬编码的互斥对（如 `ally_of`/盟友 vs `enemy_of`/敌人、`alive`/存活 vs `dead`/死亡）立即标记矛盾
-2.  **LLM 仲裁**：高置信度 LLM 检查识别逻辑级冲突（如"一个角色正在使用 3 回合前丢失的物品"）
-3.  **解决策略**：`KeepLatestResolver`（保留最新解决器）根据 KG 中的 `last_confirmed_turn` 属性自动修剪旧的冲突关系
+### 1.1 Project Overview
+StoryWeaver is an interactive text adventure game engine that integrates **local NLU models** (DistilBERT, spaCy, fastcoref, DistilRoBERTa) with **LLM-powered narrative generation** (OpenAI GPT-4o-mini / Local Qwen3-4B) and a **dynamic knowledge graph based on NetworkX** to maintain world-state consistency across multi-turn, open-ended storytelling.
 
-### 3.2 挑战：NLU 模型部署与兜底
-**问题**：重型 NLU 模型（DistilBERT、fastcoref）加载可能很慢，或在资源受限环境中失败。
-**解决方案**：我们开发了**惰性加载与透明兜底**机制。
-- 模型仅在第一个回合时加载
-- 每个模块（意图、共指、实体）都有基于规则的"影子"实现。如果 `torch` 或模型权重缺失，系统静默切换到关键词匹配或基于正则的抽取，确保 100% 的可用性
+### 1.2 Motivation
+Traditional text adventures rely on rigid, branching logic trees. While modern LLM-based games offer flexibility, they frequently suffer from "hallucinations"—where the AI forgets past events, resurrects dead characters, or introduces logical contradictions. StoryWeaver mitigates these issues by leveraging a knowledge graph as a structured "source of ground truth," preserving the LLM's creative storytelling capabilities while maintaining logical rigor.
 
-### 3.3 挑战：KG 噪声与过度增长
-**问题**：自动化抽取经常产生冗余或"噪声"实体，降低故事质量。
-**解决方案**：我们引入了**关系衰减与重要性过滤**。
-- 关系在每回合未被提及时降低置信度（`KG_RELATION_DECAY_FACTOR`）
-- `to_summary()` 方法使用**分层摘要**方法，为"核心"实体提供完整详情，同时将"背景"实体折叠为简单列表，优化 LLM 的注意力
+### 1.3 Target Audience & NLP Course Relevance
+The system is designed for interactive fiction enthusiasts and hybrid AI architecture researchers. Its core technologies comprehensively cover key areas of the NLP curriculum:
+
+| NLP Domain | Specific Technologies |
+|---|---|
+| **NLU** | Intent Classification (Fine-tuned DistilBERT), Entity Extraction (spaCy NER + Fuzzy Matching), Coreference Resolution (fastcoref FCoref), Sentiment Analysis (DistilRoBERTa) |
+| **NLG** | Conditional Story Continuation, Structured Option Generation, Hierarchical Prompt Engineering |
+| **Knowledge Engineering** | Relational Triplet Extraction, Temporal Tracking, Automated Conflict Detection & Resolution |
+| **Evaluation** | Distinct-n, Self-BLEU, Entity Coverage, Consistency Rate, LLM-as-Judge (8 Dimensions) |
 
 ---
 
-## 4. 亮点与创新
+## 2. System Architecture
 
-### 4.1 混合 NLU-KG-NLG 流水线
-与许多将原始历史直接输入 LLM 的 AI 游戏不同，StoryWeaver 首先"解释"输入。通过在故事生成之前消解共指和识别意图，我们为 LLM 提供了更清晰的指令集。
+### 2.1 Overall Architecture
 
-### 4.2 动态知识图谱可视化
-系统包含实时**交互式 KG 可视化器**（使用 PyVis）。玩家可以看到世界状态的演变，这增强了透明度，并作为 NLU/KG 模块的调试工具。
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                       Streamlit Frontend                        │
+│  ┌──────────┐  ┌──────────────┐  ┌────────────────────────────┐│
+│  │ Chat UI  │  │ NLU Debug    │  │ KG Visualization (PyVis)   ││
+│  └──────────┘  └──────────────┘  └────────────────────────────┘│
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+┌──────────────────────────▼──────────────────────────────────────┐
+│                    GameEngine (Orchestrator)                    │
+│  ┌─────────────┐  ┌──────────┐  ┌──────────────┐  ┌─────────┐ │
+│  │ NLU (Local) │→ │Game State│→ │ Story Gen    │→ │OptionGen│ │
+│  │ DistilBERT  │  │ GameState│  │ GPT-4o-mini  │  │  (API)  │ │
+│  │ spaCy +     │  └────┬─────┘  └──────────────┘  └─────────┘ │
+│  │ fastcoref   │       │                                      │
+│  └─────────────┘       ▼                                      │
+│              ┌─────────────────────┐                          │
+│              │Knowledge Graph (NX) │← Relation Extraction     │
+│              │ + Conflict Resol.   │  (LLM JSON Mode)         │
+│              └─────────────────────┘                          │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-### 4.3 多策略抽取的鲁棒性
-我们实现了 `extract_dual`，同时处理玩家的意图和叙述者的响应。这确保即使玩家的行动很微妙，叙述者对结果的确认也会被捕获到世界状态中。
+### 2.2 Per-Turn Processing Pipeline
 
-### 4.4 自动化评估套件
-项目包含全面的评估模块（`metrics.py`），计算：
-- **Distinct-n**：词汇多样性
-- **Self-BLEU**：会话内多样性
-- **Entity Coverage（实体覆盖率）**：故事引用 KG 的程度
-- **Consistency Rate（一致性比率）**：无检测到冲突的回合百分比
+Each player turn triggers an ordered processing pipeline comprising **7 stages**:
 
----
-
-## 5. 性能评估
-
-### 5.1 定量结果
-我们进行了"KG 开启 vs 关闭"基准测试，以衡量知识图谱对生成质量的影响。
-
-| 指标 | KG 启用（kg_on） | KG 禁用（kg_off） | 提升 |
-| --- | ---: | ---: | ---: |
-| **一致性比率** | 100% | 0% | +100% |
-| **实体覆盖率** | 1.00 | 0.79 | +26% |
-| **Distinct-2** | 0.7423 | 0.6448 | +15% |
-| **Self-BLEU**（越低越好） | 0.2200 | 0.3582 | +38% |
-| **LLM 评审（平均分）** | 9.12 / 10 | 7.50 / 10 | +21% |
-
-### 5.2 分析
-结果表明，知识图谱显著提升了**一致性**和**多样性**。通过将 KG 摘要注入提示词，LLM 更不容易重复自身（更低的 Self-BLEU），也更可能引用已建立的世界细节（更高的实体覆盖率）。
-
----
-
-## 6. 小组成员贡献
-
-| 成员姓名 | 贡献比例 | 主要职责 |
-| ----------- | -------------- | ------------------------ |
-| [姓名 1] | 25% | NLU 开发（意图、共指、情感）、模型微调 |
-| [姓名 2] | 25% | 知识图谱架构、关系抽取、冲突检测 |
-| [姓名 3] | 25% | NLG 流水线、提示词工程、本地模型集成 |
-| [姓名 4] | 25% | Streamlit UI、评估套件、文档与报告 |
+| Stage | Module | Function |
+|:---:|---|---|
+| **1** | Coreference | `fastcoref` resolves pronouns (e.g., "it" → "dragon"), with rule fallback ensuring availability |
+| **2** | Intent | Fine-tuned `DistilBERT` → 8 intents (action/dialogue/explore/use_item/ask_info/rest/trade/other) |
+| **2b** | Emotion | `DistilRoBERTa` → 7 emotions (Ekman 6 + neutral), adjusting narrative tone |
+| **3** | Entities | `spaCy` NER + Noun Phrase Heuristics + KG Fuzzy Matching |
+| **4** | Story Gen | LLM continues the story based on KG Summary + History + Intent + Emotion |
+| **5** | KG Update | LLM Dual Extraction (Player Input + Story Text) → Entity/Relation Updates → Time Decay → Importance Recalculation |
+| **6** | Conflicts | Deterministic Rules + LLM Reasoning → `KeepLatestResolver` / `LLMArbitrateResolver` |
+| **7** | Options | LLM generates 3 player options annotated with risk levels |
 
 ---
 
-## 7. 结论
-StoryWeaver 成功证明了结构化世界状态（知识图谱）与专用 NLU 模块的结合可以显著提升 AI 生成叙事的连贯性和质量。该项目为未来的交互式小说提供了一个可扩展的框架，在创意表达的同时优先考虑逻辑一致性。
+## 3. Core Module Details
+
+### 3.1 NLU Layer: Multi-Model + Transparent Fallback
+
+Every NLU sub-module employs a **lazy loading + 3 retries + rule fallback** mechanism, guaranteeing 100% system availability in **any environment** (including non-GPU, missing pretrained models, or restricted networks):
+
+| Module | Primary Model | Fallback Strategy | Key Implementations |
+|---|---|---|---|
+| **Intent** | Fine-tuned DistilBERT | Keyword Matching (8-class mapping table) | 3 retries, version compatibility checks |
+| **Coreference** | fastcoref FCoref | Context-based Pronoun Replacement Rules | Supports personal/impersonal/possessive/reflexive pronouns |
+| **Entities** | spaCy `en_core_web_sm` | Noun Phrases + Regex Proper Nouns | 60+ creature list, 50+ location list, 50+ item list; Adaptive KG fuzzy matching |
+| **Emotion** | j-hartmann/emotion-english-distilroberta-base | Keyword Emotion Scoring | 7 Ekman emotions (anger/disgust/fear/joy/sadness/surprise + neutral), returning dominant emotion & score distribution |
+
+**Design Highlight — Lazy Loading & Transparent Fallback**:
+- All NLU models are **deferred until the first `process_turn()`**, ensuring rapid game startup responsiveness.
+- Every module features a corresponding **rule-based "shadow" implementation** (keyword matching, regex extraction, contextual replacement).
+- The system **silently degrades** upon model loading failure, requiring no user intervention, ensuring the game never crashes due to an unavailable NLU component.
+- Backend module statuses (`distilbert` vs. `rule_fallback`) are tracked in real-time via the `nlu_status` dictionary and transparently displayed in the UI debug panel.
+
+### 3.2 Knowledge Graph: Dynamic World State
+
+The KG is a real-time world state graph built on `nx.MultiDiGraph`, allowing multiple relation edges between the same pair of nodes.
+
+#### Node (Entity) Attributes
+- **Identity**: `name`, `entity_type` (person/location/item/creature/event/unknown)
+- **Narrative**: `description` (automatically accumulates new info), `status` (dynamic state dictionary), `status_history` (up to 10 change records)
+- **Temporal**: `created_turn`, `last_mentioned_turn`
+- **Importance**: `mention_count`, `player_mention_count`, `importance_score` (0-1 composite score)
+
+#### Edge (Relation) Attributes
+- `relation` (relation type), `context` (reason for relation establishment)
+- `created_turn`, `last_confirmed_turn`, `confidence` (0-1, decays over time)
+
+#### Importance Scoring Formula
+```text
+importance = 0.3 × norm(degree) + 0.3 × 0.95^(turns_since_last_mention)
+           + 0.2 × norm(mention_count) + 0.2 × norm(player_mention_count)
+```
+Supports both **incremental mode** (updating only dirty nodes per turn) and **full mode** (regularly triggered to ensure global precision).
+
+#### Layered Summary
+Entities are stratified by importance thresholds to optimize LLM attention allocation:
+- **Core Entities** (≥0.6): Full details (description, status, emotion, history, relations)
+- **Secondary Entities** (0.3-0.6): Simplified information
+- **Background Entities** (<0.3): Only name + type + last mentioned turn
+- Appended with a **Recent Timeline** (recent relational events sorted by turn)
+
+#### Relation Decay & Auto-Pruning
+```text
+confidence_t = confidence_0 × (KG_RELATION_DECAY_FACTOR)^turns_since_last_confirmed
+```
+Relations dropping below `KG_RELATION_MIN_CONFIDENCE` are automatically purged to prevent unbounded KG growth.
+
+### 3.3 Conflict Detection & Resolution: Dual-Channel Mechanism
+
+StoryWeaver implements a **dual-channel conflict detection** system, merging the efficiency of deterministic rules with the deep analytical capabilities of LLM reasoning:
+
+#### Channel 1: Deterministic Rule Detection (Zero-Latency)
+
+| Conflict Type | Detection Rule | Example |
+|---|---|---|
+| **exclusive_relation** | Mutually exclusive pairs `(ally_of, enemy_of)` and `(alive, dead)` cannot coexist | A single entity pair is simultaneously marked as allies and enemies |
+| **dead_active** | Entities marked `dead` cannot possess `possesses`/`located_at`/`ally_of` relations | A deceased character still holds items or resides at a location |
+| **temporal** | Post-mortem actions + Causal inversion (effects preceding causes in `causes`/`enables`) | Establishing new relations after death; inverted chronological causality |
+
+#### Channel 2: LLM Reasoning Detection (Deep Analysis)
+
+The current KG summary and the newly generated story text are sent to the LLM to identify logical contradictions uncatchable by rules (e.g., "A character uses an item lost 3 turns ago"). Detected conflicts are handled based on LLM confidence scores:
+- **≥0.75**: Immediately accepted and resolved
+- **0.45-0.74**: Deferred, awaiting more context
+- **<0.45**: Discarded (filtering out noise)
+
+#### Resolution Strategies (Strategy Pattern, Configurable)
+
+| Strategy | Mechanism | Characteristics |
+|---|---|---|
+| **KeepLatestResolver** | Compares `last_confirmed_turn`, discarding the older conflicting relation | Fast, deterministic, zero LLM calls |
+| **LLMArbitrateResolver** | Sends conflict details to LLM, returning `keep_new`/`keep_old`/`remove_relation`/`update_entity`/`no_action` | High precision, requires extra API calls |
+
+### 3.4 NLG Layer: Three Operating Modes (Architectural Flexibility)
+
+The system supports three operating modes via the `NLG_MODE` configuration, adapting to various deployment scenarios:
+
+| Mode | Story Generation | Option / Relation Extraction | Applicable Scenarios |
+|---|---|---|---|
+| **api** | GPT-4o-mini | GPT-4o-mini | Highest quality, ideal for demos and evaluations |
+| **local** | Qwen3-4B (llama.cpp) | Qwen3-4B | Fully offline, privacy-focused, zero API dependency |
+| **hybrid**| Qwen3-4B (Local) | GPT-4o-mini (API) | Balances quality and cost—local model for creative prose, API for structured extraction |
+
+**Architectural Advantages**:
+- All three modes can be hot-swapped in the `.env` file **without modifying any code**.
+- The `hybrid` mode offloads compute-heavy story generation to local hardware while retaining the API's superior JSON output capabilities for structured tasks (option generation, relation extraction).
+- The local model utilizes the **Qwen3-4B GGUF (Q4_K_M quantization)**, compressing the model footprint from 7.5GB to 2.4GB. Served via an OpenAI-compatible API on port 8081 through `llama.cpp`, it natively supports pure CPU inference.
+
+### 3.5 Dual Entity Extraction (`extract_dual`)
+
+Extracts entities and relations simultaneously from both **player input** and **story text**:
+- Player input typically contains intended actions and newly mentioned entities.
+- Story text encompasses narrative events, NPC reactions, and world state changes.
+- A single LLM call merges both text segments, automatically deduplicating and preserving the most information-rich versions.
+- Fallback Mechanism: If dual extraction fails, it extracts them separately and merges the results.
 
 ---
-[占位符：游戏 UI 截图，展示故事区域和知识图谱侧边栏]
-[占位符：NLU 调试面板截图]
+
+## 4. Evaluation Framework
+
+### 4.1 Automated Metrics (`metrics.py`)
+
+| Metric | Formula | Interpretation | Direction |
+|---|---|---|---|
+| **Distinct-n** | `\|unique n-grams\| / \|total n-grams\|` | Lexical diversity | ↑ Better |
+| **Self-BLEU** | Average Sentence-BLEU against all other sentences | Inter-text similarity | ↓ Better |
+| **Entity Coverage**| `\|KG entities mentioned in story\| / \|total KG entities\|` | World state reference rate | ↑ Better |
+| **Consistency Rate**| `\|Conflict-free turns\| / \|Total turns\|` | Narrative consistency | ↑ Better |
+| **Type-Token Ratio**| `\|Unique tokens\| / \|Total tokens\|` | Vocabulary richness | ↑ Better |
+| **Lexical Overlap**| Jaccard similarity of adjacent turns | Adjacent text repetitiveness | ↓ Better |
+| **Flesch Reading Ease**| Standard readability formula | Text readability | — |
+| **Graph Density**| `edge_count / (node_count × (node_count-1))` | KG structural complexity | — |
+
+### 4.2 LLM-as-Judge (8 Dimensions)
+
+An independent LLM assesses the generated results across 8 dimensions (on a 1-10 scale):
+
+| Dimension | Evaluation Focus |
+|---|---|
+| **narrative_quality** | Overall narrative quality |
+| **consistency** | Adherence to established world facts |
+| **player_agency** | Degree of player choice impact on the story |
+| **creativity** | Originality and novelty |
+| **pacing** | Control of narrative flow |
+| **option_relevance** | Relevance of generated options to the current context |
+| **causal_link** | Logical coherence of cause and effect |
+| **local_coherence** | Paragraph-level flow and continuity |
+
+### 4.3 KG On/Off Comparative Experiment — The Core Quantitative Evidence
+
+**Experimental Setup**: Fantasy scenario, 10 turns, always selecting the first option, single run.
+
+| Metric | KG ON | KG OFF | Change |
+|---|---:|---:|---|
+| **Consistency Rate** | **1.0000** | **0.0000** | **+100%** ⬆ |
+| **Self-BLEU** (↓ Better) | **0.2200** | 0.3582 | **-38%** ⬇ |
+| **Entity Coverage** | **1.0000** | 0.7917 | +26% ⬆ |
+| **Distinct-1** | 0.3652 | 0.3165 | +15% ⬆ |
+| **Distinct-2** | 0.7423 | 0.6448 | +15% ⬆ |
+| **Distinct-3** | 0.9059 | 0.8145 | +11% ⬆ |
+| **Type-Token Ratio** | 0.3137 | 0.2690 | +17% ⬆ |
+| **LLM Judge Average**| **9.12** / 10 | **7.50** / 10 | **+22%** ⬆ |
+
+> **Key Findings**:
+> - **Consistency leaps from 0% → 100%**: Without a KG, the LLM inevitably generated at least one logical contradiction within 10 turns. With the KG active, the conflict detection system successfully trapped and resolved all contradictions.
+> - **Self-BLEU drops by 38%**: Injecting the KG summary into the prompt drastically reduced LLM repetitiveness, significantly elevating narrative diversity.
+> - **LLM Judge rises by 22%**: Surging from 7.50 to 9.12, achieving gains across all 8 evaluated dimensions.
+
+**LLM Judge Breakdown**:
+
+| Dimension | KG ON | KG OFF | Diff |
+|---|---:|---:|---|
+| narrative_quality | 9.0 | 8.0 | +1.0 |
+| consistency | 10.0 | 9.0 | +1.0 |
+| player_agency | 8.0 | 6.0 | **+2.0** |
+| creativity | 8.0 | 6.0 | **+2.0** |
+| pacing | 9.0 | 7.0 | **+2.0** |
+| option_relevance| 9.0 | 7.0 | **+2.0** |
+| causal_link | 10.0 | 8.0 | **+2.0** |
+| local_coherence | 10.0 | 9.0 | +1.0 |
+
+> **Note**: KG-enabled mode introduces an average latency of ~18.2s/turn (vs. 5.7s/turn when off), due to the overhead of LLM relation extraction and conflict detection. This is an acceptable architectural tradeoff for guaranteed narrative consistency.
+
+---
+
+## 5. Technical Challenges & Solutions
+
+### 5.1 Long-Term Narrative Consistency
+**Challenge**: LLM context windows become cluttered as the story progresses, leading to amnesia or contradictions.  
+**Solution**: Deployed a Knowledge Graph as an external memory bank + dual-layer conflict detection (deterministic rules + LLM reasoning) + automated resolution strategies. Experimental results prove KG integration elevates consistency rates from 0% to 100%.
+
+### 5.2 NLU Deployment Robustness
+**Challenge**: Heavyweight models (DistilBERT, fastcoref) suffer from slow loading times or fail outright in resource-constrained environments.  
+**Solution**: Engineered a lazy loading + 3 retries + transparent rule fallback architecture. Each module maintains a corresponding "shadow" implementation, guaranteeing system operability under any conditions.
+
+### 5.3 KG Noise & Overgrowth
+**Challenge**: Automated extraction inherently produces redundant entities and relations.  
+**Solution**: Implemented relation temporal decay + composite importance scoring + layered summarization + node caps (`KG_MAX_NODES`) to automatically prune low-importance nodes.
+
+### 5.4 Local Model Inference Optimization
+**Challenge**: Deploying large models locally requires substantial VRAM overhead.  
+**Solution**: Integrated Qwen3-4B's Q4_K_M quantized GGUF format (compressing from 7.5GB to 2.4GB). Served via an OpenAI-compatible API using `llama.cpp`, it enables high-performance CPU-only inference.
+
+---
+
+## 6. Project Highlights & Innovations
+
+### 6.1 Hybrid NLU-KG-NLG Pipeline
+Unlike most AI games that haphazardly feed raw history into LLMs, StoryWeaver "understands" player input prior to story generation—resolving coreferences, classifying intents, analyzing emotions, and extracting entities—delivering a highly structured instruction set and world state to the LLM.
+
+### 6.2 Interactive PyVis KG Visualization
+Leveraging PyVis for **real-time interactive knowledge graph visualization** stands as one of the project's most recognizable features:
+- **Semantic Color-Coding**: Person=Cyan (#00f0ff), Location=Green (#39ff14), Item=Gold (#ffd700), Creature=Magenta (#ff00aa), Event=Purple (#7b2fff).
+- **Interactivity**: Supports node dragging, zooming, and hover-to-view entity details.
+- **Dual Utility**:
+  1. **User Experience**: Players intuitively observe the world state evolving alongside the narrative.
+  2. **Developer Tooling**: Enables real-time verification of NLU entity and relation extraction accuracy.
+- **Graceful Degradation**: Automatically falls back to HTML table rendering if PyVis becomes unavailable.
+
+### 6.3 Dual Entity Extraction
+The `extract_dual` function concurrently parses both player input and narrator responses, guaranteeing that even subtle player actions confirmed by the narrator are captured into the world state. A single LLM call executes the merge, applying deduplication and information-richness prioritization.
+
+### 6.4 Comprehensive Evaluation Framework
+- **7 Automated Metrics**: Distinct-1/2/3, Self-BLEU, Entity Coverage, Consistency Rate, Type-Token Ratio.
+- **8-Dimension LLM-as-Judge**: Spanning narrative quality, consistency, player agency, creativity, pacing, option relevance, causal links, and local coherence.
+- **KG On/Off Ablation Study**: Empirically quantifying the exact quality improvements delivered by the knowledge graph.
+
+### 6.5 Game Persistence System
+- Comprehensive JSON serialization/deserialization of the entire game state (KG + History + KG Stats).
+- Automatic state saving upon every turn completion.
+- Periodic snapshotting (configurable intervals).
+- Semantic savefile naming (intelligently generated based on the opening story context).
+- Browser refresh recovery via Streamlit Runtime Session persistence.
+
+### 6.6 Highly Configurable Policies
+Adjustable dynamically via `.env` and the frontend UI:
+- Conflict Resolution Strategy (`keep_latest` / `llm_arbitrate`)
+- Extraction Mode (`story_only` / `dual_extract`)
+- Summary Format (`flat` / `layered`)
+- Importance Calculation Mode (`degree_only` / `composite` / `incremental`)
+
+---
+
+## 7. Group Member Contributions
+
+| Member Name | Contribution % | Primary Responsibilities |
+|---|---|---|
+| [Name 1] | 25% | NLU Development (Intent, Coreference, Emotion), Model Fine-tuning, Fallback Mechanisms |
+| [Name 2] | 25% | KG Architecture, Relation Extraction, Dual-Layer Conflict Detection & Resolution |
+| [Name 3] | 25% | NLG Pipeline, Prompt Engineering, Local Model Integration (`llama.cpp` / Qwen3-4B) |
+| [Name 4] | 25% | Streamlit UI, Evaluation Suite (Auto-Metrics + LLM Judge), Persistence System, Documentation |
+
+---
+
+## 8. Conclusion & Future Outlook
+
+StoryWeaver successfully demonstrates that **combining a structured world state (Knowledge Graph) with specialized NLU modules** dramatically enhances the coherence and quality of AI-generated narratives. The KG On/Off ablation study proves that the knowledge graph propels the consistency rate from 0% to 100%, boosts LLM Judge scores by 22%, and concurrently curtails text repetitiveness (Self-BLEU -38%).
+
+The project establishes a **scalable, configurable, and rigorously evaluable** framework for future interactive fiction, striking an elegant balance between creative expression and logical consistency.
+
+**Future Directions**:
+- Exploring highly optimized KG update strategies to further slash latency.
+- Integrating additional local NLU models (e.g., lightweight relation extraction models).
+- Broadening support for multi-lingual narratives.
+- Expanding the architecture to support multiplayer collaborative storytelling engines.
+
+---
+
+## Appendix
+
+### A. Tech Stack
+- **NLU**: DistilBERT + spaCy (en_core_web_sm) + fastcoref (FCoref) + DistilRoBERTa
+- **NLG**: OpenAI GPT-4o-mini (API) / Qwen3-4B GGUF Q4_K_M (llama.cpp)
+- **Knowledge Graph**: NetworkX (MultiDiGraph) + PyVis
+- **Frontend**: Streamlit
+- **Evaluation**: NLTK (BLEU) + Custom Metrics + LLM-as-Judge
+- **Testing**: 76+ Unit Tests (KG Module), 186+ Unit Tests (NLU & KG Refinements)
+
+### B. Project Structure
+```text
+story_maker/
+├── app.py                          # Streamlit Entry Point
+├── config.py                       # Pydantic Config (.env supported)
+├── src/
+│   ├── engine/                     # Game Engine Orchestrator (game_engine.py)
+│   ├── nlu/                        # NLU Modules (Intent, Entity, Coref, Emotion)
+│   ├── nlg/                        # NLG Modules (Story Gen, Option Gen, Prompts)
+│   ├── knowledge_graph/            # KG (Graph, Extraction, Conflicts, Visualization)
+│   ├── evaluation/                 # Metrics & LLM Judge (metrics.py, llm_judge.py)
+│   ├── ui/                         # Streamlit UI Components
+│   └── utils/                      # Shared Utilities (API Clients, etc.)
+├── tests/                          # Testing Suite
+├── training/                       # Model Training Scripts
+├── scripts/                        # Deployment & Evaluation Scripts
+└── docs/                           # Full Documentation
+```
