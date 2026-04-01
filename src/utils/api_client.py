@@ -246,8 +246,11 @@ class LLMClient:
         print(f"{'='*50}")
 
         # 构建 API 请求参数
+        # Prefer MIMO_MODEL for API client, fallback to OPENAI_MODEL
+        model = getattr(self._settings, "MIMO_MODEL", None) or self._settings.OPENAI_MODEL
+
         kwargs: Dict[str, Any] = {
-            "model": self._settings.OPENAI_MODEL,
+            "model": model,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
