@@ -1,147 +1,147 @@
-# StoryWeaver Presentation Script
+# StoryWeaver 演示演讲稿
 
-This document contains the presentation script and speaker notes for the COMP5423 NLP Group Project.
-Target Time: 7 minutes (~900 - 1,000 words).
+本文档包含 COMP5423 NLP 小组项目的演示演讲稿和演讲者备注。
+目标时长：7 分钟（约 900-1,000 词）。
 
-## Slide 1: Title Slide
-**Visual Suggestion:** A sleek, cyberpunk-themed title slide with the game's logo "StoryWeaver". Include a subtle background image of a glowing, interconnected knowledge graph or a digital book. Include group members' names and student IDs.
+## 幻灯片 1：标题页
+**视觉建议：** 简洁的赛博朋克风格标题页，带有游戏标志 "StoryWeaver"。背景包含发光的互联知识图谱或数字书籍的微妙图像。包含小组成员姓名和学号。
 
-**Slide Content:**
-* StoryWeaver: AI-Powered Text Adventure Game
-* Dynamic Plot Generation with NLU & Knowledge Graphs
-* COMP5423 NLP Group Project
-* Group [Your Group ID]
+**幻灯片内容：**
+* StoryWeaver：AI 驱动的文字冒险游戏
+* 基于 NLU 和知识图谱的动态情节生成
+* COMP5423 NLP 小组项目
+* 小组 [你的小组 ID]
 
-**Speaker Notes (approx. 30 seconds / 65 words):**
-Good evening, everyone. We are Group [Your Group ID], and today we are thrilled to introduce StoryWeaver. StoryWeaver is an AI-powered text adventure game engine that we developed for our COMP5423 NLP project. Our goal was to push the boundaries of interactive storytelling by combining local Natural Language Understanding models with Large Language Models and dynamic Knowledge Graphs to create a truly personalized and consistent gaming experience.
-
----
-
-## Slide 2: Motivation & Problem Statement
-**Visual Suggestion:** A split-screen comparison. Left side: traditional text games (rigid decision trees, "wall of text", limited options). Right side: StoryWeaver (dynamic branching, AI brain, infinite possibilities).
-
-**Slide Content:**
-* **Traditional Text Adventures:**
-  * Rigid decision trees
-  * Limited, pre-written choices
-  * Memory loss over long sessions
-* **The StoryWeaver Solution:**
-  * Infinite, dynamically generated plotlines
-  * Natural language player input understanding
-  * Persistent world state and narrative consistency
-
-**Speaker Notes (approx. 45 seconds / 100 words):**
-The motivation behind this project comes from the limitations of traditional text adventure games. Historically, these games rely on rigid, hard-coded decision trees. If a player wants to do something outside the pre-written script, the game simply says "I don't understand." Furthermore, as stories get longer, basic AI generators often suffer from "hallucinations" or forget earlier plot points. 
-
-With StoryWeaver, we solve these problems. We built a system that understands natural language input, generates infinite dynamic plotlines based on your actions, and most importantly, maintains strict narrative consistency using a persistent world state. You aren't just selecting options; you are co-authoring the story.
+**演讲者备注（约 30 秒 / 65 词）：**
+大家晚上好。我们是 [你的小组 ID] 小组，今天很高兴向大家介绍 StoryWeaver。StoryWeaver 是我们为 COMP5423 NLP 项目开发的一款 AI 驱动的文字冒险游戏引擎。我们的目标是通过将本地自然语言理解模型与大语言模型和动态知识图谱相结合，推动交互式叙事的边界，创造真正个性化且一致的游戏体验。
 
 ---
 
-## Slide 3: Technical Architecture
-**Visual Suggestion:** A clean, high-level architecture diagram showing the data flow. Player Input -> NLU Module (DistilBERT/spaCy/fastcoref) -> Game Engine -> Story/Option Gen (LLM) -> Knowledge Graph. Show Streamlit wrapping everything.
+## 幻灯片 2：动机与问题陈述
+**视觉建议：** 分屏对比。左侧：传统文字游戏（僵化的决策树、"文字墙"、有限选项）。右侧：StoryWeaver（动态分支、AI 大脑、无限可能）。
 
-**Slide Content:**
-* **Frontend:** Streamlit Cyberpunk UI (Chat, KG Visualizer, Debugger)
-* **Orchestrator:** Game Engine coordinating the per-turn pipeline
-* **NLU (Local):** DistilBERT (Intent), spaCy (NER), fastcoref (Coreference)
-* **NLG (Cloud/Local):** OpenAI GPT-4o-mini / Local Qwen
-* **World State:** NetworkX Knowledge Graph & Conflict Detector
+**幻灯片内容：**
+* **传统文字冒险：**
+  * 僵化的决策树
+  * 有限的、预先编写的选择
+  * 长时间会话中的记忆丢失
+* **StoryWeaver 解决方案：**
+  * 无限、动态生成的情节线
+  * 自然语言玩家输入理解
+  * 持久的世界状态和叙事一致性
 
-**Speaker Notes (approx. 60 seconds / 130 words):**
-Here is the high-level architecture of StoryWeaver. At the core is our Game Engine orchestrator. When a player submits a turn via our Streamlit frontend, the input flows through three main phases. 
+**演讲者备注（约 45 秒 / 100 词）：**
+本项目的动机来自传统文字冒险游戏的局限性。历史上，这些游戏依赖于僵化的、硬编码的决策树。如果玩家想做超出预写脚本的事情，游戏只会说"我不理解"。此外，随着故事变长，基本的 AI 生成器经常出现"幻觉"或遗忘早期情节。
 
-First, the local Natural Language Understanding, or NLU pipeline, processes the text to understand *what* the player wants to do. 
-Second, this structured data, along with the current world state, is sent to our Natural Language Generation module—powered by an LLM—to generate the next story segment and three dynamic choices.
-Finally, the new story events are parsed and injected into our dynamic Knowledge Graph, which tracks entities and relationships to ensure the world remains consistent. This modular design allows us to swap components, like using a local Qwen model instead of the OpenAI API.
-
----
-
-## Slide 4: NLU Pipeline - Understanding the Player
-**Visual Suggestion:** A flowchart showing an example sentence (e.g., "I attack the goblin with it") transforming as it passes through Coreference, Intent Classification, and Entity Extraction. Include a small code snippet showing the pipeline sequence.
-
-**Slide Content:**
-* **Coreference Resolution (fastcoref):** "I attack it" -> "I attack the goblin"
-* **Intent Classification (DistilBERT):** Maps input to 8 distinct actions (e.g., *attack*, *explore*, *dialogue*)
-* **Entity Extraction (spaCy):** Identifies custom game entities (Person, Location, Item) with fallback heuristics
-
-**Speaker Notes (approx. 60 seconds / 140 words):**
-To truly understand player input, our NLU pipeline performs three critical tasks sequentially. 
-
-First, we tackle pronoun ambiguity using the `fastcoref` neural model. If a player says "I attack it," the system looks at the recent story context and resolves "it" to "the goblin."
-Next, we pass this resolved text to a DistilBERT model that we fine-tuned specifically for this project. It classifies the player's intent into one of eight categories, such as combat, exploration, or dialogue, with high confidence.
-Finally, we use `spaCy`'s Named Entity Recognition, enhanced with custom noun-phrase heuristics, to extract specific game entities like items, locations, and characters. By combining these three local NLP models, the engine precisely understands the player's action before passing it to the LLM for story generation.
+通过 StoryWeaver，我们解决了这些问题。我们构建了一个系统，它能理解自然语言输入，根据你的行动生成无限的动态情节线，最重要的是，使用持久的世界状态维持严格的叙事一致性。你不仅仅是在选择选项，你是在共同创作故事。
 
 ---
 
-## Slide 5: Maintaining Consistency with the Knowledge Graph
-**Visual Suggestion:** A visual representation of a graph network (nodes and edges) with properties. Show how an entity like "Village Elder" has properties like status, location, and relationships. Highlight a "Conflict Detected!" warning box.
+## 幻灯片 3：技术架构
+**视觉建议：** 清晰的高层架构图，展示数据流。玩家输入 → NLU 模块（DistilBERT/spaCy/fastcoref）→ 游戏引擎 → 故事/选项生成（LLM）→ 知识图谱。展示 Streamlit 包裹一切。
 
-**Slide Content:**
-* **NetworkX MultiDiGraph:** Tracks characters, items, and locations over time
-* **Temporal Decay & Importance Scoring:** Prioritizes recent and highly-mentioned entities
-* **Conflict Detection:** Identifies contradictions (e.g., a dead character speaking)
-* **Layered Summaries:** Feeds only relevant context to the LLM to prevent context-window bloat
+**幻灯片内容：**
+* **前端：** Streamlit 赛博朋克 UI（聊天、KG 可视化器、调试器）
+* **编排器：** 游戏引擎，协调每回合流水线
+* **NLU（本地）：** DistilBERT（意图）、spaCy（命名实体识别）、fastcoref（共指消解）
+* **NLG（云端/本地）：** OpenAI GPT-4o-mini / 本地 Qwen
+* **世界状态：** NetworkX 知识图谱与冲突检测器
 
-**Speaker Notes (approx. 70 seconds / 150 words):**
-One of the biggest challenges in AI story generation is consistency. To solve this, we implemented a dynamic Knowledge Graph using NetworkX. 
+**演讲者备注（约 60 秒 / 130 词）：**
+这是 StoryWeaver 的高层架构。核心是我们的游戏引擎编排器。当玩家通过我们的 Streamlit 前端提交回合时，输入流经三个主要阶段。
 
-Instead of feeding the entire chat history to the LLM—which wastes tokens and confuses the model—we extract entities and relationships after every turn and update the graph. The graph features an importance scoring system that factors in temporal decay, meaning older, less relevant details fade into the background, while frequently mentioned entities stay prominent.
-
-We also built a Conflict Detector. If the LLM tries to generate a story where a character who was previously killed suddenly starts talking, the conflict detector catches this contradiction against the graph's state and forces a correction. Finally, the graph generates a layered summary of the world state, providing the LLM with a strict, factual context for the next generation.
-
----
-
-## Slide 6: NLG & Dynamic Story Generation
-**Visual Suggestion:** A clean UI mockup or screenshot of the Streamlit interface, highlighting the generated story text and the three dynamically generated options with their risk levels.
-
-**Slide Content:**
-* **Context-Aware Generation:** Fuses player intent, KG summary, and emotion
-* **Dynamic Options:** Generates 3 choices per turn with varying risk levels (Low/Medium/High)
-* **LLM Agnostic:** Supports OpenAI GPT-4o-mini and local LLaMA/Qwen via llama.cpp
-* **Interactive UI:** Streamlit interface with real-time KG visualization and NLU debugging
-
-**Speaker Notes (approx. 60 seconds / 130 words):**
-For the actual story generation, we engineered highly specific prompts that fuse the player's classified intent, their emotional tone, and the Knowledge Graph summary. This ensures the LLM generates a narrative continuation that strictly respects the established world rules.
-
-Additionally, our Option Generator creates three distinct choices for the player at the end of each turn, categorized by risk level: low, medium, and high. This keeps the gameplay engaging even if the player doesn't want to type a custom response.
-
-All of this is wrapped in a responsive Streamlit interface. The UI not only renders the chat but also provides a real-time, interactive visualization of the Knowledge Graph and NLU debug data, allowing us to see exactly how the AI is interpreting the game state under the hood.
+首先是本地自然语言理解（NLU）流水线，处理文本来理解玩家*想要做什么*。
+其次，这些结构化数据连同当前世界状态一起发送到我们的自然语言生成模块——由 LLM 驱动——生成下一个故事片段和三个动态选择。
+最后，新的故事事件被解析并注入到我们的动态知识图谱中，该图谱追踪实体和关系以确保世界保持一致。这种模块化设计允许我们替换组件，比如使用本地 Qwen 模型代替 OpenAI API。
 
 ---
 
-## Slide 7: Evaluation & Quality Assessment
-**Visual Suggestion:** A dashboard-style layout showing key metrics: Distinct-N charts, Self-BLEU scores, and a dial/gauge for Consistency Rate.
+## 幻灯片 4：NLU 流水线 — 理解玩家
+**视觉建议：** 流程图展示示例句子（如"I attack the goblin with it"）在经过共指消解、意图分类和实体抽取时的转换。包含展示流水线序列的小段代码。
 
-**Slide Content:**
-* **Automated Reference-Free Metrics:**
-  * **Distinct-N & Self-BLEU:** Measures vocabulary diversity and prevents repetitive loops
-  * **Entity Coverage:** Ensures generated text utilizes KG entities
-* **Consistency Tracking:** Measures the ratio of conflict-free turns
-* **LLM-as-a-Judge:** Automated quality assessment using GPT-4 for human-like evaluation
+**幻灯片内容：**
+* **共指消解（fastcoref）：** "I attack it" → "I attack the goblin"（我攻击它 → 我攻击哥布林）
+* **意图分类（DistilBERT）：** 将输入映射到 8 种不同行动（如*攻击*、*探索*、*对话*）
+* **实体抽取（spaCy）：** 识别自定义游戏实体（人物、地点、物品），含兜底启发式方法
 
-**Speaker Notes (approx. 50 seconds / 115 words):**
-To ensure our system meets high academic standards, we implemented a robust, automated evaluation suite. Because interactive stories don't have a single "correct" reference text, we rely on reference-free metrics.
+**演讲者备注（约 60 秒 / 140 词）：**
+为了真正理解玩家输入，我们的 NLU 流水线依次执行三个关键任务。
 
-We use Distinct-N and Self-BLEU to measure vocabulary diversity, ensuring the LLM doesn't fall into repetitive text loops. We also track Entity Coverage to verify that the generated story is actually utilizing the characters and items stored in our Knowledge Graph. 
-
-Furthermore, we measure the system's consistency rate over long sessions, and utilize an LLM-as-a-Judge approach. This allows us to automatically evaluate narrative quality, coherence, and responsiveness to player choices in real-time, without requiring extensive manual human annotation.
+首先，我们使用 `fastcoref` 神经网络模型解决代词歧义。如果玩家说"I attack it"（我攻击它），系统会查看最近的故事情境，将"it"消解为"the goblin"（哥布林）。
+接下来，我们将消解后的文本传递给我们为本项目专门微调的 DistilBERT 模型。它将玩家的意图分类为八个类别之一，如战斗、探索或对话，具有高置信度。
+最后，我们使用 `spaCy` 的命名实体识别，结合自定义名词短语启发式方法，提取具体的游戏实体，如物品、地点和角色。通过结合这三个本地 NLP 模型，引擎在将玩家行动传递给 LLM 进行故事生成之前，精确理解玩家的行动。
 
 ---
 
-## Slide 8: Conclusion & Future Work
-**Visual Suggestion:** A forward-looking image (e.g., a glowing horizon or a character looking at a vast digital landscape). Simple, powerful bullet points summarizing the achievement.
+## 幻灯片 5：使用知识图谱维持一致性
+**视觉建议：** 图谱网络（节点和边）的可视化表示，附带属性。展示"村长"等实体如何拥有状态、位置和关系等属性。高亮"检测到冲突！"警告框。
 
-**Slide Content:**
-* **Achievement:** Built a fully integrated, context-aware NLP game engine
-* **Key Takeaway:** Knowledge Graphs effectively ground LLMs, reducing hallucinations
-* **Future Work:** 
-  * Expand local model finetuning
-  * Support multiplayer/co-op narratives
-* **Q&A:** Thank you for playing!
+**幻灯片内容：**
+* **NetworkX MultiDiGraph：** 随时间追踪角色、物品和地点
+* **时序衰减与重要性评分：** 优先处理近期和高频提及的实体
+* **冲突检测：** 识别矛盾（如已死亡的角色说话）
+* **分层摘要：** 仅向 LLM 提供相关上下文，防止上下文窗口膨胀
 
-**Speaker Notes (approx. 45 seconds / 100 words):**
-In conclusion, StoryWeaver successfully demonstrates how combining traditional, deterministic NLP models like DistilBERT and spaCy with modern Generative LLMs creates a robust, interactive system. By implementing a dynamic Knowledge Graph, we effectively grounded the LLM, significantly reducing hallucinations and maintaining narrative consistency over long game sessions.
+**演讲者备注（约 70 秒 / 150 词）：**
+AI 故事生成中最大的挑战之一是一致性。为解决这个问题，我们使用 NetworkX 实现了动态知识图谱。
 
-For future work, we plan to further fine-tune local models specifically for text adventure generation to reduce API dependency, and potentially explore multiplayer narrative branching.
+我们不是将整个聊天历史提供给 LLM——这会浪费 token 并混淆模型——而是在每回合后抽取实体和关系并更新图谱。图谱具有重要性评分系统，考虑时序衰减，意味着较旧、较不相关的细节会淡入背景，而频繁提及的实体保持突出。
 
-Thank you for your time and attention. We hope you enjoyed this look into StoryWeaver, and we would now like to open the floor to any questions.
+我们还构建了冲突检测器。如果 LLM 尝试生成一个之前被杀死的角色突然开始说话的故事，冲突检测器会根据图谱状态捕获这一矛盾并强制修正。最后，图谱生成世界状态的分层摘要，为 LLM 提供严格的、事实性的上下文用于下一次生成。
+
+---
+
+## 幻灯片 6：NLG 与动态故事生成
+**视觉建议：** Streamlit 界面的简洁 UI 模型或截图，高亮生成的故事文本和三个动态生成的选项及其风险等级。
+
+**幻灯片内容：**
+* **上下文感知生成：** 融合玩家意图、KG 摘要和情绪
+* **动态选项：** 每回合生成 3 个选择，具有不同的风险等级（低/中/高）
+* **LLM 无关：** 支持 OpenAI GPT-4o-mini 和通过 llama.cpp 的本地 LLaMA/Qwen
+* **交互式 UI：** Streamlit 界面，含实时 KG 可视化和 NLU 调试
+
+**演讲者备注（约 60 秒 / 130 词）：**
+在实际的故事生成方面，我们设计了高度特定的提示词，融合玩家的分类意图、情绪基调和知识图谱摘要。这确保 LLM 生成的叙事续写严格遵守已建立的世界规则。
+
+此外，我们的选项生成器在每回合结束时为玩家创建三个不同的选择，按风险等级分类：低、中、高。即使玩家不想输入自定义响应，这也能保持游戏的吸引力。
+
+所有这些都被包裹在一个响应式的 Streamlit 界面中。UI 不仅渲染聊天，还提供知识图谱和 NLU 调试数据的实时交互式可视化，让我们能够确切看到 AI 如何在底层解释游戏状态。
+
+---
+
+## 幻灯片 7：评估与质量评估
+**视觉建议：** 仪表盘风格布局，展示关键指标：Distinct-N 图表、Self-BLEU 评分，以及一致性比率的表盘/仪表。
+
+**幻灯片内容：**
+* **自动化无参考指标：**
+  * **Distinct-N 与 Self-BLEU：** 衡量词汇多样性，防止重复循环
+  * **实体覆盖率：** 确保生成的文本利用 KG 实体
+* **一致性追踪：** 衡量无冲突回合的比例
+* **LLM-as-a-Judge：** 使用 GPT-4 进行类人评估的自动化质量评估
+
+**演讲者备注（约 50 秒 / 115 词）：**
+为确保我们的系统达到高学术标准，我们实现了强大的自动化评估套件。由于交互式故事没有单一的"正确"参考文本，我们依赖无参考指标。
+
+我们使用 Distinct-N 和 Self-BLEU 来衡量词汇多样性，确保 LLM 不会陷入重复的文本循环。我们还追踪实体覆盖率，以验证生成的故事是否真正利用了存储在知识图谱中的角色和物品。
+
+此外，我们衡量系统在长时间会话中的一致性比率，并利用 LLM-as-a-Judge 方法。这使我们能够自动评估叙事质量、连贯性和对玩家选择的响应能力，而无需大量的人工标注。
+
+---
+
+## 幻灯片 8：结论与未来工作
+**视觉建议：** 前瞻性图像（如发光的地平线或角色凝视广阔的数字景观）。简洁有力的要点总结成就。
+
+**幻灯片内容：**
+* **成就：** 构建了完全集成的、上下文感知的 NLP 游戏引擎
+* **关键收获：** 知识图谱有效地锚定 LLM，减少幻觉
+* **未来工作：**
+  * 扩展本地模型微调
+  * 支持多人/合作叙事
+* **问答：** 感谢游玩！
+
+**演讲者备注（约 45 秒 / 100 词）：**
+总之，StoryWeaver 成功展示了如何将传统的、确定性的 NLP 模型（如 DistilBERT 和 spaCy）与现代生成式 LLM 相结合，创建一个健壮的交互式系统。通过实现动态知识图谱，我们有效地锚定了 LLM，显著减少了幻觉，并在长时间游戏会话中维持了叙事一致性。
+
+对于未来工作，我们计划进一步微调专门用于文字冒险生成的本地模型，以减少对 API 的依赖，并可能探索多人叙事分支。
+
+感谢大家的时间和关注。希望这次 StoryWeaver 的展示令您满意，现在我们乐意回答任何问题。

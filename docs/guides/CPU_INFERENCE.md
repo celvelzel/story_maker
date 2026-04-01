@@ -1,58 +1,58 @@
-# CPU-Only Inference — Deprecated
+# 纯 CPU 推理 — 已废弃
 
-> **⚠️ DEPRECATED (2026-04-01)**: This document is preserved for historical reference only. The vLLM CPU inference scripts, configuration files, and related infrastructure referenced herein **no longer exist** in this repository.
+> **⚠️ 已废弃（2026-04-01）**：本文档仅供历史参考。本文档原始版本中引用的 vLLM CPU 推理脚本、配置文件及相关基础设施**已不存在**于本仓库中。
 >
-> **Use llama.cpp instead.** See [Local Model Startup Guide](local-model-startup.md) and [Zero-to-Hero Deployment](zero-to-hero-deployment.md).
+> **请改用 llama.cpp。** 请参考 [本地模型启动指南](local-model-startup.md) 和 [从零开始部署指南](zero-to-hero-deployment.md)。
 
 ---
 
-## What Was Removed
+## 已移除的内容
 
-The following files and configurations described in the original version of this document have been removed:
+本文档原始版本中描述的以下文件和配置已被移除：
 
-| File | Status |
+| 文件 | 状态 |
 |------|--------|
-| `scripts/start_vllm_server_cpu.sh` | ❌ Removed |
-| `scripts/start_vllm_server.sh` | ❌ Removed |
-| `.env.vllm.cpu` | ❌ Removed |
-| `.env.vllm` / `.env.vllm.example` | ❌ Removed |
-| `VLLM_INTEGRATION.md` | ❌ Removed |
+| `scripts/start_vllm_server_cpu.sh` | ❌ 已移除 |
+| `scripts/start_vllm_server.sh` | ❌ 已移除 |
+| `.env.vllm.cpu` | ❌ 已移除 |
+| `.env.vllm` / `.env.vllm.example` | ❌ 已移除 |
+| `VLLM_INTEGRATION.md` | ❌ 已移除 |
 
-## Why llama.cpp Replaced vLLM for CPU Inference
+## 为什么 llama.cpp 取代了 vLLM 用于 CPU 推理
 
-| Factor | vLLM (old) | llama.cpp (current) |
+| 因素 | vLLM（旧版） | llama.cpp（当前） |
 |--------|-----------|---------------------|
-| CPU support | Experimental, complex setup | Native, out-of-the-box |
-| Deployment complexity | High (Python deps, quantization pipeline) | Low (single binary) |
-| Memory footprint | Higher | Lower |
-| Cross-platform | Linux-focused | Windows/macOS/Linux |
-| GGUF support | Limited | Native |
-| Metal (Apple Silicon) | No | Yes |
-| CUDA | Yes | Yes |
+| CPU 支持 | 实验性，设置复杂 | 原生支持，开箱即用 |
+| 部署复杂度 | 高（Python 依赖、量化流水线） | 低（单个二进制文件） |
+| 内存占用 | 较高 | 较低 |
+| 跨平台 | 主要面向 Linux | Windows/macOS/Linux |
+| GGUF 支持 | 有限 | 原生支持 |
+| Metal（Apple Silicon） | 不支持 | 支持 |
+| CUDA | 支持 | 支持 |
 
-## Migration Path
+## 迁移路径
 
-If you were following this guide, switch to:
+如果你之前参考的是本文档，请切换到：
 
-1. **[Zero-to-Hero Deployment](zero-to-hero-deployment.md)** — Full setup from scratch
-2. **[Local Model Startup](local-model-startup.md)** — Quick llama.cpp server start
+1. **[从零开始部署](zero-to-hero-deployment.md)** — 从零开始完整设置
+2. **[本地模型启动](local-model-startup.md)** — 快速启动 llama.cpp 服务器
 
-### Quick Migration Steps
+### 快速迁移步骤
 
 ```bash
-# 1. Download llama.cpp binaries
-#    https://github.com/ggerganov/llama.cpp/releases
-#    Extract to llama.cpp-bin/
+# 1. 下载 llama.cpp 二进制文件
+#    下载地址：https://github.com/ggerganov/llama.cpp/releases
+#    解压到 llama.cpp-bin/ 目录
 
-# 2. Place GGUF model
+# 2. 放置 GGUF 模型文件
 mkdir -p models/qwen-gguf/
-# Place qwen3-4b-q4_k_m.gguf in models/qwen-gguf/
+# 将 qwen3-4b-q4_k_m.gguf 放到 models/qwen-gguf/ 目录中
 
-# 3. Start llama.cpp server
-#    Windows: scripts\start_llama_server.bat
-#    macOS/Linux: ./llama.cpp-bin/llama-server -m models/qwen-gguf/qwen3-4b-q4_k_m.gguf --host 127.0.0.1 --port 8081 -c 2048
+# 3. 启动 llama.cpp 服务器
+#    Windows 系统：scripts\start_llama_server.bat
+#    macOS/Linux 系统：./llama.cpp-bin/llama-server -m models/qwen-gguf/qwen3-4b-q4_k_m.gguf --host 127.0.0.1 --port 8081 -c 2048
 
-# 4. Configure .env
+# 4. 配置 .env 文件
 #    OPENAI_BASE_URL=http://127.0.0.1:8081/v1
 #    OPENAI_MODEL=qwen3-4b
 #    OPENAI_API_KEY=local
@@ -60,4 +60,4 @@ mkdir -p models/qwen-gguf/
 
 ---
 
-*This document is archived. Last meaningful update: 2026-03-31. Deprecated: 2026-04-01.*
+*本文档已归档。最后有意义更新：2026-03-31。废弃日期：2026-04-01。*

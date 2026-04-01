@@ -1,135 +1,135 @@
-# Final Project Report: StoryWeaver - AI-Powered Text Adventure Engine
+# 最终项目报告：StoryWeaver — AI 驱动的文字冒险引擎
 
-**Course**: COMP5423 Natural Language Processing  
-**Project Name**: StoryWeaver  
-**Group Members**: [Group Member Names]  
-**Date**: April 1, 2026
-
----
-
-## 1. Task Settings & Background
-
-### 1.1 Project Overview
-StoryWeaver is an interactive text adventure game engine designed to demonstrate the integration of local Natural Language Understanding (NLU) models with Large Language Model (LLM) narrative generation and dynamic world state management. The project addresses the core challenge of maintaining narrative consistency and logical coherence in multi-turn, open-ended storytelling.
-
-### 1.2 Motivation
-Traditional text adventures often rely on rigid branching logic. Modern LLM-based games, while flexible, frequently suffer from "hallucinations"—where the AI forgets previous events, resurrects dead characters, or introduces logical contradictions. StoryWeaver mitigates these issues by implementing a structured "World State" via a Knowledge Graph (KG) that acts as a ground truth for the narrator.
-
-### 1.3 Target Audience & Appropriateness
-The system is designed for enthusiasts of interactive fiction and developers interested in hybrid AI architectures. It fits the NLP course scope by utilizing core technologies including:
-- **NLU**: Intent classification, entity extraction, and coreference resolution.
-- **NLG**: Conditional story continuation and structured option generation.
-- **Knowledge Engineering**: Relation extraction and automated conflict detection.
+**课程**：COMP5423 自然语言处理  
+**项目名称**：StoryWeaver  
+**小组成员**：[小组成员姓名]  
+**日期**：2026 年 4 月 1 日
 
 ---
 
-## 2. System Development & Methodologies
+## 1. 任务设置与背景
 
-### 2.1 Architecture Overview
-StoryWeaver employs a pipeline-based architecture where each player turn triggers a sequence of processing stages:
+### 1.1 项目概述
+StoryWeaver 是一个交互式文字冒险游戏引擎，旨在展示本地自然语言理解（NLU）模型与大语言模型（LLM）叙事生成和动态世界状态管理的集成。该项目解决了多轮开放式叙事中维持叙事一致性和逻辑连贯性的核心挑战。
 
-[Placeholder: System Architecture Diagram showing NLU -> Engine -> NLG/KG feedback loop]
+### 1.2 动机
+传统文字冒险通常依赖于僵化的分支逻辑。现代基于 LLM 的游戏虽然灵活，但经常遭受"幻觉"之苦——AI 遗忘之前的事件、复活已死亡的角色或引入逻辑矛盾。StoryWeaver 通过知识图谱（KG）实现结构化的"世界状态"来缓解这些问题，知识图谱作为叙述者的基本事实来源。
 
-1.  **NLU Layer (Local)**: Processes raw player input to resolve pronouns, classify intent, and extract entities using lightweight local models.
-2.  **Narrative Engine (Orchestrator)**: Manages the game state, history, and invokes the generation and knowledge modules.
-3.  **Knowledge Graph (World State)**: A NetworkX-based graph that tracks entities, relationships, and attributes.
-4.  **NLG Layer (Hybrid)**: Generates story text and options using a combination of remote APIs (GPT-4o-mini) and local models (Qwen-4B).
-
-### 2.2 NLU Methodologies
-- **Intent Classification**: A fine-tuned **DistilBERT** model classifies inputs into 8 categories (e.g., *action, dialogue, explore*). A keyword-based fallback ensures robustness if the model fails to load.
-- **Coreference Resolution**: Uses **fastcoref (FCoref)** to resolve pronouns (e.g., "it" or "him") based on the recent narrative context before intent classification.
-- **Entity Extraction**: A hybrid approach using **spaCy NER**, noun-phrase heuristics, and fuzzy matching against existing KG entities to ensure mention consistency.
-- **Sentiment Analysis**: Employs a **DistilRoBERTa** model to detect player emotions (Ekman's 6 emotions), allowing the narrator to adapt the story's tone.
-
-### 2.3 Knowledge Graph & World State
-The KG is the "memory" of the system.
-- **Relation Extraction**: LLM-based extraction of (Source, Relation, Target) triplets with added context and confidence scores.
-- **Temporal Tracking**: Each node and edge tracks its `created_turn` and `last_confirmed_turn`.
-- **Importance Scoring**: A composite metric (Degree Centrality + Recency + Mention Frequency) ranks entities, ensuring only relevant information is fed back into the LLM prompt.
-
-### 2.4 NLG & Prompt Engineering
-We utilize structured prompt templates that inject the `kg_summary` and `history` into the LLM context. The system supports three modes:
-- `api`: High-quality remote inference.
-- `local`: Privacy-focused local inference via `llama.cpp`.
-- `hybrid`: Distributes creative prose to local models and structural extraction to remote APIs.
+### 1.3 目标受众与适配性
+该系统面向交互式小说爱好者和对混合 AI 架构感兴趣的开发者。它符合 NLP 课程范围，利用了以下核心技术：
+- **NLU**：意图分类、实体抽取和共指消解
+- **NLG**：条件式故事续写和结构化选项生成
+- **知识工程**：关系抽取和自动化冲突检测
 
 ---
 
-## 3. Technical Challenges & Solutions
+## 2. 系统开发与方法论
 
-### 3.1 Challenge: Maintaining Long-term Narrative Consistency
-**Problem**: As the story progresses, the LLM context window becomes cluttered, leading to "forgetting" or contradicting established facts (e.g., a character being in two places at once).
-**Solution**: We implemented a **Dual-Channel Conflict Detection** system. 
-1.  **Deterministic Rules**: A set of hard-coded mutex pairs (e.g., `ally_of` vs `enemy_of`, `alive` vs `dead`) immediately flags contradictions.
-2.  **LLM Arbitration**: High-confidence LLM checks identify logic-level conflicts (e.g., "A character is using an item they lost 3 turns ago").
-3.  **Resolution Strategy**: A `KeepLatestResolver` automatically prunes older, conflicting relations based on the `last_confirmed_turn` attribute in the KG.
+### 2.1 架构概述
+StoryWeaver 采用基于流水线的架构，每个玩家回合触发一系列处理阶段：
 
-### 3.2 Challenge: NLU Model Deployment & Fallback
-**Problem**: Heavy NLU models (DistilBERT, fastcoref) can be slow to load or fail in resource-constrained environments.
-**Solution**: We developed a **Lazy-Loading & Transparent Fallback** mechanism. 
-- Models are loaded only upon the first turn.
-- Each module (Intent, Coref, Entity) has a rule-based "Shadow" implementation. If `torch` or model weights are missing, the system silently switches to keyword matching or regex-based extraction, ensuring 100% uptime.
+[占位符：系统架构图，展示 NLU → 引擎 → NLG/KG 反馈循环]
 
-### 3.3 Challenge: KG Noise & Overgrowth
-**Problem**: Automated extraction often produces redundant or "noisy" entities that degrade story quality.
-**Solution**: We introduced **Relation Decay and Importance Filtering**. 
-- Relations lose confidence every turn they aren't mentioned (`KG_RELATION_DECAY_FACTOR`).
-- The `to_summary()` method uses a **Layered Summary** approach, providing full details for "Core" entities while collapsing "Background" entities into simple lists, optimizing the LLM's attention.
+1.  **NLU 层（本地）**：使用轻量级本地模型处理原始玩家输入，消解代词、分类意图并抽取实体
+2.  **叙事引擎（编排器）**：管理游戏状态、历史，并调用生成和知识模块
+3.  **知识图谱（世界状态）**：基于 NetworkX 的图谱，追踪实体、关系和属性
+4.  **NLG 层（混合）**：使用远程 API（GPT-4o-mini）和本地模型（Qwen-4B）的组合生成故事文本和选项
 
----
+### 2.2 NLU 方法论
+- **意图分类**：微调的 **DistilBERT** 模型将输入分类为 8 个类别（如*行动、对话、探索*）。基于关键词的兜底方案确保模型加载失败时的鲁棒性
+- **共指消解**：使用 **fastcoref（FCoref）** 在意图分类之前，根据最近的叙事上下文消解代词（如"it"或"him"）
+- **实体抽取**：混合方法，使用 **spaCy NER**、名词短语启发式方法，以及与现有 KG 实体的模糊匹配，确保提及一致性
+- **情感分析**：使用 **DistilRoBERTa** 模型检测玩家情绪（Ekman 6 种情绪），使叙述者能够调整故事的基调
 
-## 4. Highlights & Innovations
+### 2.3 知识图谱与世界状态
+KG 是系统的"记忆"。
+- **关系抽取**：基于 LLM 的（源、关系、目标）三元组抽取，附带上下文和置信度评分
+- **时序追踪**：每个节点和边追踪其 `created_turn`（创建回合）和 `last_confirmed_turn`（最后确认回合）
+- **重要性评分**：复合指标（度数中心性 + 近期性 + 提及频率）对实体排序，确保仅相关信息被反馈到 LLM 提示词中
 
-### 4.1 Hybrid NLU-KG-NLG Pipeline
-Unlike many AI games that feed raw history into an LLM, StoryWeaver "interprets" the input first. By resolving coreferences and identifying intent *before* story generation, we provide the LLM with a much cleaner instruction set.
-
-### 4.2 Dynamic Knowledge Graph Visualization
-The system includes a real-time **interactive KG visualizer** (using PyVis). Players can see the world state evolve, which enhances transparency and acts as a debugging tool for the NLU/KG modules.
-
-### 4.3 Robustness via Multi-Strategy Extraction
-We implemented `extract_dual`, which processes both the player's intent and the narrator's response. This ensures that even if the player's action is subtle, the narrator's confirmation of the result is captured in the world state.
-
-### 4.4 Automated Evaluation Suite
-The project includes a comprehensive evaluation module (`metrics.py`) calculating:
-- **Distinct-n**: Vocabulary diversity.
-- **Self-BLEU**: Intra-session variety.
-- **Entity Coverage**: How well the story references the KG.
-- **Consistency Rate**: Percentage of turns without detected conflicts.
+### 2.4 NLG 与提示词工程
+我们使用结构化提示词模板，将 `kg_summary`（知识图谱摘要）和 `history`（历史）注入 LLM 上下文。系统支持三种模式：
+- `api`（API 模式）：高质量远程推理
+- `local`（本地模式）：通过 `llama.cpp` 注重隐私的本地推理
+- `hybrid`（混合模式）：将创意散文分配给本地模型，结构化抽取分配给远程 API
 
 ---
 
-## 5. Performance Evaluation
+## 3. 技术挑战与解决方案
 
-### 5.1 Quantitative Results
-We conducted a "KG On vs. Off" benchmark to measure the impact of the Knowledge Graph on generation quality.
+### 3.1 挑战：维持长期叙事一致性
+**问题**：随着故事推进，LLM 上下文窗口变得杂乱，导致"遗忘"或与既定事实矛盾（如一个角色同时出现在两个地方）。
+**解决方案**：我们实现了**双通道冲突检测**系统。
+1.  **确定性规则**：一组硬编码的互斥对（如 `ally_of`/盟友 vs `enemy_of`/敌人、`alive`/存活 vs `dead`/死亡）立即标记矛盾
+2.  **LLM 仲裁**：高置信度 LLM 检查识别逻辑级冲突（如"一个角色正在使用 3 回合前丢失的物品"）
+3.  **解决策略**：`KeepLatestResolver`（保留最新解决器）根据 KG 中的 `last_confirmed_turn` 属性自动修剪旧的冲突关系
 
-| Metric | KG Enabled (kg_on) | KG Disabled (kg_off) | Improvement |
+### 3.2 挑战：NLU 模型部署与兜底
+**问题**：重型 NLU 模型（DistilBERT、fastcoref）加载可能很慢，或在资源受限环境中失败。
+**解决方案**：我们开发了**惰性加载与透明兜底**机制。
+- 模型仅在第一个回合时加载
+- 每个模块（意图、共指、实体）都有基于规则的"影子"实现。如果 `torch` 或模型权重缺失，系统静默切换到关键词匹配或基于正则的抽取，确保 100% 的可用性
+
+### 3.3 挑战：KG 噪声与过度增长
+**问题**：自动化抽取经常产生冗余或"噪声"实体，降低故事质量。
+**解决方案**：我们引入了**关系衰减与重要性过滤**。
+- 关系在每回合未被提及时降低置信度（`KG_RELATION_DECAY_FACTOR`）
+- `to_summary()` 方法使用**分层摘要**方法，为"核心"实体提供完整详情，同时将"背景"实体折叠为简单列表，优化 LLM 的注意力
+
+---
+
+## 4. 亮点与创新
+
+### 4.1 混合 NLU-KG-NLG 流水线
+与许多将原始历史直接输入 LLM 的 AI 游戏不同，StoryWeaver 首先"解释"输入。通过在故事生成之前消解共指和识别意图，我们为 LLM 提供了更清晰的指令集。
+
+### 4.2 动态知识图谱可视化
+系统包含实时**交互式 KG 可视化器**（使用 PyVis）。玩家可以看到世界状态的演变，这增强了透明度，并作为 NLU/KG 模块的调试工具。
+
+### 4.3 多策略抽取的鲁棒性
+我们实现了 `extract_dual`，同时处理玩家的意图和叙述者的响应。这确保即使玩家的行动很微妙，叙述者对结果的确认也会被捕获到世界状态中。
+
+### 4.4 自动化评估套件
+项目包含全面的评估模块（`metrics.py`），计算：
+- **Distinct-n**：词汇多样性
+- **Self-BLEU**：会话内多样性
+- **Entity Coverage（实体覆盖率）**：故事引用 KG 的程度
+- **Consistency Rate（一致性比率）**：无检测到冲突的回合百分比
+
+---
+
+## 5. 性能评估
+
+### 5.1 定量结果
+我们进行了"KG 开启 vs 关闭"基准测试，以衡量知识图谱对生成质量的影响。
+
+| 指标 | KG 启用（kg_on） | KG 禁用（kg_off） | 提升 |
 | --- | ---: | ---: | ---: |
-| **Consistency Rate** | 100% | 0% | +100% |
-| **Entity Coverage** | 1.00 | 0.79 | +26% |
+| **一致性比率** | 100% | 0% | +100% |
+| **实体覆盖率** | 1.00 | 0.79 | +26% |
 | **Distinct-2** | 0.7423 | 0.6448 | +15% |
-| **Self-BLEU** (Lower is better) | 0.2200 | 0.3582 | +38% |
-| **LLM Judge (Avg Score)** | 9.12 / 10 | 7.50 / 10 | +21% |
+| **Self-BLEU**（越低越好） | 0.2200 | 0.3582 | +38% |
+| **LLM 评审（平均分）** | 9.12 / 10 | 7.50 / 10 | +21% |
 
-### 5.2 Analysis
-The results demonstrate that the Knowledge Graph significantly improves **Consistency** and **Diversity**. By injecting the KG summary into the prompt, the LLM is less likely to repeat itself (Lower Self-BLEU) and more likely to reference established world details (Higher Entity Coverage).
+### 5.2 分析
+结果表明，知识图谱显著提升了**一致性**和**多样性**。通过将 KG 摘要注入提示词，LLM 更不容易重复自身（更低的 Self-BLEU），也更可能引用已建立的世界细节（更高的实体覆盖率）。
 
 ---
 
-## 6. Group Member Contributions
+## 6. 小组成员贡献
 
-| Member Name | Contribution % | Primary Responsibilities |
+| 成员姓名 | 贡献比例 | 主要职责 |
 | ----------- | -------------- | ------------------------ |
-| [Name 1] | 25% | NLU Development (Intent, Coref, Sentiment), Model Fine-tuning. |
-| [Name 2] | 25% | Knowledge Graph Architecture, Relation Extraction, Conflict Detection. |
-| [Name 3] | 25% | NLG Pipeline, Prompt Engineering, Local Model Integration. |
-| [Name 4] | 25% | Streamlit UI, Evaluation Suite, Documentation & Reporting. |
+| [姓名 1] | 25% | NLU 开发（意图、共指、情感）、模型微调 |
+| [姓名 2] | 25% | 知识图谱架构、关系抽取、冲突检测 |
+| [姓名 3] | 25% | NLG 流水线、提示词工程、本地模型集成 |
+| [姓名 4] | 25% | Streamlit UI、评估套件、文档与报告 |
 
 ---
 
-## 7. Conclusion
-StoryWeaver successfully demonstrates that a structured world state (Knowledge Graph) combined with specialized NLU modules can significantly enhance the coherence and quality of AI-generated narratives. The project provides a scalable framework for future interactive fiction that prioritizes logical consistency alongside creative expression.
+## 7. 结论
+StoryWeaver 成功证明了结构化世界状态（知识图谱）与专用 NLU 模块的结合可以显著提升 AI 生成叙事的连贯性和质量。该项目为未来的交互式小说提供了一个可扩展的框架，在创意表达的同时优先考虑逻辑一致性。
 
 ---
-[Placeholder: Screenshot of the Game UI showing the story area and the Knowledge Graph sidebar]
-[Placeholder: Screenshot of the NLU Debugging panel]
+[占位符：游戏 UI 截图，展示故事区域和知识图谱侧边栏]
+[占位符：NLU 调试面板截图]

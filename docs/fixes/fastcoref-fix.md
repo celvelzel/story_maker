@@ -1,36 +1,38 @@
-# FastCoref Integration & Compatibility Fix
+# FastCoref 集成与兼容性修复
 
-**Date:** March 18, 2026  
-**Status:** ✅ **Resolved** — Full NLU modules enabled
+**日期：** 2026 年 3 月 18 日  
+**状态：** ✅ **已解决** — NLU 模块全面启用
 
-## Problem Statement
+## 问题陈述
 
-The `fastcoref` library (v2.x) has a hard dependency on an internal attribute in the `transformers` library that was removed in `transformers` v5.2.0. This caused a complete failure of the coreference resolution module during startup.
+`fastcoref` 库（v2.x）对 `transformers` 库中的一个内部属性有硬性依赖，该属性在 `transformers` v5.2.0 中被移除。这导致共指消解模块在启动时完全失败。
 
-### Error Symptoms
+### 错误症状
 ```text
 'FCorefModel' object has no attribute 'all_tied_weights_keys'
+# 'FCorefModel' 对象没有 'all_tied_weights_keys' 属性
 KeyError: 'all_tied_weights_keys not found in PreTrainedModel'
+# 键错误：'all_tied_weights_keys 在 PreTrainedModel 中未找到'
 ```
 
-**Root Cause:** `transformers` 5.2.0 removed the `all_tied_weights_keys` attribute from `PreTrainedModel`, but `fastcoref` still expects this attribute to exist and be iterable.
+**根本原因：** `transformers` 5.2.0 从 `PreTrainedModel` 中移除了 `all_tied_weights_keys` 属性，但 `fastcoref` 仍然期望此属性存在且可迭代。
 
 ---
 
-## Solution Evolution
+## 解决方案演进
 
-| Attempt | Method | Result | Reason |
+| 尝试 | 方法 | 结果 | 原因 |
 |:---|:---|:---|:---|
-| 1 | Downgrade `transformers` to 4.40 | ❌ Failed | Missing Rust compilation environment for older versions. |
-| 2 | Property Patching | ❌ Failed | Setter conflicts within the class hierarchy. |
-| 3 | Function Patching | ❌ Failed | `fastcoref` expects a dictionary-like `.keys()` method. |
-| 4 | **Dictionary Subclass Patch ✓** | ✅ **Success** | Provides a complete, compatible `dict` interface. |
+| 1 | 降级 `transformers` 到 4.40 | ❌ 失败 | 缺少旧版本所需的 Rust 编译环境 |
+| 2 | 属性补丁 | ❌ 失败 | 类层次结构中的设置器冲突 |
+| 3 | 函数补丁 | ❌ 失败 | `fastcoref` 期望类似字典的 `.keys()` 方法 |
+| 4 | **字典子类补丁 ✓** | ✅ **成功** | 提供完整兼容的 `dict` 接口 |
 
 ---
 
-## Final Implementation
+## 最终实现
 
-**Location:** `src/nlu/coreference.py`
+**位置：** `src/nlu/coreference.py`
 
 ```python
 def load(self) -> None:
@@ -38,66 +40,73 @@ def load(self) -> None:
         from transformers.modeling_utils import PreTrainedModel
         
         class _TiedWeightsCompat(dict):
-            """Dict subclass that acts as empty tied weights."""
+            """字典子类，充当空的绑定权重"""
             def __init__(self):
                 super().__init__()
         
-        # Inject the missing attribute if it doesn't exist
+        # 如果属性不存在，注入缺失的属性
         if not hasattr(PreTrainedModel, "all_tied_weights_keys"):
             PreTrainedModel.all_tied_weights_keys = _TiedWeightsCompat()
         
         from fastcoref import FCoref
         self.model = FCoref(device="cpu")
         logger.info("Coreference resolver loaded (fastcoref)")
+        # 共指消解器已加载（fastcoref）
     except Exception as exc:
         logger.warning("fastcoref unavailable (%s) – rule-based fallback.", exc)
+        # fastcoref 不可用（%s）— 回退到规则匹配
         self.model = None
 ```
 
-### Technical Details
+### 技术细节
 
-1.  **Pre-Initialization Injection**: The patch is applied to `PreTrainedModel` *before* `FCoref` is instantiated.
-2.  **Interface Consistency**: By using a `dict` subclass, we satisfy `fastcoref`'s internal iteration over `.keys()` without needing any actual weights.
-3.  **Zero Runtime Overhead**: The patch is a one-time operation during the loading phase and does not impact inference performance.
-4.  **Forward Compatibility**: The `hasattr` check ensures that if a future version of `transformers` reintroduces the attribute, our patch will not interfere.
+1.  **预初始化注入**：补丁在 `FCoref` 实例化之前应用于 `PreTrainedModel`
+2.  **接口一致性**：通过使用 `dict` 子类，我们满足 `fastcoref` 内部对 `.keys()` 的迭代需求，无需任何实际权重
+3.  **零运行时开销**：补丁是加载阶段的一次性操作，不影响推理性能
+4.  **向前兼容**：`hasattr` 检查确保如果未来版本的 `transformers` 重新引入该属性，我们的补丁不会干扰
 
 ---
 
-## Verification
+## 验证
 
-### NLU Module Status
-All modules are now successfully loading without falling back to rule-based logic.
+### NLU 模块状态
+
+所有模块现在都成功加载，不再回退到基于规则的逻辑。
 
 ```json
 {
-  "coref_loaded": true,
-  "intent_model_loaded": true,
-  "intent_backend": "distilbert",
-  "entity_model_loaded": true
+  "coref_loaded": true,        # 共指消解器已加载
+  "intent_model_loaded": true,  # 意图分类模型已加载
+  "intent_backend": "distilbert",  # 意图后端：distilbert
+  "entity_model_loaded": true   # 实体抽取模型已加载
 }
 ```
 
-### Diagnostics Output
+### 诊断输出
 ```text
 ✓ All NLU modules successfully loaded (No fallbacks)
+# ✓ 所有 NLU 模块成功加载（无兜底）
   - Coref: ✓ fastcoref active (FCoref 90.5M params)
+  # 共指：✓ fastcoref 已激活（FCoref 9050 万参数）
   - Intent: ✓ distilbert-base-uncased active
+  # 意图：✓ distilbert-base-uncased 已激活
   - Entity: ✓ spaCy active (en_core_web_sm)
+  # 实体：✓ spaCy 已激活（en_core_web_sm）
 ```
 
-### Performance Metrics
+### 性能指标
 
-| Metric | Value |
+| 指标 | 值 |
 |:---|:---|
-| Patch Initialization | < 1ms (One-time) |
-| Inference Latency | ~100-200ms per turn (CPU) |
-| Memory Footprint | ~90.5 MB (FCoref model) |
-| Total NLU Latency | 120-280ms per turn |
+| 补丁初始化 | < 1ms（一次性） |
+| 推理延迟 | ~100-200ms/回合（CPU） |
+| 内存占用 | ~90.5 MB（FCoref 模型） |
+| 总 NLU 延迟 | 120-280ms/回合 |
 
 ---
 
-## Maintenance Recommendations
+## 维护建议
 
-1.  **Dependency Locking**: Pin `transformers==5.2.0` and `fastcoref==2.1.6` in `requirements.txt`.
-2.  **Monitoring**: The `nlu_status` dictionary should be checked periodically to ensure `coref_loaded` remains `true`.
-3.  **Upstream Watch**: Monitor `fastcoref` for an official v5.x compatibility release, at which point this local patch can be removed.
+1.  **依赖锁定**：在 `requirements.txt` 中锁定 `transformers==5.2.0` 和 `fastcoref==2.1.6`
+2.  **监控**：应定期检查 `nlu_status` 字典，确保 `coref_loaded` 保持为 `true`
+3.  **上游关注**：关注 `fastcoref` 官方的 v5.x 兼容性发布，届时可以移除此本地补丁
