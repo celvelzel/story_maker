@@ -1,157 +1,159 @@
-# NLG Module Local LLM Fine-tuning and Deployment Plan
+# NLG 模块本地 LLM 微调与部署计划
 
-> **Last Updated:** 2026-04-01  
-> Project: StoryWeaver (text adventure game)
+> **最后更新：** 2026-04-01  
+> 项目：StoryWeaver（文字冒险游戏）
 > 
-> Goal: Migrate the NLG module from a single cloud API call to a fine-tuned LLM capable of running on a local machine (e.g., AMD R7 without dedicated GPU). Support seamless switching between the local model and cloud API to compare performance.
+> 目标：将 NLG 模块从单一云端 API 调用迁移到可在本地机器（如 AMD R7 无独立 GPU）运行的微调 LLM。支持在本地模型和云端 API 之间无缝切换以对比性能。
 
 ---
 
-## 1. Current Architecture Analysis
+## 1. 当前架构分析
 
-StoryWeaver's current NLG pipeline:
+StoryWeaver 当前的 NLG 流水线：
 
-1.  **UI Layer**: `app.py` (Streamlit) handles rendering.
-2.  **Engine Layer**: `src/nlg/story_generator.py` and `src/nlg/option_generator.py` construct prompts.
-3.  **Prompt Templates**: `src/nlg/prompt_templates.py` defines all templates (`SYSTEM_PROMPT`, `OPENING_PROMPT`, `STORY_CONTINUE_PROMPT`, `OPTION_GENERATION_PROMPT`).
-4.  **API Client**: `src/utils/api_client.py` uses a **multi-type singleton pattern** with `LLMClient` and `HybridClientManager` for task-based routing.
-5.  **Configuration**: `config.py` (Pydantic Settings) manages `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`, and `NLG_MODE`, loading from `.env`.
-6.  **Current Model**: Default `mimo-v2-flash` via OpenAI-compatible endpoints. Hybrid mode routes creative tasks (story) to local Qwen3 and structured tasks (options, relations) to Mimo API.
+1.  **UI 层**：`app.py`（Streamlit）负责渲染
+2.  **引擎层**：`src/nlg/story_generator.py` 和 `src/nlg/option_generator.py` 构建提示词
+3.  **提示词模板**：`src/nlg/prompt_templates.py` 定义所有模板（`SYSTEM_PROMPT`、`OPENING_PROMPT`、`STORY_CONTINUE_PROMPT`、`OPTION_GENERATION_PROMPT`）
+4.  **API 客户端**：`src/utils/api_client.py` 使用**多类型单例模式**，通过 `LLMClient` 和 `HybridClientManager` 实现基于任务的路由
+5.  **配置**：`config.py`（Pydantic Settings）管理 `OPENAI_API_KEY`、`OPENAI_BASE_URL`、`OPENAI_MODEL` 和 `NLG_MODE`，从 `.env` 加载
+6.  **当前模型**：默认 `mimo-v2-flash`，通过 OpenAI 兼容端点访问。混合模式将创意任务（故事）路由到本地 Qwen3，结构化任务（选项、关系）路由到 Mimo API
 
-**Key Finding**: The architecture supports three NLG modes (`api`, `local`, `hybrid`) with per-type LLM client singletons. The `HybridClientManager` routes tasks: story → local, option/relation/json → API.
-
----
-
-## 2. Hardware Environment and Model Selection
-
-### 2.1 Local Hardware
-*   **CPU**: AMD R7 (or similar modern mobile/desktop processor)
-*   **RAM**: 16-32 GB
-*   **Inference**: Pure CPU inference or acceleration via Vulkan/ROCm using integrated graphics (Ollama/llama.cpp).
-
-### 2.2 Model Selection: Llama-3.2-3B-Instruct / Qwen2.5-3B
-*   **Parameter Count**: 3B.
-*   **Advantages**: Excellent instruction following, small footprint, suitable for structured output in interactive fiction.
-*   **Quantization**:
-    *   **Q8_0**: 8-bit (approx. 3.5GB RAM), near-lossless precision.
-    *   **Q4_K_M**: 4-bit (approx. 2.0GB RAM), faster with minor precision loss.
-*   **Expected Performance**: 20-30 tokens/s on modern CPUs, providing a fluid experience.
+**关键发现**：架构支持三种 NLG 模式（`api`、`local`、`hybrid`），使用按类型的 LLM 客户端单例。`HybridClientManager` 路由任务：故事 → 本地，选项/关系/JSON → API
 
 ---
 
-## 3. Fine-tuning Platform: PolyU Student HPC
+## 2. 硬件环境与模型选择
 
-Training requires GPUs and is conducted on the PolyU Student HPC.
+### 2.1 本地硬件
+*   **CPU**：AMD R7（或类似的现代移动/桌面处理器）
+*   **内存**：16-32 GB
+*   **推理**：纯 CPU 推理或通过集成显卡使用 Vulkan/ROCm 加速（Ollama/llama.cpp）
 
-### 3.1 HPC Environment Setup
-1.  Login via SSH.
-2.  Request an interactive GPU node: `srun -p gpu --gres=gpu:1 --pty bash`
-3.  Load modules:
+### 2.2 模型选择：Llama-3.2-3B-Instruct / Qwen2.5-3B
+*   **参数量**：3B
+*   **优势**：出色的指令遵循能力，占用空间小，适合交互式小说的结构化输出
+*   **量化**：
+    *   **Q8_0**：8 位（约 3.5GB 内存），近乎无损精度
+    *   **Q4_K_M**：4 位（约 2.0GB 内存），速度更快，精度略有损失
+*   **预期性能**：现代 CPU 上 20-30 tokens/s，提供流畅体验
+
+---
+
+## 3. 微调平台：PolyU 学生 HPC
+
+训练需要 GPU，在 PolyU 学生 HPC 上进行。
+
+### 3.1 HPC 环境设置
+1.  通过 SSH 登录
+2.  请求交互式 GPU 节点：`srun -p gpu --gres=gpu:1 --pty bash`
+3.  加载模块：
     ```bash
+    # 加载 Anaconda3 环境
     module load anaconda3
+    # 加载 CUDA 12.1 工具链
     module load cuda/12.1
     ```
-4.  Create environment:
+4.  创建环境：
     ```bash
+    # 创建 Python 3.10 环境
     conda create -n swift_env python=3.10 -y
     conda activate swift_env
+    # 安装 ms-swift 微调框架
     pip install ms-swift[llm]
     ```
 
 ---
 
-## 4. Dataset Strategy: Prompt Synthesis
+## 4. 数据集策略：提示词合成
 
-### 4.1 Approach: Bulk Synthesis via LLM
-Use the existing cloud API (`gpt-4o-mini`) to generate `(Prompt → Response)` pairs.
+### 4.1 方法：通过 LLM 批量合成
+使用现有云端 API（`gpt-4o-mini`）生成 `(Prompt → Response)` 配对数据。
 
-*   **Advantages**:
-    * 100% alignment with project `prompt_templates`.
-    * Fast and diverse data generation by mixing templates for `kg_summary`, `history`, `intent`, and `emotion`.
-*   **Implementation**: `training/train_generator.py` and `training/data_augmenter.py`.
+*   **优势**：
+    * 与项目 `prompt_templates` 100% 对齐
+    * 通过混合 `kg_summary`、`history`、`intent` 和 `emotion` 模板，快速生成多样化数据
+*   **实现**：`training/train_generator.py` 和 `training/data_augmenter.py`
 
-### 4.2 Data Volume
-*   **Story Generation**: 300 samples (Opening + Continuation).
-*   **Option Generation**: 300 samples (JSON structured).
-*   **Total**: 600+ samples, stored in `training/nlg_dataset/combined_data.jsonl`.
+### 4.2 数据量
+*   **故事生成**：300 条样本（开场 + 续写）
+*   **选项生成**：300 条样本（JSON 结构化）
+*   **总计**：600+ 条样本，存储在 `training/nlg_dataset/combined_data.jsonl`
 
-### 4.3 Format (ChatML)
+### 4.3 格式（ChatML）
 ```json
 {
   "messages": [
-    {"role": "system", "content": "You are an expert interactive-fiction narrator..."},
-    {"role": "user", "content": "kg_summary: ...\nhistory: ...\nintent: explore\nplayer_input: go north"},
-    {"role": "assistant", "content": "You step towards the north, the cold wind bites your skin..."}
+    {"role": "system", "content": "You are an expert interactive-fiction narrator..."},  # 系统提示：你是交互式小说叙述专家
+    {"role": "user", "content": "kg_summary: ...\nhistory: ...\nintent: explore\nplayer_input: go north"},  # 用户输入：包含知识图谱摘要、历史、意图和玩家输入
+    {"role": "assistant", "content": "You step towards the north, the cold wind bites your skin..."}  # 助手回复：生成的叙事文本
   ]
 }
 ```
 
 ---
 
-## 5. Fine-tuning: ms-swift + LoRA
+## 5. 微调：ms-swift + LoRA
 
-### 5.1 Training Scripts
-Training is automated via shell scripts in the `training/` directory:
-- `training/train_llama.sh`: Fine-tunes Llama-3.2-3B.
-- `training/train_qwen.sh`: Fine-tunes Qwen-2.5-3B.
+### 5.1 训练脚本
+训练通过 `training/` 目录中的 shell 脚本自动化：
+- `training/train_llama.sh`：微调 Llama-3.2-3B
+- `training/train_qwen.sh`：微调 Qwen-2.5-3B
 
-### 5.2 Configuration
-*   **Method**: LoRA (Low-Rank Adaptation).
-*   **Command Example**:
+### 5.2 配置
+*   **方法**：LoRA（低秩适配）
+*   **命令示例**：
     ```bash
     swift sft \
-        --model_type llama3_2-3b-instruct \
-        --dataset training/nlg_dataset/combined_data.jsonl \
-        --sft_type lora \
-        --output_dir output/nlg_model \
-        --learning_rate 2e-4 \
-        --num_train_epochs 3 \
-        --batch_size 4
+        --model_type llama3_2-3b-instruct \  # 指定模型类型
+        --dataset training/nlg_dataset/combined_data.jsonl \  # 指定训练数据集
+        --sft_type lora \  # 使用 LoRA 微调方式
+        --output_dir output/nlg_model \  # 输出目录
+        --learning_rate 2e-4 \  # 学习率
+        --num_train_epochs 3 \  # 训练轮数
+        --batch_size 4  # 批次大小
     ```
 
 ---
 
-## 6. Export and Quantization
+## 6. 导出与量化
 
-After training, weights are merged and exported to GGUF format for local CPU inference.
+训练完成后，权重合并并导出为 GGUF 格式，用于本地 CPU 推理。
 
 ```bash
-# Merge LoRA
+# 合并 LoRA 权重
 swift export --model_type llama3_2-3b-instruct --adapters output/nlg_model/v0-... --merge_lora true
 
-# Export GGUF (Q8_0)
+# 导出为 GGUF 格式（Q8_0 量化）
 swift export --model_type llama3_2-3b-instruct --model_id_or_path <merged_path> --to_gguf true --quant_bits 8 --quant_method q8_0
 ```
 
 ---
 
-## 7. Local Deployment (llama.cpp / Ollama)
+## 7. 本地部署（llama.cpp / Ollama）
 
-The project supports both `llama.cpp` and `Ollama` for local inference.
+项目支持 `llama.cpp` 和 `Ollama` 两种本地推理方式。
 
-1.  **llama.cpp**: Start the server using `scripts/start_llama_server.sh`.
-2.  **Ollama**: Create a `Modelfile` and run `ollama create storyweaver-model -f Modelfile`.
+1.  **llama.cpp**：使用 `scripts/start_llama_server.sh` 启动服务器
+2.  **Ollama**：创建 `Modelfile` 并运行 `ollama create storyweaver-model -f Modelfile`
 
-Local models are served at an OpenAI-compatible endpoint (e.g., `http://localhost:8000/v1` or `http://localhost:11434/v1`).
-
----
-
-## 8. UI Integration
-
-A toggle in the Streamlit sidebar allows switching between:
-*   **Cloud API** (OpenAI)
-*   **Local Model** (llama.cpp/Ollama)
-
-Switching triggers a configuration update in `src/utils/api_client.py` to route requests to the selected backend.
+本地模型通过 OpenAI 兼容端点提供服务（如 `http://localhost:8000/v1` 或 `http://localhost:11434/v1`）
 
 ---
 
-## 9. Roadmap Status
+## 8. UI 集成
 
-1. [x] Dataset generation script (`training/train_generator.py`)
-2. [x] Training scripts for Llama and Qwen (`training/train_*.sh`)
-3. [x] Model Export (GGUF integration)
-4. [x] Local Deployment scripts (`scripts/start_llama_server.sh`)
-5. [x] UI Dynamic Switching Implementation
+Streamlit 侧边栏中的切换开关允许在以下模式之间切换：
+*   **云端 API**（OpenAI）
+*   **本地模型**（llama.cpp/Ollama）
 
+切换会触发 `src/utils/api_client.py` 中的配置更新，将请求路由到选定的后端
 
+---
+
+## 9. 路线图状态
+
+1. [x] 数据集生成脚本（`training/train_generator.py`）
+2. [x] Llama 和 Qwen 训练脚本（`training/train_*.sh`）
+3. [x] 模型导出（GGUF 集成）
+4. [x] 本地部署脚本（`scripts/start_llama_server.sh`）
+5. [x] UI 动态切换实现
