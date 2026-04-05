@@ -32,8 +32,8 @@ class HybridClientManager:
     """
     
     _instance: Optional["HybridClientManager"] = None
-    _local_client: Optional[LLMClient] = None
-    _api_client: Optional[LLMClient] = None
+    _local_client: Optional["LLMClient"] = None
+    _api_client: Optional["LLMClient"] = None
     
     def __new__(cls) -> "HybridClientManager":
         if cls._instance is None:
@@ -41,7 +41,7 @@ class HybridClientManager:
         return cls._instance
     
     @classmethod
-    def get_client_for_task(cls, task_type: str = "default") -> LLMClient:
+    def get_client_for_task(cls, task_type: str = "default") -> "LLMClient":
         """Get the appropriate client based on NLG_MODE and task type.
         
         根据 NLG_MODE 和任务类型返回合适的客户端：

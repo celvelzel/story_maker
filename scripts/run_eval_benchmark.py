@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import statistics
 import sys
 import time
@@ -333,6 +334,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-turns", type=int, default=10, help="Max turns per session")
     parser.add_argument("--warmup", type=int, default=0, help="Warmup sessions (excluded from report)")
     parser.add_argument(
+        "--nlg-mode",
+        type=str,
+        default=None,
+        choices=["local", "api", "hybrid"],
+        help="NLG mode to use (overrides .env NLG_MODE)",
+    )
+    parser.add_argument(
         "--genres",
         nargs="+",
         default=["fantasy", "sci-fi", "mystery"],
@@ -355,6 +363,9 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+
+    if args.nlg_mode:
+        os.environ["NLG_MODE"] = args.nlg_mode
 
     warmup = max(0, int(args.warmup))
     max_turns = max(1, int(args.max_turns))
