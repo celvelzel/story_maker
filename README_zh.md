@@ -1,6 +1,6 @@
 # StoryWeaver：动态情节生成的 AI 驱动文本冒险游戏
 
-> **最后更新**: 2026-03-31
+> **最后更新**: 2026-04-05
 
 **[English](README.md) | [中文](README_zh.md)**
 
@@ -47,89 +47,202 @@
 
 ```
 story_maker/
-├── app.py                    # Streamlit 应用程序入口
-├── config.py                 # Pydantic 设置支持 .env
-├── requirements.txt          # 依赖项
-├── config/
-│   └── .env.example          # 环境配置模板
-├── src/                      # 源代码模块
-│   ├── engine/               # 游戏引擎控制器
-│   │   ├── game_engine.py    # 主管道协调器 (NLU → NLG → KG)
-│   │   ├── runtime_session.py # 会话持久化管理
-│   │   ├── state.py          # 游戏状态和历史追踪
-│   │   └── naming.py         # 角色/地点命名系统
-│   ├── nlu/                  # 自然语言理解
-│   │   ├── intent_classifier.py   # DistilBERT + 关键字回退
-│   │   ├── entity_extractor.py    # spaCy NER + 正则表达式
-│   │   ├── coreference.py         # fastcoref + 规则消解
-│   │   └── sentiment_analyzer.py  # 情感/语气分析 (Ekman 6 类)
-│   ├── nlg/                  # 自然语言生成
-│   │   ├── story_generator.py     # OpenAI API 故事生成
-│   │   ├── option_generator.py    # 玩家选择生成 (API)
-│   │   └── prompt_templates.py    # 提示工程模板
-│   ├── knowledge_graph/      # 动态世界状态管理
-│   │   ├── graph.py               # NetworkX MultiDiGraph 包装器
-│   │   ├── relation_extractor.py  # LLM 基础关系提取
-│   │   ├── conflict_detector.py   # 规则 + LLM 一致性检查
-│   │   └── visualizer.py          # PyVis HTML 可视化
-│   ├── evaluation/           # 质量评估指标
-│   │   ├── metrics.py             # Distinct-n, Self-BLEU, 覆盖率
-│   │   ├── llm_judge.py           # LLM 作为评判者评分
-│   │   └── consistency_eval.py    # 知识图一致性评估
-│   ├── ui/                   # Streamlit UI 组件
-│   │   ├── layout/          # 页面布局和结构
-│   │   ├── sections/        # UI 部分模块
-│   │   └── state_manager.py # UI 状态管理
-│   └── utils/                # 共享工具
-│       └── api_client.py          # 单例 LLM 客户端（含重试）
-├── training/                 # 模型训练脚本
-│   ├── train_intent.py            # DistilBERT 意图分类器训练
-│   ├── train_generator.py         # GPT-2 LoRA 微调 (遗留/可选)
-│   ├── train_llama.sh             # Llama.cpp 模型训练脚本
-│   ├── train_qwen.sh              # Qwen 模型训练脚本
-│   ├── data_augmenter.py          # 训练数据增强
-│   └── nlg_dataset/               # NLG 训练数据集资源
-│       ├── combined_data.jsonl    # 合并训练数据集
-│       └── combined_data_generate_prompt.md # 数据生成提示词
-├── tests/                    # 测试套件 (按模块组织)
-│   ├── engine/              # 引擎组件测试
-│   ├── nlu/                 # NLU 模块测试
-│   ├── nlg/                 # NLG 模块测试
-│   ├── kg/                  # 知识图谱测试
-│   ├── integration/         # 跨模块集成测试
-│   ├── training/            # 训练管道测试
-│   ├── performance/         # 性能基准测试
-│   ├── ui/                  # UI 组件测试
-│   └── utils/               # 工具函数测试
-├── scripts/                  # 工具和部署脚本
-│   ├── start_project_prod.bat     # Windows 生产启动器
-│   ├── start_project_prod.sh      # macOS/Linux 生产启动器
-│   ├── start_llama_server.bat     # Windows llama.cpp 服务器启动器
-│   ├── quantize_gguf.bat          # GGUF 模型量化脚本
-│   ├── health_check.py            # 部署前健康检查
-│   ├── generate_dataset.py        # 数据集生成工具
-│   ├── run_automated_eval.py      # 自动化评估运行器
-│   ├── fix_and_merge.py           # 修复和合并工具
-│   ├── validate_and_merge.py      # 验证和合并工具
-│   └── test_openai_api.py         # OpenAI API 连接测试
-├── docs/                     # 全面文档
-│   ├── api/                 # API 参考文档
-│   ├── design/              # 架构和设计文档
-│   ├── guides/              # 部署和使用指南
-│   ├── fixes/               # 问题修复报告
-│   ├── reports/             # 优化和改进报告
-│   └── project/             # 项目规范和计划
-├── models/                   # 训练模型文件 (git-ignored)
-│   ├── intent_classifier/   # 微调 DistilBERT 检查点
-│   ├── nlg/                 # 微调 NLG 模型检查点
-│   └── qwen-gguf/           # 量化 Qwen GGUF 模型
-├── lib/                      # 第三方前端库
-│   ├── vis-9.1.2/           # Vis.js 网络可视化
-│   ├── tom-select/          # 增强选择组件
-│   └── bindings/            # JavaScript 工具绑定
-├── logs/                     # 应用日志 (git-ignored)
-├── saves/                    # 游戏存档文件 (git-ignored)
-└── .env                      # 环境变量 (git-ignored)
+├── app.py                          # Streamlit 应用程序入口
+├── config.py                       # Pydantic 设置支持 .env
+├── requirements.txt                # Python 依赖项
+├── .env                            # 环境变量 (git-ignored)
+├── .env.llama                      # llama.cpp 服务器配置
+├── .env.vllm                       # vLLM GPU 推理配置
+├── .env.vllm.cpu                   # vLLM CPU 推理配置
+├── .env.vllm.example               # vLLM 配置模板
+├── start_project_prod.bat          # Windows 生产启动器（根目录快捷方式）
+├── start_project_prod.sh           # macOS/Linux 生产启动器（根目录快捷方式）
+│
+├── src/                            # 源代码模块
+│   ├── __init__.py
+│   ├── engine/                     # 游戏引擎主控制器
+│   │   ├── __init__.py
+│   │   ├── game_engine.py          # 主管道协调器 (NLU → NLG → KG)
+│   │   ├── runtime_session.py      # 会话持久化管理器
+│   │   ├── state.py                # 游戏状态和历史追踪
+│   │   └── naming.py               # 角色/地点命名系统
+│   ├── nlu/                        # 自然语言理解
+│   │   ├── __init__.py
+│   │   ├── intent_classifier.py    # DistilBERT + 关键字回退
+│   │   ├── entity_extractor.py     # spaCy NER + 正则表达式
+│   │   ├── coreference.py          # fastcoref + 规则消解
+│   │   └── sentiment_analyzer.py   # 情感/语气分析 (Ekman 6 类)
+│   ├── nlg/                        # 自然语言生成
+│   │   ├── __init__.py
+│   │   ├── story_generator.py      # OpenAI API 故事生成
+│   │   ├── option_generator.py     # 玩家选择生成 (API)
+│   │   └── prompt_templates.py     # 提示工程模板
+│   ├── knowledge_graph/            # 动态世界状态管理
+│   │   ├── __init__.py
+│   │   ├── graph.py                # NetworkX MultiDiGraph 包装器
+│   │   ├── relation_extractor.py   # LLM 基础关系提取
+│   │   ├── conflict_detector.py    # 规则 + LLM 一致性检查
+│   │   └── visualizer.py           # PyVis HTML 可视化
+│   ├── evaluation/                 # 质量评估指标
+│   │   ├── __init__.py
+│   │   ├── metrics.py              # Distinct-n, Self-BLEU, 覆盖率
+│   │   ├── llm_judge.py            # LLM 作为评判者评分
+│   │   └── consistency_eval.py     # 知识图一致性评估
+│   ├── ui/                         # Streamlit UI 组件
+│   │   ├── __init__.py
+│   │   ├── layout/                 # 页面布局和主题
+│   │   │   ├── __init__.py
+│   │   │   └── theme.py
+│   │   ├── sections/               # UI 部分模块
+│   │   │   ├── __init__.py
+│   │   │   ├── chat.py
+│   │   │   ├── evaluation.py
+│   │   │   └── sidebar.py
+│   │   └── state_manager.py        # UI 状态管理
+│   └── utils/                      # 共享工具
+│       ├── __init__.py
+│       └── api_client.py           # 单例 LLM 客户端（含重试）
+│
+├── scripts/                        # 工具和部署脚本
+│   ├── start/                      # 启动脚本
+│   │   ├── start_project_prod.bat  # Windows 生产启动器
+│   │   ├── start_project_prod.sh   # macOS/Linux 生产启动器
+│   │   ├── start_llama_server.bat  # llama.cpp 服务器启动器
+│   │   ├── start_inference_server.sh
+│   │   └── start_streamlit.sh
+│   ├── config/                     # 环境配置模板
+│   │   ├── .env.llama
+│   │   ├── .env.vllm
+│   │   ├── .env.vllm.cpu
+│   │   └── .env.vllm.example
+│   ├── data/                       # 数据集生成工具
+│   │   ├── generate_dataset.py
+│   │   ├── extract_pdfs.py
+│   │   ├── read_pdfs.py
+│   │   ├── fix_and_merge.py
+│   │   └── validate_and_merge.py
+│   ├── eval/                       # 评估运行器
+│   │   ├── run_automated_eval.py
+│   │   ├── run_eval_benchmark.py
+│   │   ├── run_kg_on_off_benchmark.py
+│   │   ├── run_llm_judge.py
+│   │   └── simple_model_eval.py
+│   ├── inference/                  # 推理工具
+│   │   ├── local_inference_server.py
+│   │   └── test_openai_api.py
+│   └── quantize/                   # 模型量化
+│       └── quantize_gguf.bat
+│
+├── training/                       # 模型训练脚本
+│   ├── train_intent.py             # DistilBERT 意图分类器训练
+│   ├── train_generator.py          # GPT-2 LoRA 微调 (遗留/可选)
+│   ├── train_llama.sh              # Llama.cpp 训练脚本
+│   ├── train_qwen.sh               # Qwen 训练脚本
+│   ├── data_augmenter.py           # 训练数据增强
+│   └── nlg_dataset/                # NLG 训练数据集
+│       ├── combined_data.jsonl     # 合并训练数据集
+│       └── combined_data_generate_prompt.md  # 数据生成提示词
+│
+├── tests/                          # 测试套件（按模块组织）
+│   ├── __init__.py
+│   ├── engine/                     # 引擎组件测试
+│   ├── nlu/                        # NLU 模块测试
+│   ├── nlg/                        # NLG 模块测试
+│   ├── kg/                         # 知识图谱测试
+│   ├── integration/                # 跨模块集成测试
+│   ├── evaluation/                 # 质量评估测试
+│   ├── performance/                # 性能基准测试
+│   ├── ui/                         # UI 组件测试
+│   └── utils/                      # 工具函数测试
+│
+├── docs/                           # 全面文档
+│   ├── README.md                   # 文档索引
+│   ├── api/                        # API 参考文档
+│   │   ├── README.md
+│   │   └── API_REFERENCE.md
+│   ├── design/                     # 架构和设计文档
+│   │   ├── README.md
+│   │   ├── prompts/                # 提示词模板
+│   │   ├── conflict-detection-resolution.md
+│   │   ├── entity-importance.md
+│   │   ├── hybrid-nlg-architecture.md
+│   │   ├── implementation_plan.md
+│   │   ├── kg-summary-modes.md
+│   │   ├── nlg-local-model-finetuning.md
+│   │   ├── sentiment-analysis.md
+│   │   └── storyweaver_pipeline.*  # 管道图 (drawio/svg/html)
+│   ├── guides/                     # 部署和使用指南
+│   │   ├── README.md
+│   │   ├── CPU_INFERENCE.md
+│   │   ├── data-flow.md
+│   │   ├── deployment-macos.md
+│   │   ├── deployment-windows.md
+│   │   ├── local-model-startup.md
+│   │   ├── technical-route.md
+│   │   └── zero-to-hero-deployment.md
+│   ├── fixes/                      # 问题修复报告
+│   │   ├── README.md
+│   │   ├── distilbert-compatibility-fix.md
+│   │   ├── distilbert-tokenizer-fix.md
+│   │   ├── distilbert-troubleshooting.md
+│   │   ├── fastcoref-fix.md
+│   │   └── llm-json-truncation-fix.md
+│   ├── reports/                    # 优化和评估报告
+│   │   ├── README.md
+│   │   ├── changelog/              # 自动生成的更新日志
+│   │   ├── evaluation/             # 模型评估结果
+│   │   ├── local-model/            # 本地模型报告
+│   │   ├── optimization/           # 优化报告
+│   │   └── test-results/           # 测试运行结果
+│   ├── project/                    # 项目规范和材料
+│   │   ├── COMP5423 NLP Group Project Specification-2026.pdf
+│   │   └── project intro.pdf
+│   └── final_submit/               # 最终提交材料
+│       └── final_report/
+│           └── Final_Project_Report.md
+│
+├── models/                         # 训练模型文件 (git-ignored)
+│   ├── intent_classifier/          # 微调 DistilBERT 检查点
+│   │   ├── config.json
+│   │   ├── model.safetensors
+│   │   ├── tokenizer.json
+│   │   ├── tokenizer_config.json
+│   │   └── checkpoint-*/           # 训练检查点
+│   └── nlg/                        # NLG 模型检查点
+│       └── README.md
+│
+├── lib/                            # 第三方前端库
+│   ├── vis-9.1.2/                  # Vis.js 网络可视化
+│   │   ├── vis-network.min.js
+│   │   └── vis-network.css
+│   ├── tom-select/                 # 增强选择组件
+│   │   ├── tom-select.complete.min.js
+│   │   └── tom-select.css
+│   └── bindings/                   # JavaScript 工具
+│       └── utils.js
+│
+├── reports/                        # 独立评估报告
+│   ├── comparison/                 # 模型对比报告
+│   │   └── model-comparison.md
+│   ├── evaluation/                 # 评估结果
+│   │   ├── automated_eval_report.md
+│   │   ├── local-model-eval.md
+│   │   └── mimo_eval_report.md
+│   └── hybrid/                     # 混合策略报告
+│       ├── hybrid_eval_report.md
+│       ├── hybrid_strategy_guide.md
+│       └── hybrid_vs_standalone_comparison.md
+│
+├── saves/                          # 游戏存档文件 (git-ignored)
+│   ├── runtime_engine.json         # 运行时引擎状态
+│   ├── runtime_session.json        # 会话持久化
+│   └── *.json                      # 独立游戏存档
+│
+├── config/                         # 配置模板
+│   └── .env.example                # 环境配置模板
+│
+├── logs/                           # 应用日志 (git-ignored)
+└── .gitignore                      # Git 忽略规则
 ```
 
 ### 部署与启动 (Windows / macOS)
@@ -244,15 +357,31 @@ python training/train_intent.py --output_dir models/intent_classifier --model_na
 
 ### 中文文档索引
 
-1. `docs/guides/technical-route.md` - NLU/KG/NLG 技术路线和回退策略
-2. `docs/guides/data-flow.md` - 每回合字段级数据流和模块映射
-3. `docs/guides/deployment-windows.md` - Windows 高可用性部署指南
-4. `docs/guides/deployment-macos.md` - macOS 高可用性部署指南
-5. `docs/design/entity-importance.md` - 实体重要性评分策略
-6. `docs/design/nlg-local-model-finetuning.md` - NLG 模块本地大模型微调方案
-7. `docs/VLLM_INTEGRATION.md` - vLLM 本地推理集成指南
-8. `docs/CPU_INFERENCE.md` - CPU 推理优化指南
-9. `docs/reports/kg-optimization.md` - 知识图谱优化报告
-10. `docs/reports/nlu-kg-improvement.md` - NLU & KG 模块改进报告
-11. `docs/reports/runtime-persistence.md` - 运行时会话持久化文档
-12. `docs/api/API_REFERENCE.md` - 完整 API 参考文档
+#### 使用指南
+1. **[技术路线](docs/guides/technical-route.md)** - NLU/KG/NLG 技术路线和回退策略
+2. **[数据流](docs/guides/data-flow.md)** - 每回合字段级数据流和模块映射
+3. **[从零到一部署](docs/guides/zero-to-hero-deployment.md)** - 完整设置指南
+4. **[Windows 部署](docs/guides/deployment-windows.md)** - Windows 高可用性部署指南
+5. **[macOS 部署](docs/guides/deployment-macos.md)** - macOS 高可用性部署指南
+6. **[CPU 推理](docs/guides/CPU_INFERENCE.md)** - CPU 推理优化指南
+7. **[本地模型启动](docs/guides/local-model-startup.md)** - 本地模型启动指南
+
+#### 架构与设计
+8. **[实体重要性](docs/design/entity-importance.md)** - 实体重要性评分策略
+9. **[混合 NLG 架构](docs/design/hybrid-nlg-architecture.md)** - 混合 NLG 架构设计
+10. **[NLG 本地微调](docs/design/nlg-local-model-finetuning.md)** - NLG 模块本地大模型微调方案
+11. **[知识图摘要模式](docs/design/kg-summary-modes.md)** - 知识图谱摘要模式
+12. **[情感分析](docs/design/sentiment-analysis.md)** - 情感/语气分析策略
+13. **[冲突检测](docs/design/conflict-detection-resolution.md)** - 冲突检测与解决方案
+
+#### API 与报告
+14. **[API 参考](docs/api/API_REFERENCE.md)** - 完整 API 参考文档
+15. **[知识图优化](docs/reports/optimization/kg-optimization.md)** - 知识图谱优化报告
+16. **[NLU & KG 改进](docs/reports/optimization/nlu-kg-improvement.md)** - NLU & KG 模块改进报告
+17. **[会话持久化](docs/reports/optimization/runtime-persistence.md)** - 运行时会话持久化文档
+18. **[评估报告](docs/reports/evaluation/)** - 模型评估结果 (API、本地、混合)
+19. **[测试结果](docs/reports/test-results/)** - 自动化测试与 KG 开关基准测试
+
+#### 其他
+20. **[修复报告](docs/fixes/)** - Bug 修复文档 (DistilBERT、fastcoref、LLM JSON)
+21. **[更新日志](docs/reports/changelog/)** - 自动生成的更新日志
