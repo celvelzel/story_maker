@@ -17,13 +17,13 @@
 - **runtime-persistence.md** - 浏览器刷新持久化改造报告
 
 ### 本地模型推理 (`local-model/`)
-- **本地模型推理集成_2026-03-27_21-07.md** - llama.cpp 本地 CPU 推理集成（首次）
+- **local-inference-integration_2026-03-27.md** - llama.cpp 本地 CPU 推理集成（首次）
 - **local-model-tuning_2026-03-27.md** - 本地模型调优报告（日志增强、超时配置）
 
 ### 版本更新记录 (`changelog/`)
-- **更新记录_2026-03-24_20-03.md** - 基础架构与核心循环初步完善
-- **更新记录_2026-03-24_20-30.md** - 错误处理与日志系统增强
-- **更新记录_评估指标扩展_2026-03-25_16-27.md** - 评估模块（Distinct-n/Self-BLEU）扩展与集成
+- **changelog_2026-03-24_initial.md** - 基础架构与核心循环初步完善
+- **changelog_2026-03-24_error-logging.md** - 错误处理与日志系统增强
+- **changelog_2026-03-25_eval-metrics-expansion.md** - 评估模块（Distinct-n/Self-BLEU）扩展与集成
 
 ### 测试结果 (`test-results/`)
 - **automated_test_report.md** - 核心模块（NLU/NLG/KG）自动化测试结果报告

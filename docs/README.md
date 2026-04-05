@@ -50,7 +50,7 @@
 
 ### 🛠️ 自动化与测试
 - **[自动化测试报告](reports/test-results/automated_test_report.md)** - 全模块自动化测试结果
-- **[知识图谱开关测试报告](kg_on_off_report.md)** - KG 对生成质量影响的对比测试
+- **[知识图谱开关测试报告](reports/test-results/kg-on-off-report.md)** - KG 对生成质量影响的对比测试
 
 ### 🔧 故障排除与修复
 - [DistilBERT 分词器修复](fixes/distilbert-tokenizer-fix.md)
@@ -66,7 +66,7 @@
 - [实体重要性评分设计](design/entity-importance.md)
 
 ### 🤖 本地模型集成
-- [本地模型推理集成报告](reports/local-model/本地模型推理集成_2026-03-27_21-07.md)
+- [本地模型推理集成报告](reports/local-model/local-inference-integration_2026-03-27.md)
 - [本地模型调优报告](reports/local-model/local-model-tuning_2026-03-27.md)
 - [NLG 本地模型微调方案](design/nlg-local-model-finetuning.md)
 

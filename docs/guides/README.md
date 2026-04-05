@@ -17,8 +17,7 @@ This directory contains usage guides and deployment documentation for the StoryW
 - **[deployment-macos.md](deployment-macos.md)** - High-availability deployment guide for macOS.
 
 ### Inference Configuration (Alternative Options)
-- **[CPU_INFERENCE.md](CPU_INFERENCE.md)** - Legacy CPU inference optimization guide (using vLLM, deprecated in favor of llama.cpp).
-- **[vLLM Integration Guide](../../VLLM_INTEGRATION.md)** - Local GPU inference integration guide (requires NVIDIA GPU).
+- **[CPU_INFERENCE.md](CPU_INFERENCE.md)** - Legacy CPU inference optimization guide (deprecated in favor of llama.cpp).
 
 ## Quick Start
 
