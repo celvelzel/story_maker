@@ -5,7 +5,7 @@ pydantic-settings>=2.2.0,<3.0.0
 # NLU
 spacy>=3.7.0,<4.0.0
 fastcoref>=2.1.0
-transformers>=4.40.0,<4.50.0  # Pinned: newer versions may reject token_type_ids in DistilBERT
+transformers>=4.50.0  # Qwen3 architecture support; fastcoref compat via patch in coreference.py
 torch>=2.2.0
 accelerate>=1.1.0
 scikit-learn>=1.4.0
