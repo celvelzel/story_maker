@@ -1,6 +1,6 @@
 # StoryWeaver 模块间数据传递（字段级）
 
-> **Last Updated**: 2026-03-31
+> **Last Updated**: 2026-04-01
 
 ## 1. 单轮数据流总览
 
@@ -71,16 +71,37 @@
 10. 选项生成：`options`
 11. 结果封装：`TurnResult`
 
-## 4. 实现索引（关键文件）
+## 4. NLG 后端选择
 
-1. `src/engine/game_engine.py`
-2. `src/engine/state.py`
-3. `src/nlu/intent_classifier.py`
-4. `src/nlu/coreference.py`
-5. `src/nlu/entity_extractor.py`
-6. `src/knowledge_graph/graph.py`
-7. `src/knowledge_graph/relation_extractor.py`
-8. `src/knowledge_graph/conflict_detector.py`
-9. `src/nlg/story_generator.py`
-10. `src/nlg/option_generator.py`
-11. `app.py`
+项目支持三种 NLG 后端（通过 `config.py` 的 `NLG_MODE` 控制）：
+
+| 模式 | 说明 |
+|------|------|
+| `api` | 远程 OpenAI 兼容 API（默认 Mimo API） |
+| `local` | 本地 llama.cpp 服务器（通过 `OPENAI_BASE_URL` 指向 127.0.0.1:8081） |
+| `hybrid` | 混合模式：创意任务用本地 Qwen3，结构化任务用远程 API |
+
+### 关键配置字段
+
+| 字段 | 默认值 | 说明 |
+|------|--------|------|
+| `NLG_MODE` | `"hybrid"` | NLG 后端选择 |
+| `OPENAI_BASE_URL` | 远程 API URL | 本地模式改为 `http://127.0.0.1:8081/v1` |
+| `OPENAI_MODEL` | `"mimo-v2-flash"` | 本地模式改为 `"qwen3-4b"` |
+| `OPENAI_TIMEOUT_CONNECT` | `10.0` | 连接超时（秒），CPU 推理建议 `30.0` |
+| `OPENAI_TIMEOUT_READ` | `60.0` | 读取超时（秒），CPU 推理建议 `180.0` |
+
+## 5. 实现索引（关键文件）
+
+1. `src/engine/game_engine.py` — 游戏主引擎
+2. `src/engine/state.py` — 游戏状态管理
+3. `src/nlu/intent_classifier.py` — 意图分类（DistilBERT + 关键词兜底）
+4. `src/nlu/coreference.py` — 共指消解（fastcoref + 规则兜底）
+5. `src/nlu/entity_extractor.py` — 实体抽取（spaCy NER + 启发式兜底）
+6. `src/knowledge_graph/graph.py` — 知识图谱（NetworkX MultiDiGraph）
+7. `src/knowledge_graph/relation_extractor.py` — 关系抽取（LLM 结构化输出）
+8. `src/knowledge_graph/conflict_detector.py` — 冲突检测（规则 + LLM 校验）
+9. `src/nlg/story_generator.py` — 故事生成（支持 api/local/hybrid）
+10. `src/nlg/option_generator.py` — 选项生成
+11. `config.py` — 全局配置（Pydantic Settings）
+12. `app.py` — Streamlit 应用入口

@@ -1,86 +1,97 @@
-# Troubleshooting Guide: DistilBERT & Tokenizer Compatibility
+# 故障排查指南：DistilBERT 与分词器兼容性
 
-This guide addresses common runtime issues and configuration errors related to the DistilBERT NLU modules (Intent Classification and Sentiment Analysis).
+本指南解决与 DistilBERT NLU 模块（意图分类和情感分析）相关的常见运行时问题和配置错误。
 
-## 1. Primary Error: `unexpected keyword argument 'token_type_ids'`
+## 1. 主要错误：`unexpected keyword argument 'token_type_ids'`
 
-### Symptom
-The application crashes during NLU processing with the following traceback:
+### 症状
+
+应用在 NLU 处理期间崩溃，出现以下回溯信息：
 ```text
 TypeError: DistilBertForSequenceClassification.forward() got an unexpected keyword argument 'token_type_ids'
+# 类型错误：DistilBertForSequenceClassification.forward() 收到了意外的关键字参数 'token_type_ids'
 ```
 
-### Root Cause
-*   **Architecture**: DistilBERT is a distilled version of BERT that explicitly removes segment embeddings (`token_type_ids`) to save space.
-*   **Library Conflict**: Newer versions of `transformers` (4.40+) return `token_type_ids` by default even for models that don't use them.
-*   **Signature Mismatch**: Passing these extra keys to the model's `forward()` method triggers a Python `TypeError`.
+### 根本原因
+*   **架构**：DistilBERT 是 BERT 的精简版本，明确移除了段嵌入（`token_type_ids`）以节省空间
+*   **库冲突**：较新版本的 `transformers`（4.40+）即使对不使用这些字段的模型也默认返回 `token_type_ids`
+*   **签名不匹配**：将这些额外的键传递给模型的 `forward()` 方法会触发 Python `TypeError`
 
 ---
 
-## 2. Implemented Solutions
+## 2. 已实施的解决方案
 
-The codebase now includes a **4-layer defense** against this and similar issues:
+代码库现在包含**四层防御**来应对此类及类似问题：
 
-### Layer 1: Dynamic Input Filtering (Automatic)
-Located in `src/nlu/intent_classifier.py` and `src/nlu/sentiment_analyzer.py`.
-The system now uses `inspect.signature` to check what the model actually accepts before passing the data.
-*   **Action**: Any key not in the model's `forward` signature is automatically stripped.
-*   **Benefit**: This is "future-proof"—it will handle any new fields added by future `transformers` updates without code changes.
+### 第 1 层：动态输入过滤（自动）
 
-### Layer 2: Tokenizer Hardening
-*   **Action**: Tokenizer calls now explicitly set `return_token_type_ids=False`.
-*   **Benefit**: Reduces memory overhead and prevents the problematic field from being created in the first place.
+位于 `src/nlu/intent_classifier.py` 和 `src/nlu/sentiment_analyzer.py` 中。
+系统现在使用 `inspect.signature` 在传递数据之前检查模型实际接受的参数。
+*   **操作**：自动剥离不在模型 `forward` 签名中的任何键
+*   **优势**：这是"面向未来"的——它将处理未来 `transformers` 更新添加的任何新字段，无需修改代码
 
-### Layer 3: Robust Model Loading (Retry + Fallback)
-If the model fails to load due to GPU memory issues, missing files, or version mismatches:
-*   **Retry**: The system attempts to load 3 times with a 1-second delay.
-*   **Fallback**: If loading fails after 3 attempts, the system **automatically and transparently** switches to keyword-based rule matching (`rule_fallback`).
-*   **Zero Downtime**: The game will continue to run even if the deep learning models are unavailable.
+### 第 2 层：分词器加固
 
-### Layer 4: Dependency Pinning
-*   **Action**: `requirements.txt` pins `transformers>=4.40.0,<4.50.0`.
-*   **Benefit**: Prevents breaking changes from major library updates while allowing security patches.
+*   **操作**：分词器调用现在显式设置 `return_token_type_ids=False`
+*   **优势**：减少内存开销，并防止问题字段在源头上被创建
+
+### 第 3 层：健壮的模型加载（重试 + 兜底）
+
+如果模型因 GPU 内存不足、文件缺失或版本不匹配而加载失败：
+*   **重试**：系统尝试加载 3 次，每次间隔 1 秒
+*   **兜底**：如果 3 次尝试后仍加载失败，系统**自动且透明地**切换到基于关键词的规则匹配（`rule_fallback`）
+*   **零停机**：即使深度学习模型不可用，游戏也会继续运行
+
+### 第 4 层：依赖锁定
+
+*   **操作**：`requirements.txt` 锁定 `transformers>=4.40.0,<4.50.0`
+*   **优势**：防止主要库更新带来的破坏性变更，同时允许安全补丁
 
 ---
 
-## 3. Diagnostic Steps
+## 3. 诊断步骤
 
-If you suspect NLU issues, follow these steps:
+如果怀疑 NLU 存在问题，请按以下步骤操作：
 
-### Step 1: Run the Health Check
-Run the dedicated diagnostic script to verify your environment:
+### 步骤 1：运行健康检查
+
+运行专用诊断脚本验证环境：
 ```bash
 python scripts/health_check.py -v
 ```
-**Look for:** `[+] [PASS] token_type_ids compatibility`.
+**查找：** `[+] [PASS] token_type_ids compatibility`（token_type_ids 兼容性通过）
 
-### Step 2: Verify NLU Status
-Check the application logs for the NLU initialization summary:
+### 步骤 2：验证 NLU 状态
+
+检查应用日志中的 NLU 初始化摘要：
 ```text
 ✓ All NLU modules successfully loaded (No fallbacks)
+# ✓ 所有 NLU 模块成功加载（无兜底）
   - Intent: ✓ distilbert-base-uncased active
+  # 意图：✓ distilbert-base-uncased 已激活
 ```
-If it shows `backend: rule_fallback`, the model failed to load. Check for "Model loading failed" earlier in the logs.
+如果显示 `backend: rule_fallback`，说明模型加载失败。请检查日志中更早的 "Model loading failed" 信息。
 
-### Step 3: Check CUDA/GPU
-If using a GPU, ensure `torch.cuda.is_available()` is true. The system will automatically move the model to CPU if the GPU is full or unavailable.
+### 步骤 3：检查 CUDA/GPU
 
----
-
-## 4. Common Troubleshooting Scenarios
-
-| Issue | Solution |
-|:---|:---|
-| **Out of Memory (OOM)** | The system will catch the OOM error and fall back to rules. To fix, close other applications or set `DEVICE=cpu` in your `.env`. |
-| **Missing Model Files** | Ensure the `models/` directory contains the fine-tuned artifacts. If missing, the system uses rules. |
-| **Wrong Transformers Version** | If you see a "Transformers version warning", run `pip install -r requirements.txt` to align with the tested range. |
+如果使用 GPU，确保 `torch.cuda.is_available()` 为 true。如果 GPU 已满或不可用，系统将自动把模型切换到 CPU。
 
 ---
 
-## 5. Verification Commands
+## 4. 常见故障排查场景
 
-| Goal | Command |
+| 问题 | 解决方案 |
 |:---|:---|
-| Test Compatibility Logic | `pytest tests/test_intent_classifier_compat.py -v` |
-| Test Full NLU Pipeline | `pytest tests/test_nlu.py -v` |
-| Full System Integration | `pytest tests/test_integration.py -v` |
+| **内存不足（OOM）** | 系统会捕获 OOM 错误并回退到规则匹配。要修复，请关闭其他应用或在 `.env` 中设置 `DEVICE=cpu` |
+| **模型文件缺失** | 确保 `models/` 目录包含微调后的产物。如果缺失，系统使用规则匹配 |
+| **Transformers 版本不正确** | 如果出现 "Transformers version warning"，运行 `pip install -r requirements.txt` 以对齐已测试的版本范围 |
+
+---
+
+## 5. 验证命令
+
+| 目标 | 命令 |
+|:---|:---|
+| 测试兼容性逻辑 | `pytest tests/test_intent_classifier_compat.py -v` |
+| 测试完整 NLU 流水线 | `pytest tests/test_nlu.py -v` |
+| 完整系统集成测试 | `pytest tests/test_integration.py -v` |

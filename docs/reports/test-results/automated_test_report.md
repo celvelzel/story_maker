@@ -1,73 +1,73 @@
-# Automated Test Report
+# 自动化测试报告
 
-**Generated At**: 2026-03-26 16:09:19  
-**Goal**: Evaluate automated metrics, LLM-based subjective scoring, and end-to-end response times across different story genres.
+**生成时间**：2026-03-26 16:09:19  
+**目标**：评估不同故事类型下的自动指标、LLM 主观评分和端到端响应时间
 
-## 1. Test Configuration
-- **Total Sessions**: 3
-- **Genres Tested**: fantasy, sci-fi, mystery
-- **Max Turns per Session**: 10
-- **Warmup Turns**: 0
-- **Action Strategy**: Automatically select the first option for every turn.
+## 1. 测试配置
+- **总会话数**：3
+- **测试类型**：fantasy（奇幻）、sci-fi（科幻）、mystery（悬疑）
+- **每会话最大回合数**：10
+- **预热回合数**：0
+- **行动策略**：每回合自动选择第一个选项
 
-## 2. Session Details
+## 2. 会话详情
 
-| Session | Genre | Turns | Mean (s) | P50 (s) | P90 (s) | P95 (s) | Std (s) | Status |
+| 会话 | 类型 | 回合数 | 均值 (s) | P50 (s) | P90 (s) | P95 (s) | 标准差 (s) | 状态 |
 |---|---|---:|---:|---:|---:|---:|---:|---|
-| 1 | fantasy | 10 | 18.9360 | 18.7056 | 22.2735 | 23.3086 | 3.0632 | OK |
-| 2 | sci-fi | 10 | 19.6930 | 19.2864 | 23.3718 | 24.1221 | 3.0941 | OK |
-| 3 | mystery | 10 | 20.6482 | 20.3414 | 22.7168 | 22.8156 | 1.4706 | OK |
+| 1 | fantasy（奇幻） | 10 | 18.9360 | 18.7056 | 22.2735 | 23.3086 | 3.0632 | 正常 |
+| 2 | sci-fi（科幻） | 10 | 19.6930 | 19.2864 | 23.3718 | 24.1221 | 3.0941 | 正常 |
+| 3 | mystery（悬疑） | 10 | 20.6482 | 20.3414 | 22.7168 | 22.8156 | 1.4706 | 正常 |
 
-## 3. Aggregate Results
+## 3. 汇总结果
 
-### 3.1 Response Time Performance
+### 3.1 响应时间性能
 
-| Metric | Value (s) |
+| 指标 | 值 (s) |
 |---|---:|
-| **Mean** | 19.7590 |
-| **P50** | 19.6930 |
+| **均值** | 19.7590 |
+| **P50（中位数）** | 19.6930 |
 | **P90** | 20.4571 |
 | **P95** | 20.5527 |
-| **Std Dev** | 0.8580 |
-| **Min** | 18.9360 |
-| **Max** | 20.6482 |
+| **标准差** | 0.8580 |
+| **最小值** | 18.9360 |
+| **最大值** | 20.6482 |
 
-### 3.2 Automated Metrics (`metrics.py`)
+### 3.2 自动指标（`metrics.py`）
 
-| Metric | Value | Description |
+| 指标 | 值 | 描述 |
 |---|---:|---|
-| **Distinct-1** | 0.3493 | Unigram diversity (higher is better) |
-| **Distinct-2** | 0.7083 | Bigram diversity |
-| **Distinct-3** | 0.8921 | Trigram diversity |
-| **Self-BLEU** | 0.2398 | Redundancy measure (lower is better) |
-| **Entity Coverage** | 0.9630 | Ratio of KG entities mentioned in text |
-| **Consistency Rate**| 1.0000 | Percentage of turns without KG conflicts |
-| **Type-Token Ratio**| 0.3060 | Vocabulary richness |
-| **Flesch Reading Ease** | 53.5867 | Readability score |
-| **Lexical Overlap** | 0.2817 | Word overlap between adjacent turns |
-| **Avg Graph Density**| 0.1084 | Average world complexity |
-| **Graph Density Delta**| 0.0241 | Complexity growth over session |
+| **Distinct-1** | 0.3493 | 一元组多样性（越高越好） |
+| **Distinct-2** | 0.7083 | 二元组多样性 |
+| **Distinct-3** | 0.8921 | 三元组多样性 |
+| **Self-BLEU** | 0.2398 | 冗余度指标（越低越好） |
+| **Entity Coverage（实体覆盖率）** | 0.9630 | 文本中提及的 KG 实体比例 |
+| **Consistency Rate（一致性比率）**| 1.0000 | 无 KG 冲突的回合百分比 |
+| **Type-Token Ratio（类符-形符比）**| 0.3060 | 词汇丰富度 |
+| **Flesch Reading Ease（可读性）** | 53.5867 | 可读性评分 |
+| **Lexical Overlap（词汇重叠）** | 0.2817 | 相邻回合词汇重叠度 |
+| **Avg Graph Density（平均图密度）**| 0.1084 | 平均世界复杂度 |
+| **Graph Density Delta（图密度变化）**| 0.0241 | 会话期间复杂度增长 |
 
-### 3.3 LLM Judge Results (`llm_judge.py`)
+### 3.3 LLM 评审结果（`llm_judge.py`）
 
-| Dimension | Score (1-10) |
+| 维度 | 评分 (1-10) |
 |---|---:|
-| **Narrative Quality** | 8.00 |
-| **Consistency** | 6.67 |
-| **Player Agency** | 6.67 |
-| **Creativity** | 6.33 |
-| **Pacing** | 8.00 |
-| **Option Relevance** | 7.33 |
-| **Causal Link** | 6.33 |
-| **Local Coherence** | 6.00 |
-| **Average** | **6.91** |
+| **Narrative Quality（叙事质量）** | 8.00 |
+| **Consistency（一致性）** | 6.67 |
+| **Player Agency（玩家代理感）** | 6.67 |
+| **Creativity（创意）** | 6.33 |
+| **Pacing（节奏）** | 8.00 |
+| **Option Relevance（选项相关性）** | 7.33 |
+| **Causal Link（因果链）** | 6.33 |
+| **Local Coherence（局部连贯性）** | 6.00 |
+| **Average（平均分）** | **6.91** |
 
-## 4. Metric Interpretations
-- **Response Time**: Measures the duration from player input to full UI update (including NLU, NLG, and KG steps).
-- **Consistency Rate**: High values indicate that the conflict detection and resolution strategies are maintaining a stable world state.
-- **Entity Coverage**: High coverage ensures the story reflects the underlying knowledge graph accurately.
-- **LLM Judge**: Provides a multi-dimensional subjective quality assessment. `Narrative Quality` and `Pacing` are currently the highest-rated areas.
+## 4. 指标解读
+- **响应时间**：从玩家输入到 UI 完全更新的持续时间（包括 NLU、NLG 和 KG 步骤）
+- **一致性比率**：高值表明冲突检测和解决策略维持了稳定的世界状态
+- **实体覆盖率**：高覆盖率确保故事准确反映底层知识图谱
+- **LLM 评审**：提供多维度的主观质量评估。`叙事质量` 和 `节奏` 是目前评分最高的领域
 
-## 5. Notes
-- **Errors**: 0 sessions failed.
-- **Warmup**: The lack of warmup turns means cold-start latency for models (like DistilBERT) is included in the "Mean" response time.
+## 5. 备注
+- **错误**：0 个会话失败
+- **预热**：由于没有预热回合，模型（如 DistilBERT）的冷启动延迟已包含在"均值"响应时间中
