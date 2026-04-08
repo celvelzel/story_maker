@@ -134,7 +134,7 @@ For story generation, we designed a structured prompt template that merges the p
 
 At the end of each turn, the option generation module uses structured chat_json output to create three distinct choices for the player, categorized by risk level: Low Risk (safe exploration), Medium Risk (standard action), and High Risk (dramatic twist). Even if players don't want to type custom responses, this keeps them highly engaged.
 
-Our architecture is LLM-agnostic—routed through HybridClientManager's get_client_for_task method. You can use the Mimo API for the highest quality, a local Qwen3-4B for privacy, or a hybrid mode where creative story generation uses the local model, while structured options and relationship extraction use the API. These three modes can be toggled with one click via NLG_MODE in config.py.
+Our architecture is LLM-agnostic—routed through HybridClientManager's get_client_for_task method. You can use the Mimo API for the highest quality, a local Qwen3-4B for privacy, or a hybrid mode that combines both. The hybrid isn't just about flexibility—it represents a strategic latency optimization: we route creative story generation to the local Qwen model for privacy, while offloading structured JSON tasks (option generation and relation extraction) to the faster API, saving approximately 14 seconds per turn.
 
 ---
 
@@ -156,7 +156,7 @@ To ensure academic rigor, we implemented a comprehensive evaluation suite. Since
 
 We conducted critical KG On/Off benchmarks. The results show that enabling the Knowledge Graph skyrocketed narrative consistency from 0% to 100%—meaning logical contradictions were completely eliminated. Entity coverage increased by 26%, proving the generated story actively utilizes world details from the graph. Distinct-2 improved by 15% and Self-BLEU decreased by 38%, indicating the LLM no longer falls into repetitive loops.
 
-Furthermore, we used the LLM-as-Judge method for human-like quality assessment, and the overall score rose from 7.50 to 9.12 out of 10. These figures strongly prove the Knowledge Graph's substantial contribution to generation quality.
+Furthermore, we used the LLM-as-Judge method for human-like quality assessment, and the overall score rose from 7.50 to 9.12 out of 10. These figures strongly prove the Knowledge Graph's substantial contribution to generation quality. Interestingly, when we ran rigorous 90-turn automated stress tests using a deterministic "always pick option one" bot, the LLM Judge heavily penalized Player Agency and Causal Link—this highlights that evaluating interactive, open-ended narratives requires a blend of automated metrics and human-in-the-loop qualitative testing.
 
 ---
 
