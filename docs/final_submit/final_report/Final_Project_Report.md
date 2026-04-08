@@ -23,7 +23,7 @@
 ## 1. Task Setup & Background
 
 ### 1.1 Project Overview
-StoryWeaver is an interactive text adventure game engine that integrates **local NLU models** (DistilBERT, spaCy, fastcoref, DistilRoBERTa) with **LLM-powered narrative generation** (OpenAI GPT-4o-mini / Local Qwen3-4B) and a **dynamic knowledge graph based on NetworkX** to maintain world-state consistency across multi-turn, open-ended storytelling.
+StoryWeaver is an interactive text adventure game engine that integrates **local NLU models** (DistilBERT, spaCy, fastcoref, DistilRoBERTa) with **LLM-powered narrative generation** (Xiaomi MIMO-2-flash API / Local Qwen3-4B) and a **dynamic knowledge graph based on NetworkX** to maintain world-state consistency across multi-turn, open-ended storytelling.
 
 ### 1.2 Motivation
 Traditional text adventures rely on rigid, branching logic trees. While modern LLM-based games offer flexibility, they frequently suffer from "hallucinations"—where the AI forgets past events, resurrects dead characters, or introduces logical contradictions. StoryWeaver mitigates these issues by leveraging a knowledge graph as a structured "source of ground truth," preserving the LLM's creative storytelling capabilities while maintaining logical rigor.
@@ -56,7 +56,7 @@ The system is designed for interactive fiction enthusiasts and hybrid AI archite
 │                    GameEngine (Orchestrator)                    │
 │  ┌─────────────┐  ┌──────────┐  ┌──────────────┐  ┌─────────┐ │
 │  │ NLU (Local) │→ │Game State│→ │ Story Gen    │→ │OptionGen│ │
-│  │ DistilBERT  │  │ GameState│  │ GPT-4o-mini  │  │  (API)  │ │
+│  │ DistilBERT  │  │ GameState│  │  Local LLM   │  │  (API)  │ │
 │  │ spaCy +     │  └────┬─────┘  └──────────────┘  └─────────┘ │
 │  │ fastcoref   │       │                                      │
 │  └─────────────┘       ▼                                      │
@@ -169,14 +169,14 @@ The system supports three operating modes via the `NLG_MODE` configuration, adap
 
 | Mode | Story Generation | Option / Relation Extraction | Applicable Scenarios |
 |---|---|---|---|
-| **api** | GPT-4o-mini | GPT-4o-mini | Highest quality, ideal for demos and evaluations |
-| **local** | Qwen3-4B (llama.cpp) | Qwen3-4B | Fully offline, privacy-focused, zero API dependency |
-| **hybrid**| Qwen3-4B (Local) | GPT-4o-mini (API) | Balances quality and cost—local model for creative prose, API for structured extraction |
+| **api** | Xiaomi MIMO-v2-flash | Xiaomi MIMO-v2-flash | Highest quality, ideal for demos and evaluations |
+| **local** | Qwen3-4B  | Qwen3-4B | Fully offline, privacy-focused, zero API dependency |
+| **hybrid**| Qwen3-4B (Local) | Xiaomi MIMO-v2-flash (API) | Balances quality and cost—local model for creative prose, API for structured extraction |
 
 **Architectural Advantages**:
 - All three modes can be hot-swapped in the `.env` file **without modifying any code**.
 - The `hybrid` mode offloads compute-heavy story generation to local hardware while retaining the API's superior JSON output capabilities for structured tasks (option generation, relation extraction), which represents a strategic latency optimization saving approximately 14 seconds per turn.
-- The local model utilizes the **Qwen3-4B GGUF (Q4_K_M quantization)**, compressing the model footprint from 7.5GB to 2.4GB. Served via an OpenAI-compatible API on port 8081 through `llama.cpp`, it natively supports pure CPU inference.
+- The local model utilizes the **Qwen3-4B**, compressing the model footprint from 7.5GB to 2.4GB. Served via an OpenAI-compatible API on port 8081 through CUDA, it natively supports pure CPU inference.
 
 ### 3.5 Dual Entity Extraction (`extract_dual`)
 
@@ -224,7 +224,7 @@ An independent LLM assesses the generated results across 8 dimensions (on a 1-10
 
 | Metric | KG ON | KG OFF | Change |
 |---|---:|---:|---|
-| **Consistency Rate** | **1.0000** | **0.0000** | **+100%** ⬆ |
+| **Consistency Rate** | **1.0000** | **0.9000** | **+10%** ⬆ |
 | **Self-BLEU** (↓ Better) | **0.2200** | 0.3582 | **-38%** ⬇ |
 | **Entity Coverage** | **1.0000** | 0.7917 | +26% ⬆ |
 | **Distinct-1** | 0.3652 | 0.3165 | +15% ⬆ |
@@ -318,16 +318,18 @@ Adjustable dynamically via `.env` and the frontend UI:
 
 | Member Name | Contribution % | Primary Responsibilities |
 |---|---|---|
-| [Name 1] | 25% | NLU Development (Intent, Coreference, Emotion), Model Fine-tuning, Fallback Mechanisms |
-| [Name 2] | 25% | KG Architecture, Relation Extraction, Dual-Layer Conflict Detection & Resolution |
-| [Name 3] | 25% | NLG Pipeline, Prompt Engineering, Local Model Integration (`llama.cpp` / Qwen3-4B) |
-| [Name 4] | 25% | Streamlit UI, Evaluation Suite (Auto-Metrics + LLM Judge), Persistence System, Documentation |
+| MA Jiyuan | 40% | NLU Development (Intent, Coreference, Emotion), KG Architecture, Dual-Layer Conflict Detection & Resolution,  Fallback Mechanisms, NLG Pipeline, Prompt Engineering, Local Model Integration  |
+| YANG Ziting | 20% | Data Collection, Data Preprocessing,Model Fine-tuning,Evaluation Suite (Auto-Metrics + LLM Judge), Persistence System |
+| ZHANG Boxing | 15% |Streamlit UI Development|
+| [Name 4] | 7.5% | Slide Design|
+| [Name 5] | 7.5% | Presentation Delivery|
+| [Name 6] | 10% | Final Report Writing|
 
 ---
 
 ## 8. Conclusion & Future Outlook
 
-StoryWeaver successfully demonstrates that **combining a structured world state (Knowledge Graph) with specialized NLU modules** dramatically enhances the coherence and quality of AI-generated narratives. The KG On/Off ablation study proves that the knowledge graph propels the consistency rate from 0% to 100%, boosts LLM Judge scores by 22%, and concurrently curtails text repetitiveness (Self-BLEU -38%).
+StoryWeaver successfully demonstrates that **combining a structured world state (Knowledge Graph) with specialized NLU modules** dramatically enhances the coherence and quality of AI-generated narratives. The KG On/Off ablation study proves that the knowledge graph propels the consistency rate from 90% to 100%, boosts LLM Judge scores by 22%, and concurrently curtails text repetitiveness (Self-BLEU -38%).
 
 The project establishes a **scalable, configurable, and rigorously evaluable** framework for future interactive fiction, striking an elegant balance between creative expression and logical consistency.
 
@@ -343,7 +345,7 @@ The project establishes a **scalable, configurable, and rigorously evaluable** f
 
 ### A. Tech Stack
 - **NLU**: DistilBERT + spaCy (en_core_web_sm) + fastcoref (FCoref) + DistilRoBERTa
-- **NLG**: OpenAI GPT-4o-mini (API) / Qwen3-4B GGUF Q4_K_M (llama.cpp)
+- **NLG**: Xiaomi MIMO-V2-flash (API) / Qwen3-4B GGUF Q4_K_M 
 - **Knowledge Graph**: NetworkX (MultiDiGraph) + PyVis
 - **Frontend**: Streamlit
 - **Evaluation**: NLTK (BLEU) + Custom Metrics + LLM-as-Judge
