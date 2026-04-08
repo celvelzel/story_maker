@@ -1,9 +1,0 @@
-QA TEST RESULTS
-===============
-
-Scenario 1 (Start Game ¡ú KG Display): PASS
-Scenario 2 (First Action ¡ú KG Updates): PASS
-Scenario 4 (No Game ¡ú Fallback): PASS
-
-Overall Result: 3/3 scenarios passed
-Status: PASS
