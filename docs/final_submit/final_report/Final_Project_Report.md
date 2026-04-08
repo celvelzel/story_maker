@@ -175,7 +175,7 @@ The system supports three operating modes via the `NLG_MODE` configuration, adap
 
 **Architectural Advantages**:
 - All three modes can be hot-swapped in the `.env` file **without modifying any code**.
-- The `hybrid` mode offloads compute-heavy story generation to local hardware while retaining the API's superior JSON output capabilities for structured tasks (option generation, relation extraction).
+- The `hybrid` mode offloads compute-heavy story generation to local hardware while retaining the API's superior JSON output capabilities for structured tasks (option generation, relation extraction), which represents a strategic latency optimization saving approximately 14 seconds per turn.
 - The local model utilizes the **Qwen3-4B GGUF (Q4_K_M quantization)**, compressing the model footprint from 7.5GB to 2.4GB. Served via an OpenAI-compatible API on port 8081 through `llama.cpp`, it natively supports pure CPU inference.
 
 ### 3.5 Dual Entity Extraction (`extract_dual`)
@@ -252,6 +252,7 @@ An independent LLM assesses the generated results across 8 dimensions (on a 1-10
 | local_coherence | 10.0 | 9.0 | +1.0 |
 
 > **Note**: KG-enabled mode introduces an average latency of ~18.2s/turn (vs. 5.7s/turn when off), due to the overhead of LLM relation extraction and conflict detection. This is an acceptable architectural tradeoff for guaranteed narrative consistency.
+> Additionally, rigorous 90-turn automated stress tests using a deterministic "always pick option one" bot revealed that the LLM Judge heavily penalized Player Agency and Causal Link. This highlights that evaluating interactive, open-ended narratives requires a blend of automated metrics and human-in-the-loop qualitative testing.
 
 ---
 
