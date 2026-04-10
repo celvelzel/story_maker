@@ -92,3 +92,7 @@ models/*/*.gguf
 # llama.cpp artifacts
 *.gguf
 llama.cpp-bin/*
+
+# Office files
+*.xml
+*.rels
