@@ -1,78 +1,82 @@
-# StoryWeaver 文档中心
+# StoryWeaver Documentation
 
-本目录包含 StoryWeaver 项目的所有技术文档，按类别组织如下：
+All project documentation is organized in subdirectories by topic.
 
-## 目录结构
+## Directory Layout
 
-- **api/** - API 接口文档
-- **design/** - 设计文档与规范
-- **fixes/** - 问题修复报告与解决方案
-- **guides/** - 使用指南与部署文档
-- **reports/** - 优化与改进报告
-- **project/** - 项目规范与计划
+| Directory | Contents |
+|---|---|
+| `api/` | Internal module API reference |
+| `design/` | Architecture design docs, prompt templates, pipeline diagrams |
+| `fixes/` | Bug fix reports and troubleshooting guides |
+| `guides/` | Deployment and usage guides |
+| `reports/` | Evaluation, optimization, and test reports |
+| `project/` | Course project specification PDFs |
+| `final_submit/` | Final report and presentation script (academic submission) |
 
-## 文档分类
+---
 
-### API 文档 (`api/`)
-包含前端接口规范、数据模型和模块 API 说明。
+## ⭐ Quick Navigation
 
-### 设计文档 (`design/`)
-包含系统架构设计、算法策略和微调方案等技术设计文档。
+### 🚀 Getting Started
 
-### 修复报告 (`fixes/`)
-记录各类问题的修复过程、根因分析和解决方案。
+- **[Zero-to-Hero Deployment](guides/zero-to-hero-deployment.md)** — Full setup guide for all platforms including llama.cpp local inference.
+- **[Local Model Startup](guides/local-model-startup.md)** — Quick-start for the llama.cpp server.
 
-### 使用指南 (`guides/`)
-提供部署指南、技术路线和数据流说明等实用文档。
+### 📖 Core Reference
 
-### 优化报告 (`reports/`)
-包含系统优化、性能改进和功能增强的详细报告。
+- [Technical Route](guides/technical-route.md) — NLU/NLG/KG architecture and fallback policies
+- [API Reference](api/API_REFERENCE.md) — Module APIs, data structures, configuration
 
-### 项目文档 (`project/`)
-包含项目规范、实现计划和提示词模板。
+### 🖥️ Platform Deployment
 
-## ⭐ 快速导航
+- [Windows Deployment](guides/deployment-windows.md)
+- [macOS/Linux Deployment](guides/deployment-macos.md)
+- [CPU Inference Guide](guides/CPU_INFERENCE.md)
 
-### 🚀 首次部署（强烈推荐）
-- **[从零部署指南](guides/zero-to-hero-deployment.md)** - 完整的多平台部署指南，包含 llama.cpp 本地模型推理
-- **[本地模型启动指南](guides/local-model-startup.md)** - llama.cpp 服务器快速启动
+### 🧪 Testing & Evaluation
 
-### 基础文档
-- [技术路线图](guides/technical-route.md)
-- [API 参考文档](api/API_REFERENCE.md)
+- [Automated Test Report](reports/test-results/automated_test_report.md) — NLU/NLG/KG test results
+- [KG On/Off Benchmark](reports/test-results/kg-on-off-report.md) — Generation quality with/without KG
+- [Tri-Config Comparison](reports/evaluation/tri-config-comparison.md) — API vs. local vs. hybrid
 
-### 按系统部署
-- [部署指南 (Windows)](guides/deployment-windows.md)
-- [部署指南 (macOS)](guides/deployment-macos.md)
+### 🔧 Fixes & Troubleshooting
 
-### 备选推理方案
-- [CPU 推理指南](guides/CPU_INFERENCE.md) - CPU 推理优化指南
+- [DistilBERT Tokenizer Fix](fixes/distilbert-tokenizer-fix.md)
+- [LLM JSON Truncation Fix](fixes/llm-json-truncation-fix.md)
+- [FastCoref Fix](fixes/fastcoref-fix.md)
+- [FastCoref Activation Analysis](fixes/fastcoref-analysis.md)
+- [DistilBERT Compatibility Fix](fixes/distilbert-compatibility-fix.md)
+- [DistilBERT Troubleshooting](fixes/distilbert-troubleshooting.md)
 
-### 🛠️ 自动化与测试
-- **[自动化测试报告](reports/test-results/automated_test_report.md)** - 全模块自动化测试结果
-- **[知识图谱开关测试报告](reports/test-results/kg-on-off-report.md)** - KG 对生成质量影响的对比测试
+### 📐 Architecture & Design
 
-### 🔧 故障排除与修复
-- [DistilBERT 分词器修复](fixes/distilbert-tokenizer-fix.md)
-- [LLM JSON 截断修复](fixes/llm-json-truncation-fix.md)
-- [Fastcoref 内存优化](fixes/fastcoref-fix.md)
-- [DistilBERT 兼容性修复](fixes/distilbert-compatibility-fix.md)
-- [DistilBERT 故障排查指南](fixes/distilbert-troubleshooting.md)
+- [Entity Importance Scoring](design/entity-importance.md)
+- [Hybrid NLG Architecture](design/hybrid-nlg-architecture.md)
+- [KG Summary Modes](design/kg-summary-modes.md)
+- [Conflict Detection & Resolution](design/conflict-detection-resolution.md)
+- [Sentiment Analysis Design](design/sentiment-analysis.md)
+- [NLG Local Model Fine-tuning](design/nlg-local-model-finetuning.md)
 
-### 📈 知识图谱相关
-- [知识图谱优化报告](reports/optimization/kg-optimization.md)
-- [NLU & KG 改进报告](reports/optimization/nlu-kg-improvement.md)
-- [运行时持久化文档](reports/optimization/runtime-persistence.md)
-- [实体重要性评分设计](design/entity-importance.md)
+### 📈 Knowledge Graph
 
-### 🤖 本地模型集成
-- [本地模型推理集成报告](reports/local-model/local-inference-integration_2026-03-27.md)
-- [本地模型调优报告](reports/local-model/local-model-tuning_2026-03-27.md)
-- [NLG 本地模型微调方案](design/nlg-local-model-finetuning.md)
+- [KG Optimization Report](reports/optimization/kg-optimization.md)
+- [NLU & KG Improvement Report](reports/optimization/nlu-kg-improvement.md)
+- [Runtime Persistence](reports/optimization/runtime-persistence.md)
 
-### 📝 提示词工程
-- [提示词重建计划](project/rebuilt_prompt.md)
-- [智能体提示词设计](project/agent_prompt.md)
-- [开场白提示词模板](design/prompts/story_opening.md)
-- [剧情延续提示词模板](design/prompts/story_continuation.md)
-- [选项生成提示词模板](design/prompts/option_generation.md)
+### 🤖 Local Model Integration
+
+- [Local Inference Integration](reports/local-model/local-inference-integration_2026-03-27.md)
+- [Local Model Tuning Report](reports/local-model/local-model-tuning_2026-03-27.md)
+- [NLG Local Model Fine-tuning Plan](design/nlg-local-model-finetuning.md)
+
+### 📝 Prompt Engineering
+
+- [Agent Prompt Design](design/prompts/agent_prompt.md)
+- [Story Opening Prompt](design/prompts/story_opening.md)
+- [Story Continuation Prompt](design/prompts/story_continuation.md)
+- [Option Generation Prompt](design/prompts/option_generation.md)
+
+### 📅 Changelog
+
+- [Changelog](reports/changelog/) — Auto-generated update changelogs

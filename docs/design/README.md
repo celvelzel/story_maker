@@ -1,26 +1,36 @@
-# 设计文档
+# Design Documents
 
-本目录包含 StoryWeaver 项目的技术设计文档与规范。
+This directory contains technical design documents and architecture specifications for StoryWeaver.
 
-## 文档索引
+## Document Index
 
-### 核心架构
-- **[entity-importance.md](entity-importance.md)** — 知识图谱实体重要性评分策略，用于图谱剪枝。支持 `composite`（复合）、`incremental`（增量）和 `degree_only`（仅度数）三种模式。
-- **[nlg-local-model-finetuning.md](nlg-local-model-finetuning.md)** — NLG 模块本地 LLM 集成与微调部署方案。
-- **[hybrid-nlg-architecture.md](hybrid-nlg-architecture.md)** — 混合 NLG 路由架构：本地 Qwen3 + Mimo API 的基于任务路由。
-- **[conflict-detection-resolution.md](conflict-detection-resolution.md)** — 多层冲突检测（规则 + 时序 + LLM）与解决策略。
-- **[sentiment-analysis.md](sentiment-analysis.md)** — 玩家输入情感/情绪分析设计（distilroberta + 关键词兜底）。
-- **[kg-summary-modes.md](kg-summary-modes.md)** — KG 摘要生成模式：扁平模式 vs 分层重要性排序摘要。
+### Core Architecture
 
-### 提示词模板 (`prompts/`)
-- **[story_opening.md](prompts/story_opening.md)** — 生成新故事开场白的系统提示词。
-- **[story_continuation.md](prompts/story_continuation.md)** — 基于玩家输入继续叙事的系统提示词。
-- **[option_generation.md](prompts/option_generation.md)** — 生成分支玩家选择的提示词。
+- **[entity-importance.md](entity-importance.md)** — Knowledge graph entity importance scoring for pruning. Supports three modes: `composite` (default), `incremental`, and `degree_only`.
+- **[nlg-local-model-finetuning.md](nlg-local-model-finetuning.md)** — Local LLM integration and fine-tuning deployment plan for the NLG module.
+- **[hybrid-nlg-architecture.md](hybrid-nlg-architecture.md)** — Hybrid NLG routing: task-based routing between local Qwen3 and Mimo Cloud API. Controlled by `NLG_MODE` config.
+- **[conflict-detection-resolution.md](conflict-detection-resolution.md)** — Multi-layer conflict detection (rule-based + temporal + LLM) and resolution strategies.
+- **[sentiment-analysis.md](sentiment-analysis.md)** — Player input sentiment/emotion analysis design (distilroberta + keyword fallback).
+- **[kg-summary-modes.md](kg-summary-modes.md)** — KG summary generation modes: flat vs. layered importance-ranked summary. Controlled by `KG_SUMMARY_MODE`.
+- **[implementation_plan.md](implementation_plan.md)** — Original implementation planning document.
 
-## 设计原则
+### Prompt Templates (`prompts/`)
 
-1. **模块化架构** — NLU、NLG 和 KG 模块相互独立，通过定义良好的接口通信。
-2. **优雅降级** — 所有模块均支持回退机制（如模型失效时使用基于关键词的 NLU），确保服务连续性。
-3. **可扩展性** — 支持通过配置热切换模型和动态调整策略。
-4. **世界一致性** — 通过知识图谱和冲突检测进行状态管理，维护叙事完整性。
-5. **混合智能** — 本地模型处理创意任务，云端 API 处理结构化任务，优化成本与质量。
+- **[story_opening.md](prompts/story_opening.md)** — System prompt for generating story openings.
+- **[story_continuation.md](prompts/story_continuation.md)** — System prompt for continuing the narrative from player input.
+- **[option_generation.md](prompts/option_generation.md)** — Prompt for generating branching player choices.
+- **[agent_prompt.md](prompts/agent_prompt.md)** — Agent-level prompt design notes.
+- **[gen_doc_prompt.md](prompts/gen_doc_prompt.md)** — Prompt template used to generate project documentation.
+- **[gen_ppt_prompt.md](prompts/gen_ppt_prompt.md)** — Prompt template used to generate presentation scripts.
+
+### Pipeline Diagram
+
+- **[storyweaver_pipeline.drawio](storyweaver_pipeline.drawio)** / **[storyweaver_pipeline.svg](storyweaver_pipeline.svg)** — Visual system pipeline diagram.
+
+## Design Principles
+
+1. **Modular** — NLU, NLG, and KG modules are independent and communicate through well-defined interfaces.
+2. **Graceful Degradation** — All modules support fallback: keyword NLU, rule-based coreference, flat KG summary.
+3. **Configurable** — Key model and strategy choices are hot-switchable via `.env` without code changes.
+4. **Narrative Consistency** — World state is maintained through the knowledge graph and conflict detection pipeline.
+5. **Hybrid Intelligence** — Local model handles creative tasks; cloud API handles structured extraction; routing is configurable per task type.

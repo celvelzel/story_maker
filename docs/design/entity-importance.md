@@ -87,4 +87,4 @@ engine = GameEngine(importance_mode="composite")
 重要性评分在每次 `update_graph` 调用期间由 `KnowledgeGraphManager` 计算。评分低于阈值（默认 0.1）的实体可能被排除在即时 LLM 上下文窗口之外以节省 token，但仍保留在完整图谱中以便未来可能的召回。
 
 ---
-*相关参考：详细技术实现请见 [docs/reports/kg-optimization.md](../reports/kg-optimization.md)*
+*相关参考：详细技术实现请见 [kg-optimization.md](../reports/optimization/kg-optimization.md)*
