@@ -1,41 +1,51 @@
-# Usage Guides
+# Guides
 
-This directory contains usage guides and deployment documentation for the StoryWeaver project.
+Deployment and usage guides for the StoryWeaver project.
 
-## Document Overview
+## Quick Start Decision Tree
 
-### 🚀 Rapid Deployment (Recommended for Beginners)
-- **[zero-to-hero-deployment.md](zero-to-hero-deployment.md)** - ⭐ Complete from-scratch deployment guide, including llama.cpp local model inference configuration, compatible with Windows/macOS.
-- **[local-model-startup.md](local-model-startup.md)** - Quick start guide for the llama.cpp local server.
+1. **First deployment** → [Zero-to-Hero Deployment Guide](zero-to-hero-deployment.md)
+2. **Starting local model only** → [Local Model Startup Guide](local-model-startup.md)
+3. **New developer onboarding** → [Technical Route](technical-route.md)
+4. **Understanding data flow** → [Data Flow Document](data-flow.md)
 
-### Technical Documentation
-- **[technical-route.md](technical-route.md)** - Project technical roadmap, including NLU/NLG/KG architecture design.
-- **[data-flow.md](data-flow.md)** - Detailed explanation of data transfer between modules (field-level).
+## Document Index
 
-### Deployment Guides (By System)
-- **[deployment-windows.md](deployment-windows.md)** - High-availability deployment guide for Windows.
-- **[deployment-macos.md](deployment-macos.md)** - High-availability deployment guide for macOS.
+### Deployment (by OS)
 
-### Inference Configuration (Alternative Options)
-- **[CPU_INFERENCE.md](CPU_INFERENCE.md)** - Legacy CPU inference optimization guide (deprecated in favor of llama.cpp).
+- **[zero-to-hero-deployment.md](zero-to-hero-deployment.md)** ⭐ Complete from-scratch guide. Covers llama.cpp local model, Windows and macOS.
+- **[deployment-windows.md](deployment-windows.md)** — Windows production deployment using `scripts/start/start_project_prod.bat`.
+- **[deployment-macos.md](deployment-macos.md)** — macOS/Linux production deployment using `scripts/start/start_project_prod.sh`.
+- **[local-model-startup.md](local-model-startup.md)** — Quick-start for the llama.cpp local inference server.
 
-## Quick Start
+### Architecture & Data Flow
 
-1. **First-time Deployment** → Read the [Zero-to-Hero Deployment Guide](zero-to-hero-deployment.md).
-2. **Returning Users** → Use the [Local Model Startup Guide](local-model-startup.md) for quick launches.
-3. **New Developers** → Read the [Technical Roadmap](technical-route.md) to understand the overall architecture.
-4. **Data Flow** → Check the [Data Flow Document](data-flow.md) for module interaction details.
+- **[technical-route.md](technical-route.md)** — NLU/NLG/KG architecture, fallback policies, and NLG_MODE routing strategy.
+- **[data-flow.md](data-flow.md)** — Field-level data mapping across modules per turn.
 
-## Deployment Modes
+### Inference Configuration
 
-The project supports two running modes:
-- **Development Mode** - Rapid iteration using `start_project.sh` or `start_project.bat`.
-- **Production Mode** - High-availability deployment using `scripts/start_project_prod.sh` or `scripts/start_project_prod.bat`.
+- **[CPU_INFERENCE.md](CPU_INFERENCE.md)** — CPU inference optimization guide (legacy; llama.cpp is now preferred for local inference).
 
 ## Inference Backend Selection
 
-| Backend | Hardware Requirements | Recommended Scenario |
-|---------|-----------------------|----------------------|
-| **llama.cpp (Local)** | CPU / Metal / CUDA | ⭐ Recommended. Works on CPU, supports Metal/CUDA acceleration. |
-| **vLLM (Local)** | NVIDIA GPU | High-performance deployment with dedicated GPU. |
-| **Remote API** | Internet Connection | Fast testing and highest quality output. |
+| Backend | Hardware | Recommended Use |
+|---|---|---|
+| llama.cpp (local) | CPU / Metal / CUDA | ⭐ Recommended for local. Works on CPU, supports Metal/CUDA. |
+| Remote API (Mimo/OpenAI-compat) | Internet connection | Highest quality output, fast prototyping. |
+| Hybrid (`NLG_MODE=hybrid`) | Both | Creative tasks on local model, structured tasks via API. |
+
+## Production Launch Commands
+
+**Windows:**
+```cmd
+scripts\start\start_project_prod.bat
+```
+
+**macOS/Linux:**
+```bash
+chmod +x scripts/start/start_project_prod.sh
+./scripts/start/start_project_prod.sh
+```
+
+The script auto-creates `.venv`, installs dependencies, handles port conflicts, and writes logs to `logs/storyweaver_prod_<timestamp>.log`.

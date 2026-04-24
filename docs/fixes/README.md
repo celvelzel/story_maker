@@ -1,26 +1,28 @@
-# Fixes and Troubleshooting
+# Fixes & Troubleshooting
 
-This directory documents the fixes and troubleshooting solutions for various issues encountered in the StoryWeaver project.
+Bug fix reports and troubleshooting guides for issues encountered in StoryWeaver.
 
 ## Document Index
 
-### DistilBERT (Intent Classification)
-- **[DistilBERT Compatibility Fix](distilbert-compatibility-fix.md)** - Comprehensive fix for DistilBERT model input compatibility, implementing a 5-layer protection scheme.
-- **[DistilBERT Tokenizer Fix](distilbert-tokenizer-fix.md)** - Technical report on hardening the interface between the DistilBERT tokenizer and the classification model.
-- **[DistilBERT Troubleshooting](distilbert-troubleshooting.md)** - Practical guide for identifying and resolving DistilBERT-related runtime issues.
+### DistilBERT — Intent Classification
 
-### Coreference Resolution
-- **[FastCoref Fix](fastcoref-fix.md)** - Resolution for incompatibilities between `fastcoref` and newer `transformers` versions (specifically 5.2.0+).
+- **[distilbert-compatibility-fix.md](distilbert-compatibility-fix.md)** — 5-layer protection scheme for DistilBERT model input compatibility.
+- **[distilbert-tokenizer-fix.md](distilbert-tokenizer-fix.md)** — Hardening the DistilBERT tokenizer / classifier interface.
+- **[distilbert-troubleshooting.md](distilbert-troubleshooting.md)** — Practical guide for identifying and resolving DistilBERT runtime issues.
 
-### LLM & Generation
-- **[LLM JSON Truncation Fix](llm-json-truncation-fix.md)** - Strategy for handling truncated JSON outputs from LLMs and ensuring structural integrity.
+### Coreference Resolution — fastcoref
 
-## Common Fix Patterns
+- **[fastcoref-fix.md](fastcoref-fix.md)** — Incompatibility fix between `fastcoref` and `transformers` ≥ 5.2.0.
+- **[fastcoref-analysis.md](fastcoref-analysis.md)** — Runtime analysis of fastcoref activation status, rule-based fallback behavior, and re-activation steps.
 
-We employ several recurring patterns to ensure system stability:
+### LLM Output
 
-1.  **Automatic Input Filtering**: Automatically stripping unexpected fields from tokenizer outputs based on the model's `forward` signature.
-2.  **Defensive Configuration**: Reducing invalid field generation at the source by tightening tokenizer parameters.
-3.  **Safety Wrappers**: Implementing retry-with-fallback mechanisms and version-aware warning systems.
-4.  **Dependency Pinning**: Locking critical library versions to ensure a stable testing and runtime environment.
-5.  **Proactive Health Checks**: Early detection of environmental or model loading issues during startup.
+- **[llm-json-truncation-fix.md](llm-json-truncation-fix.md)** — Handling truncated JSON outputs from LLMs with structural integrity recovery.
+
+## Recurring Fix Patterns
+
+1. **Input filtering** — Strip unexpected tokenizer output fields based on the model's `forward` signature.
+2. **Defensive configuration** — Tighten tokenizer parameters to reduce invalid field generation at source.
+3. **Retry with fallback** — All NLU modules implement retry-then-fallback (keyword/rule-based).
+4. **Dependency pinning** — Critical library versions are pinned for stable runtime behavior.
+5. **Health checks at startup** — Early detection of missing modules or model load failures.

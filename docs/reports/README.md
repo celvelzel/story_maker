@@ -1,45 +1,42 @@
-# 优化与改进报告
+# Reports
 
-本目录包含 StoryWeaver 项目的系统优化、性能改进和功能增强报告，按类别组织如下：
+This directory contains optimization, evaluation, and test reports for the StoryWeaver project.
 
-## 目录结构
+## Directory Structure
 
-- **optimization/** - 系统优化与功能增强报告
-- **local-model/** - 本地模型推理相关文档
-- **changelog/** - 版本更新记录
-- **test-results/** - 自动化测试结果与数据
+- **optimization/** — System optimization and feature enhancement reports
+- **evaluation/** — Model evaluation results (API, local, hybrid, tri-config)
+- **local-model/** — Local model inference integration docs
+- **test-results/** — Automated test and benchmark outputs
+- **changelog/** — Update changelogs (auto-generated)
 
-## 文件说明
+---
 
-### 系统优化 (`optimization/`)
-- **kg-optimization.md** - 知识图谱子系统全面增强报告，包含数据模型、更新逻辑、冲突解决等
-- **nlu-kg-improvement.md** - NLU 和知识图谱模块 27 项改进任务报告
-- **runtime-persistence.md** - 浏览器刷新持久化改造报告
+## Optimization (`optimization/`)
 
-### 本地模型推理 (`local-model/`)
-- **local-inference-integration_2026-03-27.md** - llama.cpp 本地 CPU 推理集成（首次）
-- **local-model-tuning_2026-03-27.md** - 本地模型调优报告（日志增强、超时配置）
+- **[kg-optimization.md](optimization/kg-optimization.md)** — Knowledge graph subsystem enhancements: data model, update logic, conflict resolution.
+- **[nlu-kg-improvement.md](optimization/nlu-kg-improvement.md)** — 27-item NLU and KG improvement task report.
+- **[runtime-persistence.md](optimization/runtime-persistence.md)** — Browser-refresh persistence redesign with `is_active` lifecycle handling.
 
-### 版本更新记录 (`changelog/`)
-- **changelog_2026-03-24_initial.md** - 基础架构与核心循环初步完善
-- **changelog_2026-03-24_error-logging.md** - 错误处理与日志系统增强
-- **changelog_2026-03-25_eval-metrics-expansion.md** - 评估模块（Distinct-n/Self-BLEU）扩展与集成
+## Evaluation (`evaluation/`)
 
-### 测试结果 (`test-results/`)
-- **automated_test_report.md** - 核心模块（NLU/NLG/KG）自动化测试结果报告
-- **automated_test_results.json** - 原始测试数据（JSON 格式）
+- **[api-report.md](evaluation/api-report.md)** — Evaluation results for API-only NLG mode.
+- **[local-report.md](evaluation/local-report.md)** — Evaluation results for local model NLG mode.
+- **[hybrid-report.md](evaluation/hybrid-report.md)** — Evaluation results for hybrid NLG mode.
+- **[tri-config-comparison.md](evaluation/tri-config-comparison.md)** — Side-by-side comparison across all three NLG modes (API / local / hybrid) with zero NLU fallback runs.
 
-## 改进方向
+## Local Model Integration (`local-model/`)
 
-项目持续优化的四个主要方向：
-1. **性能优化** - 减少 LLM 调用，优化推理速度
-2. **功能增强** - 新增情感分析、时序推理等能力
-3. **稳定性提升** - 完善降级策略和错误处理
-4. **用户体验** - 改进持久化机制和响应速度
+- **[local-inference-integration_2026-03-27.md](local-model/local-inference-integration_2026-03-27.md)** — Initial llama.cpp CPU inference integration.
+- **[local-model-tuning_2026-03-27.md](local-model/local-model-tuning_2026-03-27.md)** — Local model tuning: logging and timeout configuration.
 
-## 测试覆盖
+## Test Results (`test-results/`)
 
-所有改进都经过充分测试：
-- KG 优化：76 个新增单元测试
-- NLU & KG 改进：186 个新增单元测试
-- 持久化改造：完整的端到端测试验证
+- **[automated_test_report.md](test-results/automated_test_report.md)** — Automated test results for NLU/NLG/KG modules.
+- **[kg-on-off-report.md](test-results/kg-on-off-report.md)** — KG on/off benchmark comparing generation quality with and without the knowledge graph.
+
+## Changelog (`changelog/`)
+
+- **[changelog_2026-03-24_initial.md](changelog/changelog_2026-03-24_initial.md)** — Initial core loop and architecture setup.
+- **[changelog_2026-03-24_error-logging.md](changelog/changelog_2026-03-24_error-logging.md)** — Error handling and logging system.
+- **[changelog_2026-03-25_eval-metrics-expansion.md](changelog/changelog_2026-03-25_eval-metrics-expansion.md)** — Distinct-n / Self-BLEU evaluation metrics expansion.
